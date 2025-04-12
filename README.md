@@ -1,6 +1,28 @@
 # Group 1
 
+## Using the template
+This template contains a React frontend, a fastAPI backend, and a Neo4j database. Everything is dockerized, please do not change the overall setup or structure.
+To run the application, follow these steps:
 
+
+Requirements: You have Docker and NodeJS (npm) installed on your machine
+
+
+Clone this repository with git clone [url].
+
+
+Open a terminal/shell in the main directory (development-template) and run docker compose up. If it fails due to access issues, you might need to run docker login first and provide your DBVIS Gitlab credentials.
+
+
+The website should be available at http://localhost:3000.
+Other links:
+Backend: http://localhost:8080
+Neo4j Online Browser: http://localhost:7474/browser/
+If not changed, the database credentials are
+User: neo4j
+Password: ava25-DB!!
+More information will be presented in the course.
+For questions, please contact Lucas Joos.
 
 ## Getting started
 
@@ -91,3 +113,4 @@ For open source projects, say how it is licensed.
 
 ## Project status
 If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+
