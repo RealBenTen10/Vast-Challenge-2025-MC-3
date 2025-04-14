@@ -4,11 +4,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from neo4j import GraphDatabase
 import os
 import time
+import pyneoinstance
 
 # Credentials
 NEO4J_URI = "bolt://" + os.environ.get('DB_HOST') + ":7687"
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = os.environ.get('DB_PASSWORD')
+NEO4J_PASSWORD = os.environ.get('DB_PASSWORD') # ava25-DB!!
 
 router = APIRouter()
 
@@ -114,3 +115,27 @@ async def write_db_example():
     time.sleep(1)
     
     return {"success": True}
+
+
+# Generic function to create a node with dynamic properties
+def create_dynamic_node(tx, label, properties):
+    keys = list(properties.keys())
+    # Create a dynamic Cypher map string like: {name: $name, age: $age, city: $city}
+    props_cypher = ", ".join([f"{key}: ${key}" for key in keys])
+    query = f"MERGE (n:{label} {{{props_cypher}}})"
+    tx.run(query, **properties)
+
+@app.post("/upload_csv/")
+async def upload_csv(file: UploadFile = File(...), label: str = "DynamicNode"):
+    contents = await file.read()
+    df = pd.read_csv(io.StringIO(contents.decode("utf-8")))
+
+    # Convert NaN to None to avoid issues with Neo4j
+    df = df.where(pd.notnull(df), None)
+
+    with driver.session() as session:
+        for _, row in df.iterrows():
+            properties = row.to_dict()
+            session.write_transaction(create_dynamic_node, label, properties)
+
+    return {"message": f"Uploaded {len(df)} records as nodes with label '{label}'."}
