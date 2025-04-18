@@ -4,7 +4,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from neo4j import GraphDatabase
 import os
 import time
-import pyneoinstance
+#import pyneoinstance
+import pandas as pd
 
 # Credentials
 NEO4J_URI = "bolt://" + os.environ.get('DB_HOST') + ":7687"
@@ -12,20 +13,17 @@ NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = os.environ.get('DB_PASSWORD') # ava25-DB!!
 
 router = APIRouter()
-
+'''
 # Example data
 sample_people = [
     {"name": "Alice"},
     {"name": "Bob"},
     {"name": "Charlie"}
 ]
-
 relationships = [
     ("Alice", "Bob", "KNOWS"),
     ("Alice", "Charlie", "FRIENDS_WITH")
 ]
-
-
 @router.get("/", response_class=HTMLResponse, tags=["ROOT"])
 async def root():
     html_content = """
@@ -39,7 +37,6 @@ async def root():
         </html>
         """
     return HTMLResponse(content=html_content, status_code=200)
-
 # Just used for debugging
 @router.get("/clear-db", response_class=JSONResponse)
 async def clear_db():
@@ -51,7 +48,6 @@ async def clear_db():
         
     
     return {"success": True}
-
 @router.get("/read-db-example", response_class=JSONResponse)
 async def read_db_example():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
@@ -81,8 +77,7 @@ async def read_db_example():
     # Just to demonstrate the loading indicator in React
     time.sleep(1)
     
-    return {"success": True, "db-content": dbContentArray}
-    
+    return {"success": True, "db-content": dbContentArray} 
 @router.get("/write-db-example", response_class=JSONResponse)
 async def write_db_example():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
@@ -115,6 +110,57 @@ async def write_db_example():
     time.sleep(1)
     
     return {"success": True}
+'''
+
+
+# Load nodes and edges from provided CSV files
+@router.post("/load_csv_data/", response_class=JSONResponse)
+async def load_csv_data():
+    # Change this e.g. by getting input through react
+    nodes_path = "data\nodes.csv"
+    edges_path = "data\edges.csv"
+
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+
+    with driver.session() as session:
+        # Clear database - can be omitted for later pipelining
+    
+        session.run("MATCH (n) DETACH DELETE n")
+
+        # Load nodes
+        nodes_df = pd.read_csv(nodes_path)
+        nodes_df = nodes_df.where(pd.notnull(nodes_df), None)  # Handle NaN
+
+        for _, row in nodes_df.iterrows():
+            session.write_transaction("""
+                CREATE (a:Airport {
+                    id: $id,
+                    iata: $iata,
+                    icao: $icao,
+                    city: $city,
+                    descr: $descr,
+                    region: $region,
+                    runways: $runways,
+                    longest: $longest,
+                    altitude: $altitude,
+                    country: $country,
+                    continent: $continent,
+                    lat: $lat,
+                    lon: $lon
+                })
+            """, **row.to_dict())
+
+        # Load edges
+        edges_df = pd.read_csv(edges_path)
+        edges_df = edges_df.where(pd.notnull(edges_df), None)
+
+        for _, row in edges_df.iterrows():
+            session.write_transaction("""
+                MATCH (a:Airport {iata: $src}), (b:Airport {iata: $dest})
+                CREATE (a)-[:CONNECTED_TO {dist: $dist}]->(b)
+            """, src=row["src"], dest=row["dest"], dist=row["dist"])
+
+    return {"success": True, "message": "CSV data loaded into Neo4j."}
 
 
 # Generic function to create a node with dynamic properties
@@ -124,18 +170,3 @@ def create_dynamic_node(tx, label, properties):
     props_cypher = ", ".join([f"{key}: ${key}" for key in keys])
     query = f"MERGE (n:{label} {{{props_cypher}}})"
     tx.run(query, **properties)
-
-@app.post("/upload_csv/")
-async def upload_csv(file: UploadFile = File(...), label: str = "DynamicNode"):
-    contents = await file.read()
-    df = pd.read_csv(io.StringIO(contents.decode("utf-8")))
-
-    # Convert NaN to None to avoid issues with Neo4j
-    df = df.where(pd.notnull(df), None)
-
-    with driver.session() as session:
-        for _, row in df.iterrows():
-            properties = row.to_dict()
-            session.write_transaction(create_dynamic_node, label, properties)
-
-    return {"message": f"Uploaded {len(df)} records as nodes with label '{label}'."}
