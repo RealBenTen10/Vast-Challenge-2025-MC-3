@@ -13,7 +13,7 @@ NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = os.environ.get('DB_PASSWORD') # ava25-DB!!
 
 router = APIRouter()
-'''
+
 # Example data
 sample_people = [
     {"name": "Alice"},
@@ -38,6 +38,8 @@ async def root():
         """
     return HTMLResponse(content=html_content, status_code=200)
 # Just used for debugging
+
+
 @router.get("/clear-db", response_class=JSONResponse)
 async def clear_db():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
@@ -48,6 +50,8 @@ async def clear_db():
         
     
     return {"success": True}
+
+
 @router.get("/read-db-example", response_class=JSONResponse)
 async def read_db_example():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
@@ -110,16 +114,22 @@ async def write_db_example():
     time.sleep(1)
     
     return {"success": True}
-'''
 
+
+@router.get("/Test", response_class=JSONResponse)
+async def Test():
+    print("Current working directory:", os.getcwd())
+    files = [entry.name for entry in os.scandir('.') if entry.is_file()]
+    return {"files": files}
 
 # Load nodes and edges from provided CSV files
 @router.post("/load_csv_data/", response_class=JSONResponse)
 async def load_csv_data():
     # Change this e.g. by getting input through react
-    nodes_path = "data\nodes.csv"
-    edges_path = "data\edges.csv"
-
+    
+    nodes_path = "nodes.csv"
+    edges_path = "edges.csv"
+    
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
     with driver.session() as session:
@@ -129,10 +139,12 @@ async def load_csv_data():
 
         # Load nodes
         nodes_df = pd.read_csv(nodes_path)
+        print("Handling NaN")
         nodes_df = nodes_df.where(pd.notnull(nodes_df), None)  # Handle NaN
+        print("Loading data into neo4j")
 
         for _, row in nodes_df.iterrows():
-            session.write_transaction("""
+            session.run("""
                 CREATE (a:Airport {
                     id: $id,
                     iata: $iata,
@@ -150,16 +162,19 @@ async def load_csv_data():
                 })
             """, **row.to_dict())
 
+        print("Loaded nodes - next are edges")
         # Load edges
         edges_df = pd.read_csv(edges_path)
+        print("NaN handling")
         edges_df = edges_df.where(pd.notnull(edges_df), None)
 
+        print("Parsing edges")
         for _, row in edges_df.iterrows():
-            session.write_transaction("""
+            session.run("""
                 MATCH (a:Airport {iata: $src}), (b:Airport {iata: $dest})
                 CREATE (a)-[:CONNECTED_TO {dist: $dist}]->(b)
             """, src=row["src"], dest=row["dest"], dist=row["dist"])
-
+        print("All complete! :)")
     return {"success": True, "message": "CSV data loaded into Neo4j."}
 
 
