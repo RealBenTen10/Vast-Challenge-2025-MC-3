@@ -50,12 +50,65 @@ export default function Home() {
       setDbWriteInfo(`Writing database failed: ${error}`);
     }
   };
+  const writeAirportData = async () => {
+    setDbWriteStatus(QueryStatus.Loading);
+
+    try {
+      const response = await fetch("/api/load_csv_data");
+      if (!response.ok) throw new Error(`Backend error: ${response.status} ${response.statusText}`);
+
+      const result = await response.json();
+
+      if (result.success) {
+        setDbWriteStatus(QueryStatus.Success);
+        setDbWriteInfo("The database was filled with example data!");
+      } else {
+        setDbWriteStatus(QueryStatus.Failure);
+        setDbWriteInfo(`Writing database failed: ${result["error-message"]}`);
+      }
+    } catch (error) {
+      setDbWriteStatus(QueryStatus.Failure);
+      setDbWriteInfo(`Writing database failed: ${error}`);
+    }
+  };
 
   const readData = async () => {
     setDbReadStatus(QueryStatus.Loading);
 
     try {
       const response = await fetch("/api/read-db-example");
+      if (!response.ok) throw new Error(`Backend error: ${response.status} ${response.statusText}`);
+
+      const result = await response.json();
+
+      if (result.success) {
+        const dbContent: string[] = result["db-content"];
+
+        const content = dbContent.map((line, index) => (
+          <React.Fragment key={index}>
+            {line}
+            <br />
+          </React.Fragment>
+        ));
+
+        setDbReadText(<>{content}</>);
+        setDbReadStatus(QueryStatus.Success);
+        setDbReadInfo("The database returned valid data!");
+      } else {
+        setDbReadStatus(QueryStatus.Failure);
+        setDbReadInfo(`Querying database failed: ${result["error-message"]}`);
+      }
+    } catch (error) {
+      setDbReadStatus(QueryStatus.Failure);
+      setDbReadInfo(`Querying database failed: ${error}`);
+    }
+  };
+
+  const readAirportData = async () => {
+    setDbReadStatus(QueryStatus.Loading);
+
+    try {
+      const response = await fetch("/api/read-db");
       if (!response.ok) throw new Error(`Backend error: ${response.status} ${response.statusText}`);
 
       const result = await response.json();
@@ -114,7 +167,7 @@ export default function Home() {
           <CardHeader className="flex gap-3">
             <div className="flex flex-col">
               <p className="text-md">Neo4J Database</p>
-              <p className="text-small text-default-500">Write Data</p>
+              <p className="text-small text-default-500">Write People Data</p>
             </div>
           </CardHeader>
           <Divider />
@@ -140,7 +193,39 @@ export default function Home() {
           <CardHeader className="flex gap-3">
             <div className="flex flex-col">
               <p className="text-md">Neo4J Database</p>
-              <p className="text-small text-default-500">Read Data</p>
+              <p className="text-small text-default-500">Write Airport Data</p>
+            </div>
+          </CardHeader>
+          <Divider />
+          <CardBody>
+            <Button
+              isLoading={dbReadStatus === QueryStatus.Loading}
+              onPress={writeAirportData}
+              color="primary"
+            >
+              Press to write Airport to database...
+            </Button>
+            <Alert
+              isVisible={dbReadStatus === QueryStatus.Success || dbReadStatus === QueryStatus.Failure}
+              color={dbReadStatus === QueryStatus.Success ? "success" : "danger"}
+              className="mt-3"
+              title={dbReadStatus === QueryStatus.Success ? "Success" : "Failure"}
+              description={dbReadInfo}
+            />
+            {dbReadText && dbReadStatus === QueryStatus.Success && (
+              <div className="mt-4">
+                <b>Retrieved from DB:</b>
+                <p>{dbReadText}</p>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+
+        <Card className="mt-10 w-[400px]">
+          <CardHeader className="flex gap-3">
+            <div className="flex flex-col">
+              <p className="text-md">Neo4J Database</p>
+              <p className="text-small text-default-500">Read People Data</p>
             </div>
           </CardHeader>
           <Divider />
@@ -161,6 +246,38 @@ export default function Home() {
             />
             {dbReadText && dbReadStatus === QueryStatus.Success && (
               <div className="mt-4">
+                <b>Retrieved from DB:</b>
+                <p>{dbReadText}</p>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+
+        <Card className="mt-10 w-[400px]">
+          <CardHeader className="flex gap-3">
+            <div className="flex flex-col">
+              <p className="text-md">Neo4J Database</p>
+              <p className="text-small text-default-500">Read Airport Data</p>
+            </div>
+          </CardHeader>
+          <Divider />
+          <CardBody>
+            <Button
+              isLoading={dbReadStatus === QueryStatus.Loading}
+              onPress={readAirportData}
+              color="primary"
+            >
+              Press to read from Airport database...
+            </Button>
+            <Alert
+              isVisible={dbReadStatus === QueryStatus.Success || dbReadStatus === QueryStatus.Failure}
+              color={dbReadStatus === QueryStatus.Success ? "success" : "danger"}
+              className="mt-5"
+              title={dbReadStatus === QueryStatus.Success ? "Success" : "Failure"}
+              description={dbReadInfo}
+            />
+            {dbReadText && dbReadStatus === QueryStatus.Success && (
+              <div className="mt-6">
                 <b>Retrieved from DB:</b>
                 <p>{dbReadText}</p>
               </div>

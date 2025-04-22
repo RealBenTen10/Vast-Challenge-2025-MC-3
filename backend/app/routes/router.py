@@ -51,9 +51,36 @@ async def clear_db():
     
     return {"success": True}
 
+@router.get("/read-db", response_class=JSONResponse)
+async def read_db():
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+
+    with driver.session() as session:
+        airport_result = session.run("MATCH (a:Airport) RETURN a.id AS id, a.city AS city")
+        relation_result = session.run("""
+                    MATCH (a:Airport)-[CONNECTED_TO]->(b:Airport)
+                    RETURN a.iata AS from, type(CONNECTED_TO) AS relation, b.iata AS to        
+                                      """)
+        if (airport_result.peek() is None or relation_result.peek() is None):
+            return {"success": False, "error-message": "The database is empty!"}
+        
+        dbContentArray = ["Airports in the database:"]
+
+        for attribute in airport_result:
+            dbContentArray.append(f" - {attribute['city']}")
+            
+        dbContentArray.append(" ")
+        dbContentArray.append("Relationships in the database:")
+                
+        for attribute in relation_result:
+            dbContentArray.append(f" - {attribute['from']} -[{attribute['relation']}]-> {attribute['to']}")  
+    # # Just to demonstrate the loading indicator in React
+    time.sleep(1)
+    return {"success": True, "db-content": dbContentArray} 
+
 
 @router.get("/read-db-example", response_class=JSONResponse)
-async def read_db_example():
+async def db_example():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     
     # Read database and create result array
@@ -123,7 +150,7 @@ async def Test():
     return {"files": files}
 
 # Load nodes and edges from provided CSV files
-@router.post("/load_csv_data/", response_class=JSONResponse)
+@router.get("/load_csv_data", response_class=JSONResponse)
 async def load_csv_data():
     # Change this e.g. by getting input through react
     
