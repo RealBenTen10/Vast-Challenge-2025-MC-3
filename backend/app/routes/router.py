@@ -6,6 +6,7 @@ import os
 import time
 #import pyneoinstance
 import pandas as pd
+from fastapi import BackgroundTasks
 
 # Credentials
 NEO4J_URI = "bolt://" + os.environ.get('DB_HOST') + ":7687"
@@ -14,16 +15,6 @@ NEO4J_PASSWORD = os.environ.get('DB_PASSWORD') # ava25-DB!!
 
 router = APIRouter()
 
-# Example data
-sample_people = [
-    {"name": "Alice"},
-    {"name": "Bob"},
-    {"name": "Charlie"}
-]
-relationships = [
-    ("Alice", "Bob", "KNOWS"),
-    ("Alice", "Charlie", "FRIENDS_WITH")
-]
 @router.get("/", response_class=HTMLResponse, tags=["ROOT"])
 async def root():
     html_content = """
@@ -38,7 +29,6 @@ async def root():
         """
     return HTMLResponse(content=html_content, status_code=200)
 # Just used for debugging
-
 
 @router.get("/clear-db", response_class=JSONResponse)
 async def clear_db():
@@ -55,75 +45,53 @@ async def clear_db():
 @router.get("/read-db-example", response_class=JSONResponse)
 async def read_db_example():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    
-    # Read database and create result array
-    with driver.session() as session:
-        person_result = session.run("MATCH (p:Person) RETURN p.name AS name, p.age AS age")
-        relation_result = session.run("""
-                    MATCH (a:Person)-[r]->(b:Person)
-                    RETURN a.name AS from, type(r) AS relation, b.name AS to
-                """)
-        
-        if (person_result.peek() is None or relation_result.peek() is None):
-            return {"success": False, "error-message": "The database is empty!"}
 
-        dbContentArray = ["People in the database:"]
+    with driver.session() as session:
+        # Get airport nodes
+        print("Getting data...")
+        airport_result = session.run("""
+            MATCH (a:Airport)
+            RETURN a.iata AS iata, a.city AS city, a.country AS country, a.lat AS lat, a.lon AS lon
+        """)
+        print("Found airports")
+        # Get connections between airports
+        connection_result = session.run("""
+            MATCH (a:Airport)-[r:CONNECTED_TO]->(b:Airport)
+            RETURN a.iata AS from_iata, b.iata AS to_iata, r.dist AS distance
+        """)
+        print("Got connections")
+        if airport_result.peek() is None or connection_result.peek() is None:
+            return {"success": False, "error-message": "The database contains no airport data."}
         
-        for record in person_result:
-            dbContentArray.append(f" - {record['name']} (age {record['age']})")
-        
+        dbContentArray = ["Airports in the database:"]
+        for record in airport_result:
+            dbContentArray.append(
+                f" - {record['iata']} ({record['city']}, {record['country']}) "
+                f"at [{record['lat']}, {record['lon']}]"
+            )
+        print("Getting a list")
+
         dbContentArray.append(" ")
-        dbContentArray.append("Relationships in the database:")
-                
-        for record in relation_result:
-            dbContentArray.append(f" - {record['from']} -[{record['relation']}]-> {record['to']})")  
-    
-    # Just to demonstrate the loading indicator in React
-    time.sleep(1)
-    
-    return {"success": True, "db-content": dbContentArray} 
-@router.get("/write-db-example", response_class=JSONResponse)
-async def write_db_example():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    
-    with driver.session() as session:
-        # Empty database
-        session.run("MATCH (n) DETACH DELETE n")
-        print("Database cleared.")
-    
-        # Create nodes
-        for person in sample_people:
-            session.run(
-                "CREATE (p:Person {name: $name, age: $age})",
-                name=person["name"], age=random.randint(20, 90)
+        dbContentArray.append("Connections between airports:")
+        for record in connection_result:
+            dbContentArray.append(
+                f" - {record['from_iata']} -> {record['to_iata']} ({record['distance']} km)"
             )
-        print("Sample nodes created.")
-
-        # Create relationships
-        for person1, person2, rel_type in relationships:
-            session.run(
-                """
-                MATCH (a:Person {name: $name1}), (b:Person {name: $name2})
-                CREATE (a)-[r:%s]->(b)
-                """ % rel_type,
-                name1=person1, name2=person2
-            )
-        print("Sample relationships created.")
-        
-    # Just to demonstrate the loading indicator in React
-    time.sleep(1)
     
-    return {"success": True}
+    print("All gotten")
 
+    return {"success": True, "db-content": dbContentArray}
 
-@router.get("/Test", response_class=JSONResponse)
-async def Test():
-    print("Current working directory:", os.getcwd())
-    files = [entry.name for entry in os.scandir('.') if entry.is_file()]
-    return {"files": files}
+# use router.post() instead?
+@router.get("/start_loading", response_class=JSONResponse)
+async def start_loading(background_tasks: BackgroundTasks):
+    
+    background_tasks.add_task(load_csv_data)
+    return {"success": True, "message": "Started loading in background"}
 
+# use router.post() instead?
 # Load nodes and edges from provided CSV files
-@router.post("/load_csv_data/", response_class=JSONResponse)
+@router.get("load_csv_data", response_class=JSONResponse)
 async def load_csv_data():
     # Change this e.g. by getting input through react
     
@@ -178,10 +146,26 @@ async def load_csv_data():
     return {"success": True, "message": "CSV data loaded into Neo4j."}
 
 
-# Generic function to create a node with dynamic properties
-def create_dynamic_node(tx, label, properties):
-    keys = list(properties.keys())
-    # Create a dynamic Cypher map string like: {name: $name, age: $age, city: $city}
-    props_cypher = ", ".join([f"{key}: ${key}" for key in keys])
-    query = f"MERGE (n:{label} {{{props_cypher}}})"
-    tx.run(query, **properties)
+@router.get("/graph-data", response_class=JSONResponse)
+async def get_graph_data():
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    with driver.session() as session:
+        result = session.run("""
+            MATCH (a:Airport)-[r:CONNECTED_TO]->(b:Airport)
+            RETURN a.iata AS source, b.iata AS target, r.dist AS distance
+        """)
+
+        nodes_set = set()
+        edges = []
+
+        for record in result:
+            src = record["source"]
+            tgt = record["target"]
+            dist = record["distance"]
+            nodes_set.add(src)
+            nodes_set.add(tgt)
+            links.append({"source": src, "target": tgt, "distance": dist})
+
+        nodes = [{"id": iata} for iata in nodes_set]
+
+        return {"success": True, "nodes": nodes, "edges": edges}
