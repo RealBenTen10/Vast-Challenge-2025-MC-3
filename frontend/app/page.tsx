@@ -40,6 +40,8 @@ export default function Home() {
   const [dbReadInfo, setDbReadInfo] = useState("");
   const [titleColor, setTitleColor] = useState("");
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
+  const [airportLimit, setAirportLimit] = useState<number>(5);
+
   
   // Create refs for D3 visualization
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -157,9 +159,18 @@ export default function Home() {
 
     // Add circles to nodes
     node.append("circle")
-      .attr("r", 20)
-      .attr("fill", (d: any) => d.group ? d3.schemeCategory10[d.group % 10] : "#69b3a2");
-
+    .attr("r", (d: any) => {
+      // Default radius range: 10 to 40 based on degree
+      const minR = 10;
+      const maxR = 40;
+      const degree = d.degree || 1;
+      const allDegrees = graphData.nodes.map(n => (n as any).degree || 1);
+      const maxDegree = Math.max(...allDegrees, 1);
+  
+      return minR + (degree / maxDegree) * (maxR - minR);
+    })
+    .attr("fill", (d: any) => d.group ? d3.schemeCategory10[d.group % 10] : "#69b3a2");
+  
     // Add text labels
     node.append("text")
       .attr("text-anchor", "middle")
@@ -247,50 +258,37 @@ export default function Home() {
 
   // Function to transform raw data from Neo4j to D3 format
   const transformToGraphData = (rawData: any): GraphData => {
-    // This is a placeholder transformation - adjust based on your actual data structure
     const nodes: Node[] = [];
     const links: Link[] = [];
     const nodeMap = new Map();
-
-    // Assuming rawData is an array of connections where each has source and target nodes
-    rawData.forEach((connection: any, index: number) => {
-      // Check how your connection data is structured
-      // This example assumes each connection has source and target properties
-      const source = connection.source || connection.from || `node-${index}-a`;
-      const target = connection.target || connection.to || `node-${index}-b`;
-      const relationshipType = connection.type || 'CONNECTS_TO';
-      
-      // Add source node if not exists
+  
+    rawData.forEach((connection: any) => {
+      const { source, target, type, value } = connection;
+  
       if (!nodeMap.has(source)) {
         nodeMap.set(source, true);
         nodes.push({
           id: source,
-          label: connection.sourceLabel || source,
-          group: 1
+          label: source,
+          group: 1,
         });
       }
-      
-      // Add target node if not exists
+  
       if (!nodeMap.has(target)) {
         nodeMap.set(target, true);
         nodes.push({
           id: target,
-          label: connection.targetLabel || target,
-          group: 2
+          label: target,
+          group: 2,
         });
       }
-      
-      // Add link
-      links.push({
-        source,
-        target,
-        type: relationshipType,
-        value: 1
-      });
+  
+      links.push({ source, target, type, value });
     });
-
+  
     return { nodes, links };
   };
+  
 
   const readData = async () => {
     setDbReadStatus(QueryStatus.Loading);
@@ -365,6 +363,36 @@ export default function Home() {
       setDbReadInfo(`Querying database failed: ${error}`);
     }
   };
+
+  const readTopAirports = async (limit: number) => {
+    setDbReadStatus(QueryStatus.Loading);
+  
+    try {
+      const response = await fetch(`/api/top-airports?n=${limit}`);
+      if (!response.ok) throw new Error(`Backend error: ${response.status} ${response.statusText}`);
+  
+      const result = await response.json();
+  
+      if (result.success) {
+        setDbReadStatus(QueryStatus.Success);
+        setDbReadInfo("Fetched top airports successfully.");
+  
+        const graph: GraphData = {
+          nodes: result.nodes,
+          links: result["raw-data"]
+        };
+  
+        setGraphData(graph);
+      } else {
+        setDbReadStatus(QueryStatus.Failure);
+        setDbReadInfo(`Querying database failed: ${result["error-message"]}`);
+      }
+    } catch (error) {
+      setDbReadStatus(QueryStatus.Failure);
+      setDbReadInfo(`Querying database failed: ${error}`);
+    }
+  };
+  
 
   // Fallback function to create a sample graph from text data
   const createSampleGraphFromText = (textData: string[]) => {
@@ -564,18 +592,30 @@ export default function Home() {
           <CardHeader className="flex gap-3">
             <div className="flex flex-col">
               <p className="text-md">Neo4J Database</p>
-              <p className="text-small text-default-500">Read Airport Data</p>
+              <p className="text-small text-default-500">Read Top N Airports</p>
             </div>
           </CardHeader>
           <Divider />
           <CardBody>
+
+            <input
+              type="number"
+              min="1"
+              value={airportLimit}
+              onChange={(e) => setAirportLimit(parseInt(e.target.value))}
+              placeholder="Enter number of airports"
+              className="border p-2 rounded w-full mt-2"
+            />
+
             <Button
               isLoading={dbReadStatus === QueryStatus.Loading}
-              onPress={readAirportData}
+              onPress={() => readTopAirports(airportLimit)}
+              className="mt-4"
               color="primary"
             >
-              Press to read from Airport database...
+              Show Top {airportLimit} Airports
             </Button>
+
             <Alert
               isVisible={dbReadStatus === QueryStatus.Success || dbReadStatus === QueryStatus.Failure}
               color={dbReadStatus === QueryStatus.Success ? "success" : "danger"}
@@ -583,6 +623,7 @@ export default function Home() {
               title={dbReadStatus === QueryStatus.Success ? "Success" : "Failure"}
               description={dbReadInfo}
             />
+
             {dbReadText && dbReadStatus === QueryStatus.Success && (
               <div className="mt-6">
                 <b>Retrieved from DB:</b>

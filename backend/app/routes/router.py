@@ -196,3 +196,53 @@ async def get_graph_data():
         nodes = [{"id": iata} for iata in nodes_set]
 
         return {"success": True, "nodes": nodes, "edges": edges}
+
+# New endpoint to get top N airports based on outgoing connections
+@router.get("/top-airports", response_class=JSONResponse)
+async def get_top_airports(n: int = 5):
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    with driver.session() as session:
+        # First, find top n airports by number of outgoing connections
+        result = session.run("""
+            MATCH (a:Airport)-[:CONNECTED_TO]->()
+            WITH a, count(*) AS out_degree
+            ORDER BY out_degree DESC
+            LIMIT $limit
+            RETURN a.iata AS iata, out_degree
+        """, limit=n)
+
+        top_airports = []
+        degrees = {}
+
+        for record in result:
+            iata = record["iata"]
+            degree = record["out_degree"]
+            top_airports.append(iata)
+            degrees[iata] = degree
+
+        if not top_airports:
+            return {"success": False, "error-message": "No top airports found."}
+
+        # Then get only internal edges between the selected airports
+        connections = session.run("""
+            UNWIND $iata_list AS code
+            MATCH (a:Airport {iata: code})-[r:CONNECTED_TO]->(b:Airport)
+            WHERE b.iata IN $iata_list
+            RETURN a.iata AS source, b.iata AS target, r.dist AS distance
+        """, iata_list=top_airports)
+
+        links = []
+        nodes_set = set(top_airports)  # Keep only selected top airports
+
+        for record in connections:
+            links.append({
+                "source": record["source"],
+                "target": record["target"],
+                "type": "CONNECTED_TO",
+                "value": 1
+            })
+
+        # Create nodes with labels and degrees
+        nodes = [{"id": iata, "label": iata, "degree": degrees.get(iata, 1)} for iata in top_airports]
+
+        return {"success": True, "raw-data": links, "nodes": nodes}
