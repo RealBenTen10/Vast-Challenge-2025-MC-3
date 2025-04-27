@@ -1,5 +1,8 @@
 # Group 1
 
+## Assignment 1
+The code is up to date and the PDF for exercise 2 is in the GROUP-1 folder
+
 ## Using the template
 This template contains a React frontend, a fastAPI backend, and a Neo4j database. Everything is dockerized, please do not change the overall setup or structure.
 To run the application, follow these steps:
