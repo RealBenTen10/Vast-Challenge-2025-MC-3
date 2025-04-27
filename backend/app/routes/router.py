@@ -1,17 +1,17 @@
 import random
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse, JSONResponse
+from typing import Optional
 from neo4j import GraphDatabase
 import os
 import time
-#import pyneoinstance
 import pandas as pd
 from fastapi import BackgroundTasks
 
 # Credentials
 NEO4J_URI = "bolt://" + os.environ.get('DB_HOST') + ":7687"
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = os.environ.get('DB_PASSWORD') # ava25-DB!!
+NEO4J_PASSWORD = os.environ.get('DB_PASSWORD')
 
 router = APIRouter()
 
@@ -38,7 +38,6 @@ async def clear_db():
         session.run("MATCH (n) DETACH DELETE n")
         print("Database cleared.")
         
-    
     return {"success": True}
 
 @router.get("/read-db", response_class=JSONResponse)
@@ -173,49 +172,35 @@ async def load_csv_data():
     return {"success": True, "message": "CSV data loaded into Neo4j."}
 
 
-@router.get("/graph-data", response_class=JSONResponse)
-async def get_graph_data():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    with driver.session() as session:
-        result = session.run("""
-            MATCH (a:Airport)-[r:CONNECTED_TO]->(b:Airport)
-            RETURN a.iata AS source, b.iata AS target, r.dist AS distance
-        """)
-
-        nodes_set = set()
-        edges = []
-
-        for record in result:
-            src = record["source"]
-            tgt = record["target"]
-            dist = record["distance"]
-            nodes_set.add(src)
-            nodes_set.add(tgt)
-            links.append({"source": src, "target": tgt, "distance": dist})
-
-        nodes = [{"id": iata} for iata in nodes_set]
-
-        return {"success": True, "nodes": nodes, "edges": edges}
-
-# New endpoint to get top N airports based on outgoing connections
 @router.get("/top-airports", response_class=JSONResponse)
 async def get_top_airports(
-    n_airports: int = 1,
-    runways: int = 1,  # new parameter with default 0
-    continent: str = "AM"
+    n_airports: int = Query(1, gt=0),
+    runways: Optional[int] = Query(None, ge=0),
+    continent: Optional[str] = Query(None)
 ):
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     with driver.session() as session:
-        # First, filter airports by minimum number of runways
-        result = session.run("""
+
+        where_conditions = []
+        if runways is not None:
+            where_conditions.append("a.runways = $runways")
+        if continent is not None:
+            where_conditions.append("a.continent = $continent")
+
+        where_clause = ""
+        if where_conditions:
+            where_clause = "WHERE " + " AND ".join(where_conditions)
+
+        query = f"""
             MATCH (a:Airport)-[:CONNECTED_TO]->()
-            WHERE a.runways = $runways
-            WHERE a.continent = $continent
+            {where_clause}
             WITH a, count(*) AS out_degree
             ORDER BY out_degree DESC
             LIMIT $limit
             RETURN a.iata AS iata, out_degree
-        """, limit=n_airports, runways=runways, continent=continent)
+        """
+
+        result = session.run(query, limit=n_airports, runways=runways, continent=continent)
 
         top_airports = []
         degrees = {}
@@ -249,6 +234,26 @@ async def get_top_airports(
 
         return {"success": True, "raw-data": links, "nodes": nodes}
 
+@router.get("/continent-graph", response_class=JSONResponse)
+async def get_continent_graph():
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    with driver.session() as session:
+        result = session.run("""
+            MATCH (a:Airport)
+            WHERE a.continent IS NOT NULL
+            RETURN a.continent AS continent, count(a) AS airport_count
+        """)
 
+        nodes = []
+        for record in result:
+            nodes.append({
+                "id": record["continent"],
+                "label": record["continent"],
+                "degree": record["airport_count"]
+            })
 
-
+        return {
+            "success": True,
+            "nodes": nodes,
+            "links": []  # No edges between continents
+        }
