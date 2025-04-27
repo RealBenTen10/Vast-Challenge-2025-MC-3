@@ -32,6 +32,7 @@ interface GraphData {
   links: Link[];
 }
 
+// add constat variables here
 export default function Home() {
   const [dbWriteStatus, setDbWriteStatus] = useState<QueryStatus>(QueryStatus.None);
   const [dbWriteInfo, setDbWriteInfo] = useState("");
@@ -41,6 +42,9 @@ export default function Home() {
   const [titleColor, setTitleColor] = useState("");
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [airportLimit, setAirportLimit] = useState<number>(5);
+  const [Runways, setRunways] = useState<number>(1);
+  const [Continent, setContinent] = useState<string>("EU");
+
 
   
   // Create refs for D3 visualization
@@ -126,7 +130,7 @@ export default function Home() {
       .attr("fill", "#999")
       .attr("d", "M0,-5L10,0L0,5");
 
-    // Create links
+    // Create links/edges
     const link = g.append("g")
       .selectAll("line")
       .data(d3Data.links)
@@ -171,7 +175,7 @@ export default function Home() {
     })
     .attr("fill", (d: any) => d.group ? d3.schemeCategory10[d.group % 10] : "#69b3a2");
   
-    // Add text labels
+    // Add text labels change the connected_to to something else here?
     node.append("text")
       .attr("text-anchor", "middle")
       .attr("dy", ".35em")
@@ -364,11 +368,12 @@ export default function Home() {
     }
   };
 
-  const readTopAirports = async (limit: number) => {
+  // Add variable in function call e.g. Continent = string
+  const readTopAirports = async (limit: number, Runways: number, Continent: string) => {
     setDbReadStatus(QueryStatus.Loading);
   
     try {
-      const response = await fetch(`/api/top-airports?n=${limit}`);
+      const response = await fetch(`/api/top-airports?n_airports=${limit}&runways=${Runways}&continent=${Continent}`);
       if (!response.ok) throw new Error(`Backend error: ${response.status} ${response.statusText}`);
   
       const result = await response.json();
@@ -392,6 +397,7 @@ export default function Home() {
       setDbReadInfo(`Querying database failed: ${error}`);
     }
   };
+  
   
 
   // Fallback function to create a sample graph from text data
@@ -598,23 +604,44 @@ export default function Home() {
           <Divider />
           <CardBody>
 
-            <input
-              type="number"
-              min="1"
-              value={airportLimit}
-              onChange={(e) => setAirportLimit(parseInt(e.target.value))}
-              placeholder="Enter number of airports"
-              className="border p-2 rounded w-full mt-2"
-            />
+          <input
+            type="number"
+            min="1"
+            value={airportLimit}
+            onChange={(e) => setAirportLimit(parseInt(e.target.value))}
+            placeholder="Enter number of airports"
+            className="border p-2 rounded w-full mt-2"
+          />
 
-            <Button
-              isLoading={dbReadStatus === QueryStatus.Loading}
-              onPress={() => readTopAirports(airportLimit)}
-              className="mt-4"
-              color="primary"
-            >
-              Show Top {airportLimit} Airports
-            </Button>
+          <input
+            type="number"
+            min="0"
+            value={Runways}
+            onChange={(e) => setRunways(parseInt(e.target.value))}
+            placeholder="Number of runways"
+            className="border p-2 rounded w-full mt-4"
+          />
+          
+          
+          <input
+            type="string"
+            min="0"
+            label="Continent"
+            value={Runways}
+            onChange={(e) => setContinent(String(e.target.value))}
+            placeholder="Choose continent"
+            className="border p-2 rounded w-full mt-4"
+          />
+
+          <Button
+            isLoading={dbReadStatus === QueryStatus.Loading}
+            onPress={() => readTopAirports(airportLimit, Runways, Continent)}
+            className="mt-4"
+            color="primary"
+          >
+            Show Top {airportLimit} Airports (with {Runways} Runways)
+          </Button>
+
 
             <Alert
               isVisible={dbReadStatus === QueryStatus.Success || dbReadStatus === QueryStatus.Failure}

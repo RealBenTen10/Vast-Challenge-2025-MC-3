@@ -199,17 +199,23 @@ async def get_graph_data():
 
 # New endpoint to get top N airports based on outgoing connections
 @router.get("/top-airports", response_class=JSONResponse)
-async def get_top_airports(n: int = 5):
+async def get_top_airports(
+    n_airports: int = 1,
+    runways: int = 1,  # new parameter with default 0
+    continent: str = "AM"
+):
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     with driver.session() as session:
-        # First, find top n airports by number of outgoing connections
+        # First, filter airports by minimum number of runways
         result = session.run("""
             MATCH (a:Airport)-[:CONNECTED_TO]->()
+            WHERE a.runways = $runways
+            WHERE a.continent = $continent
             WITH a, count(*) AS out_degree
             ORDER BY out_degree DESC
             LIMIT $limit
             RETURN a.iata AS iata, out_degree
-        """, limit=n)
+        """, limit=n_airports, runways=runways, continent=continent)
 
         top_airports = []
         degrees = {}
@@ -223,7 +229,6 @@ async def get_top_airports(n: int = 5):
         if not top_airports:
             return {"success": False, "error-message": "No top airports found."}
 
-        # Then get only internal edges between the selected airports
         connections = session.run("""
             UNWIND $iata_list AS code
             MATCH (a:Airport {iata: code})-[r:CONNECTED_TO]->(b:Airport)
@@ -232,8 +237,6 @@ async def get_top_airports(n: int = 5):
         """, iata_list=top_airports)
 
         links = []
-        nodes_set = set(top_airports)  # Keep only selected top airports
-
         for record in connections:
             links.append({
                 "source": record["source"],
@@ -242,7 +245,10 @@ async def get_top_airports(n: int = 5):
                 "value": 1
             })
 
-        # Create nodes with labels and degrees
         nodes = [{"id": iata, "label": iata, "degree": degrees.get(iata, 1)} for iata in top_airports]
 
         return {"success": True, "raw-data": links, "nodes": nodes}
+
+
+
+
