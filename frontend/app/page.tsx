@@ -45,6 +45,10 @@ export default function Home() {
   const [useContinentFilter, setUseContinentFilter] = useState<boolean>(false);
   const [continent, setContinent] = useState<string>("");
 
+  const [originAirport, setOriginAirport] = useState<string>("");
+  const [neighbourDepth, setNeighbourDepth] = useState<number>(0);
+
+
   const svgRef = useRef<SVGSVGElement | null>(null);
   const graphContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -102,8 +106,9 @@ export default function Home() {
       .enter().append("line")
       .attr("stroke", "#999")
       .attr("stroke-opacity", 0.6)
-      .attr("stroke-width", (d: any) => Math.sqrt(d.value))
-      .attr("marker-end", "url(#arrow)");
+      .attr("stroke-width", 1)
+      //.attr("marker-end", "url(#arrow)")
+      ;
 
     const node = g.append("g")
       .selectAll("g")
@@ -131,12 +136,18 @@ export default function Home() {
       .attr("r", (d: any) => {
         const minR = 20;
         const maxR = 50;
-        const degree = (d as any).degree || 1;
+        const degree = d.degree || 1;
         const allDegrees = graphData.nodes.map(n => (n as any).degree || 1);
         const maxDegree = Math.max(...allDegrees, 1);
         return minR + (degree / maxDegree) * (maxR - minR);
       })
-      .attr("fill", (d: any) => d.group ? d3.schemeCategory10[d.group % 10] : "#69b3a2");
+      .attr("fill", (d: any) => {
+        if (d.isOrigin) return "#ff4d4d";
+        return d.group ? d3.schemeCategory10[d.group % 10] : "#69b3a2";
+      })
+      .attr("stroke", (d: any) => d.isOrigin ? "#000" : null)
+      .attr("stroke-width", (d: any) => d.isOrigin ? 3 : 1);
+
 
     node.append("text")
       .attr("text-anchor", "middle")
@@ -205,6 +216,37 @@ export default function Home() {
       setDbReadInfo(`Fetching top airports failed: ${error}`);
     }
   };
+
+  const readAirportNeighbours = async (iata: string, depth: number) => 
+  {
+    if (!iata || depth < 0) {
+      setDbReadInfo("Please enter a valid IATA code and neighbour depth.");
+      setDbReadStatus(QueryStatus.Failure);
+      return;
+    }
+    setDbReadStatus(QueryStatus.Loading);
+    try {
+      const response = await fetch(`/api/airport-neighbours?iata=${iata}&depth=${depth}`);
+      if (!response.ok) throw new Error(`Backend error: ${response.status} ${response.statusText}`);
+
+      const result = await response.json();
+
+      if (result.success) 
+        {
+        setGraphData({ nodes: result.nodes, links: result["raw-data"] });
+        setDbReadStatus(QueryStatus.Success);
+        setDbReadInfo("Neighbourhood graph loaded.");
+      } else 
+      {
+        setDbReadStatus(QueryStatus.Failure);
+        setDbReadInfo(`Fetching neighbour graph failed: ${result["error-message"]}`);
+      }
+    } catch (error) {
+      setDbReadStatus(QueryStatus.Failure);
+      setDbReadInfo(`Fetching neighbour graph failed: ${error}`);
+    }
+  };
+
 
   const readContinentGraph = async () => {
     setDbReadStatus(QueryStatus.Loading);
@@ -301,6 +343,39 @@ export default function Home() {
               description={dbReadInfo}
               className="mt-4"
             />
+
+
+
+            <hr className="my-4" />
+
+            <h4 className="text-sm font-semibold">Show Airport Neighbourhood</h4>
+
+            <input
+              type="text"
+              value={originAirport}
+              onChange={(e) => setOriginAirport(e.target.value)}
+              placeholder="IATA code"
+              className="border p-2 rounded w-full mt-2"
+            />
+
+            <input
+              type="number"
+              min="0"
+              value={neighbourDepth}
+              onChange={(e) => setNeighbourDepth(parseInt(e.target.value))}
+              placeholder="Neighbour depth (0–2)"
+              className="border p-2 rounded w-full mt-2"
+            />
+
+            <Button
+              isLoading={dbReadStatus === QueryStatus.Loading}
+              onPress={() => readAirportNeighbours(originAirport, neighbourDepth)}
+              className="mt-4"
+              color="warning"
+            >
+              Show Neighbour Graph
+            </Button>
+
           </CardBody>
         </Card>
 
