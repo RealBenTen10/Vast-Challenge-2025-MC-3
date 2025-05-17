@@ -6860,16 +6860,6 @@
         },
         {
             "type": "Event",
-            "sub_type": "Fishing",
-            "label": "Fishing",
-            "thing_collected": {
-                "type": "Commodity",
-                "name": "fish"
-            },
-            "id": "Event_Fishing_49"
-        },
-        {
-            "type": "Event",
             "sub_type": "Criticize",
             "label": "Criticize",
             "reference": "new regulations",
@@ -13494,12 +13484,6 @@
             "target": "Relationship_Colleagues_320"
         },
         {
-            "id": "910",
-            "is_inferred": true,
-            "source": "Marlin",
-            "target": "Event_Fishing_49"
-        },
-        {
             "id": "911",
             "type": "sent",
             "is_inferred": false,
@@ -17660,13 +17644,6 @@
             "is_inferred": false,
             "source": "Event_Communication_50",
             "target": "Himark Harbor"
-        },
-        {
-            "id": "1790",
-            "type": "evidence_for",
-            "is_inferred": true,
-            "source": "Event_Communication_50",
-            "target": "Event_Fishing_49"
         },
         {
             "id": "1791",
@@ -29120,12 +29097,6 @@
             "is_inferred": true,
             "source": "Event_TourActivity_962",
             "target": "Nemo Reef"
-        },
-        {
-            "id": "1788",
-            "is_inferred": true,
-            "source": "Event_Fishing_49",
-            "target": "Himark Harbor"
         },
         {
             "id": "1792",
