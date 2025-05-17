@@ -42,14 +42,6 @@ async def clear_db():
     return {"success": True}
 
 
-# use router.post() instead?
-@router.get("/start_loading", response_class=JSONResponse)
-async def start_loading(background_tasks: BackgroundTasks):
-    
-    background_tasks.add_task(load_csv_data)
-    return {"success": True, "message": "Started loading in background"}
-
-
 @router.get("/load-graph-json", response_class=JSONResponse)
 async def load_graph_json():
     data_path = "MC3_graph.json"
@@ -108,8 +100,6 @@ async def load_graph_json():
 
     return {"success": True, "message": "All nodes and edges loaded."}
 
-from fastapi.responses import JSONResponse
-from neo4j import GraphDatabase
 
 @router.get("/flatten-communication-events", response_class=JSONResponse)
 async def flatten_communication_events():
