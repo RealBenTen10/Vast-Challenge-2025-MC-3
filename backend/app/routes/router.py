@@ -345,3 +345,67 @@ async def aggregate_entity_interactions():
     }
 
 
+    
+@router.get("/airport-neighbours", response_class=JSONResponse)
+async def get_airport_neighbourhood(iata: str = Query(...), depth: int = Query(...)):
+    if depth < 0 or depth > 6:
+        return {"success": False, "error-message": "Maximum depth is 6"}
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    try:
+        with driver.session() as session:
+            if depth == 0:
+                query = """
+                    MATCH (a:Airport {iata: $iata})
+                    RETURN collect(a) AS nodes, [] AS relationships
+                """
+            else:
+                match_parts = ["MATCH (a:Airport {iata: $iata})"]
+                for i in range(1, depth + 1):
+                    left = f"b{i - 1}" if i > 1 else "a"
+                    right = f"b{i}"
+                    match_parts.append(f"OPTIONAL MATCH ({left})-[:CONNECTED_TO]->({right}:Airport)")
+
+                collect_parts = ["collect(DISTINCT a)"] + [f"collect(DISTINCT b{i})" for i in range(1, depth + 1)]
+                query = "\n".join(match_parts)
+                query += f"\nWITH { ' + '.join(collect_parts) } AS allNodes"
+                query += "\nUNWIND allNodes AS n"
+                query += "\nWITH collect(DISTINCT n) AS nodes"
+                query += "\nMATCH (n1:Airport)-[r:CONNECTED_TO]->(n2:Airport)"
+                query += "\nWHERE n1 IN nodes AND n2 IN nodes"
+                query += "\nRETURN nodes, collect(DISTINCT r) AS relationships"
+
+            result = session.run(query, {"iata": iata})
+            record = result.single()
+            raw_nodes = record["nodes"]
+            raw_rels = record["relationships"]
+
+            nodes = []
+            links = []
+
+            for node in raw_nodes:
+                props = node._properties
+                nodes.append({
+                    "id": props.get("iata"),
+                    "label": props.get("iata"),
+                    "group": 1,
+                    "degree": props.get("runways", 1),
+                    "isOrigin": props.get("iata") == iata
+                })
+
+            for rel in raw_rels:
+                props = rel._properties
+                links.append({
+                    "source": rel.start_node["iata"],
+                    "target": rel.end_node["iata"],
+                    "type": rel.type,
+                    "value": props.get("dist", 1)
+                })
+
+            return {
+                "success": True,
+                "nodes": nodes,
+                "raw-data": links
+            }
+
+    except Exception as e:
+        return {"success": False, "error-message": str(e)}
