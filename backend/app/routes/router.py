@@ -43,6 +43,12 @@ async def clear_db():
 
 
 @router.get("/load-graph-json", response_class=JSONResponse)
+async def load_graph_json(background_tasks: BackgroundTasks):
+    background_tasks.add_task(load_graph_json)
+    return {"success": True, "message": "Graph loading started in background."}
+
+
+
 async def load_graph_json():
     data_path = "MC3_graph.json"
     schema_path = "MC3_schema.json"
@@ -97,7 +103,7 @@ async def load_graph_json():
         for edge in data.get("edges", []):
             if "source" in edge and "target" in edge:
                 session.write_transaction(create_edge, edge)
-
+    print("Graph loaded successfully.")
     return {"success": True, "message": "All nodes and edges loaded."}
 
 
@@ -214,125 +220,46 @@ async def remove_non_communication_links():
     }
 
 @router.get("/aggregate-entity-interactions", response_class=JSONResponse)
-async def aggregate_entity_interactions():
+async def aggregate_entity_interactions_on_the_fly():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
     with driver.session() as session:
+        # Load all Entity nodes
+        result_nodes = session.run("MATCH (n:Entity) RETURN n.id AS id, 'Entity' AS label")
+        nodes = [{"id": r["id"], "label": r["label"], "type": "Entity"} for r in result_nodes]
 
-        # Aggregate Events (preserving direction) and delete originals
-        session.run("""
-            MATCH (e1:Entity)-[]->(ev:Event)<-[]-(e2:Entity)
-            WITH e1, e2, collect(ev) AS events
-            UNWIND events AS ev
-            WITH e1, e2,
-                 collect(ev.id) AS ids,
-                 collect(ev.sub_type) AS sub_types,
-                 collect(CASE WHEN ev.timestamp IS NOT NULL THEN ev.timestamp END) AS timestamps,
-                 collect(CASE WHEN ev.content IS NOT NULL THEN ev.content END) AS contents,
-                 collect(CASE WHEN ev.label IS NOT NULL THEN ev.label END) AS labels,
-                 collect(CASE WHEN ev.monitoring_type IS NOT NULL THEN ev.monitoring_type END) AS monitoring_types,
-                 collect(CASE WHEN ev.findings IS NOT NULL THEN ev.findings END) AS findings,
-                 collect(CASE WHEN ev.assessment_type IS NOT NULL THEN ev.assessment_type END) AS assessment_types,
-                 collect(CASE WHEN ev.results IS NOT NULL THEN ev.results END) AS results,
-                 collect(CASE WHEN ev.movement_type IS NOT NULL THEN ev.movement_type END) AS movement_types,
-                 collect(CASE WHEN ev.destination IS NOT NULL THEN ev.destination END) AS destinations,
-                 collect(CASE WHEN ev.enforcement_type IS NOT NULL THEN ev.enforcement_type END) AS enforcement_types,
-                 collect(CASE WHEN ev.outcome IS NOT NULL THEN ev.outcome END) AS outcomes,
-                 collect(CASE WHEN ev.activity_type IS NOT NULL THEN ev.activity_type END) AS activity_types,
-                 collect(CASE WHEN ev.participants IS NOT NULL THEN ev.participants END) AS participants,
-                 collect(CASE WHEN ev.reference IS NOT NULL THEN ev.reference END) AS references,
-                 collect(CASE WHEN ev.date IS NOT NULL THEN ev.date END) AS dates,
-                 collect(CASE WHEN ev.time IS NOT NULL THEN ev.time END) AS times,
-                 collect(ev) AS events_to_delete
-            MERGE (agg:AggregatedEvent {from: e1.id, to: e2.id})
-            SET agg.ids = ids,
-                agg.sub_types = sub_types,
-                agg.timestamps = timestamps,
-                agg.contents = contents,
-                agg.labels = labels,
-                agg.monitoring_types = monitoring_types,
-                agg.findings = findings,
-                agg.assessment_types = assessment_types,
-                agg.results = results,
-                agg.movement_types = movement_types,
-                agg.destinations = destinations,
-                agg.enforcement_types = enforcement_types,
-                agg.outcomes = outcomes,
-                agg.activity_types = activity_types,
-                agg.participants = participants,
-                agg.references = references,
-                agg.dates = dates,
-                agg.times = times
-            MERGE (e1)-[:aggregated_event_link]->(agg)
-            MERGE (agg)-[:aggregated_event_link]->(e2)
-            FOREACH (ev IN events_to_delete | DETACH DELETE ev)
-        """)
-
-        # Aggregate Relationships (preserving direction) and delete originals
-        session.run("""
-            MATCH (e1:Entity)-[]->(rel:Relationship)<-[]-(e2:Entity)
-            WITH e1, e2, collect(rel) AS rels
-            UNWIND rels AS rel
-            WITH e1, e2,
-                 collect(rel.id) AS ids,
-                 collect(rel.sub_type) AS sub_types,
-                 collect(CASE WHEN rel.label IS NOT NULL THEN rel.label END) AS labels,
-                 collect(CASE WHEN rel.coordination_type IS NOT NULL THEN rel.coordination_type END) AS coordination_types,
-                 collect(CASE WHEN rel.start_date IS NOT NULL THEN rel.start_date END) AS start_dates,
-                 collect(CASE WHEN rel.end_date IS NOT NULL THEN rel.end_date END) AS end_dates,
-                 collect(CASE WHEN rel.permission_type IS NOT NULL THEN rel.permission_type END) AS permission_types,
-                 collect(CASE WHEN rel.operational_role IS NOT NULL THEN rel.operational_role END) AS operational_roles,
-                 collect(CASE WHEN rel.jurisdiction_type IS NOT NULL THEN rel.jurisdiction_type END) AS jurisdiction_types,
-                 collect(CASE WHEN rel.authority_level IS NOT NULL THEN rel.authority_level END) AS authority_levels,
-                 collect(CASE WHEN rel.report_type IS NOT NULL THEN rel.report_type END) AS report_types,
-                 collect(CASE WHEN rel.submission_date IS NOT NULL THEN rel.submission_date END) AS submission_dates,
-                 collect(CASE WHEN rel.friendship_type IS NOT NULL THEN rel.friendship_type END) AS friendship_types,
-                 collect(rel) AS rels_to_delete
-            MERGE (agg:AggregatedRelationship {from: e1.id, to: e2.id})
-            SET agg.ids = ids,
-                agg.sub_types = sub_types,
-                agg.labels = labels,
-                agg.coordination_types = coordination_types,
-                agg.start_dates = start_dates,
-                agg.end_dates = end_dates,
-                agg.permission_types = permission_types,
-                agg.operational_roles = operational_roles,
-                agg.jurisdiction_types = jurisdiction_types,
-                agg.authority_levels = authority_levels,
-                agg.report_types = report_types,
-                agg.submission_dates = submission_dates,
-                agg.friendship_types = friendship_types
-            MERGE (e1)-[:aggregated_relationship_link]->(agg)
-            MERGE (agg)-[:aggregated_relationship_link]->(e2)
-            FOREACH (rel IN rels_to_delete | DETACH DELETE rel)
-        """)
-
-        # Aggregate direct links (preserving direction) and delete originals
-        session.run("""
-            MATCH (e1:Entity)-[r]->(e2:Entity)
-            WHERE NOT type(r) IN ['aggregated_event_link', 'aggregated_relationship_link']
+        # Load and aggregate all intermediate Event/Relationship paths
+        result_edges = session.run("""
+            MATCH (e1:Entity)-[]->(x)<-[]-(e2:Entity)
+            WHERE (x:Event OR x:Relationship)
               AND e1.id IS NOT NULL AND e2.id IS NOT NULL
-            WITH e1, e2, collect(r) AS rels
-            UNWIND rels AS r
-            WITH e1, e2,
-                 collect(type(r)) AS types,
-                 collect(CASE WHEN r.comm_id IS NOT NULL THEN r.comm_id END) AS comm_ids,
-                 collect(CASE WHEN r.timestamp IS NOT NULL THEN r.timestamp END) AS timestamps,
-                 collect(CASE WHEN r.content IS NOT NULL THEN r.content END) AS contents,
-                 collect(r) AS rels_to_delete
-            MERGE (e1)-[agg:aggregated_direct_link]->(e2)
-            SET agg.types = types,
-                agg.comm_ids = comm_ids,
-                agg.timestamps = timestamps,
-                agg.contents = contents
-            FOREACH (r IN rels_to_delete | DELETE r)
+              AND e1.id <> e2.id
+            RETURN e1.id AS source, e2.id AS target,
+                   collect(x.id) AS ids,
+                   collect(labels(x)[0]) AS types,
+                   collect(CASE WHEN x.label IS NOT NULL THEN x.label ELSE '' END) AS labels
         """)
 
+        links = []
+        for r in result_edges:
+            source = r["source"]
+            target = r["target"]
+            aggregated = list(set(r["ids"]))  # deduplicate
+            labels = list(set(r["labels"]))
+            types = list(set(r["types"]))
+            label_str = ", ".join([l for l in labels if l])
 
-    return {
-        "success": True,
-        "message": "All events, relationships, and links aggregated with full metadata and preserved directionality."
-    }
+            links.append({
+                "source": source,
+                "target": target,
+                "type": "+".join(types),
+                "value": len(aggregated),
+                "label": label_str,
+                "aggregatedEvents": aggregated
+            })
+
+    return {"success": True, "nodes": nodes, "links": links}
+
 
 
     
@@ -399,3 +326,37 @@ async def get_airport_neighbourhood(iata: str = Query(...), depth: int = Query(.
 
     except Exception as e:
         return {"success": False, "error-message": str(e)}
+    
+
+
+@router.get("/read-db-graph", response_class=JSONResponse)
+async def read_db_graph():
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+
+    with driver.session() as session:
+        result_nodes = session.run("MATCH (n) RETURN n.id AS id, labels(n) AS labels")
+        nodes = []
+        for r in result_nodes:
+            node_type = "Unknown"
+            labels = r["labels"]
+            if "Entity" in labels:
+                node_type = "Entity"
+            elif "Event" in labels:
+                node_type = "Event"
+            elif "Relationship" in labels:
+                node_type = "Relationship"
+            nodes.append({
+                "id": r["id"],
+                "label": node_type,
+                "type": node_type,
+            })
+
+        result_edges = session.run("""
+            MATCH (a)-[r]->(b)
+            RETURN a.id AS source, b.id AS target, type(r) AS type
+        """)
+        links = [{"source": r["source"], "target": r["target"], "type": r["type"]} for r in result_edges]
+
+    return {"success": True, "nodes": nodes, "links": links}
+
+
