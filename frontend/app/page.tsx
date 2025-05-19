@@ -35,7 +35,8 @@ export default function Home() {
   const [useAggregated, setUseAggregated] = useState<boolean>(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const graphContainerRef = useRef<HTMLDivElement | null>(null);
-  
+  const [subtypeCounts, setSubtypeCounts] = useState<Record<string, number>>({});
+
 
   const drawGraph = () => {
     if (!svgRef.current || !graphContainerRef.current) return;
@@ -199,6 +200,15 @@ export default function Home() {
       const res = await fetch(`/api${endpoint}`);
       const data = await res.json();
       if (data.success) setGraphData({ nodes: data.nodes, links: data.links });
+      if (data.nodes) {
+        const counts: Record<string, number> = {};
+        data.nodes.forEach((node: any) => {
+          const subtype = node.label ?? "Unknown";
+          counts[subtype] = (counts[subtype] || 0) + 1;
+        });
+        setSubtypeCounts(counts);
+      }
+      
       else setStatusMsg(data["error-message"]);
     } catch (err) {
       setStatusMsg(`Graph loading failed: ${err}`);
@@ -228,10 +238,27 @@ export default function Home() {
           <Alert isVisible={!!statusMsg} color="info" title="Status" description={statusMsg} className="mt-4" />
         </CardBody>
       </Card>
-
-      <div ref={graphContainerRef} className="mt-10 w-full max-w-5xl border rounded-lg" style={{ height: "600px" }}>
+      <div className="mt-10 w-full max-w-7xl flex gap-6">
+      {/* Graph container */}
+      <div ref={graphContainerRef} className="flex-1 border rounded-lg" style={{ height: "600px" }}>
         <svg ref={svgRef} className="w-full h-full"></svg>
       </div>
+
+      {/* Subtype summary box */}
+      <div className="w-[300px] flex-shrink-0 border rounded-lg p-4 overflow-y-auto" style={{ maxHeight: "600px" }}>
+        <h4 className="text-md font-semibold mb-2">Node Subtype Summary</h4>
+        <ul className="list-disc list-inside text-sm space-y-1">
+          {Object.entries(subtypeCounts)
+            .sort((a, b) => b[1] - a[1]) // sort by count descending
+            .map(([subtype, count]) => (
+              <li key={subtype}>
+                <span className="font-medium">{subtype}</span>: {count}
+              </li>
+            ))}
+        </ul>
+      </div>
+    </div>
+
     </section>
   );
 }
