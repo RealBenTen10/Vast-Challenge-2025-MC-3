@@ -36,7 +36,10 @@ export default function Home() {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const graphContainerRef = useRef<HTMLDivElement | null>(null);
   const [subtypeCounts, setSubtypeCounts] = useState<Record<string, number>>({});
-
+  const [edgeCount, setEdgeCount] = useState<number>(0);
+  const [filterMode, setFilterMode] = useState<"all" | "event" | "relationship">("all");
+  const [filterEntityId, setFilterEntityId] = useState<string>("");
+  const [filterDepth, setFilterDepth] = useState<number>(1);
 
   const drawGraph = () => {
     if (!svgRef.current || !graphContainerRef.current) return;
@@ -54,13 +57,71 @@ export default function Home() {
 
     svg.call(d3.zoom<SVGSVGElement, unknown>().scaleExtent([0.1, 4]).on("zoom", (event) => g.attr("transform", event.transform)));
 
-    const nodes = graphData.nodes.map(d => ({ ...d }));
-    const links = graphData.links.map(link => ({
+  // Logic for getting neighbours of entity (and filtering)
+  const getVisibleNodeIds = (): Set<string> => {
+    const visible = new Set<string>();
+
+    if (!filterEntityId) {
+      graphData.nodes.forEach(node => {
+        if (node.type === "Entity") visible.add(node.id);
+        if (filterMode === "all") visible.add(node.id);
+        if (filterMode === "event" && node.type === "Event") visible.add(node.id);
+        if (filterMode === "relationship" && node.type === "Relationship") visible.add(node.id);
+      });
+      return visible;
+    }
+
+    // BFS for neighborhood up to depth n
+    const queue = [filterEntityId];
+    const visited = new Set<string>();
+    let level = 0;
+
+    while (queue.length > 0 && level <= filterDepth) {
+      const nextQueue: string[] = [];
+      for (const id of queue) {
+        if (visited.has(id)) continue;
+        visited.add(id);
+        visible.add(id);
+
+        const neighbors = graphData.links
+          .filter(link => link.source === id || link.target === id)
+          .map(link => (link.source === id ? link.target : link.source));
+
+        nextQueue.push(...(neighbors as string[]));
+      }
+      queue.length = 0;
+      queue.push(...nextQueue);
+      level++;
+    }
+
+    return visible;
+  };
+
+  const visibleIds = getVisibleNodeIds();
+
+  const nodes = graphData.nodes.filter(d =>
+    visibleIds.has(d.id) &&
+    (
+      d.type === "Entity" ||
+      filterMode === "all" ||
+      (filterMode === "event" && d.type === "Event") ||
+      (filterMode === "relationship" && d.type === "Relationship")
+    )
+  );
+
+  const links = graphData.links
+    .filter(link =>
+      visibleIds.has(typeof link.source === "string" ? link.source : link.source.id) &&
+      visibleIds.has(typeof link.target === "string" ? link.target : link.target.id)
+    )
+    .map(link => ({
       source: typeof link.source === "string" ? link.source : link.source.id,
       target: typeof link.target === "string" ? link.target : link.target.id,
       type: link.type || '',
       value: link.value || 1
     }));
+
+    
 
     const simulation = d3.forceSimulation(nodes)
       .force("link", d3.forceLink(links).id((d: any) => d.id).distance(200))
@@ -179,7 +240,9 @@ export default function Home() {
 
   useEffect(() => {
     if (graphData.nodes.length > 0) drawGraph();
-  }, [graphData]);
+  }, [graphData, filterMode, filterEntityId, filterDepth]);
+  
+  
 
   const callApi = async (endpoint: string) => {
     setStatusMsg(`Calling ${endpoint}...`);
@@ -208,6 +271,11 @@ export default function Home() {
         });
         setSubtypeCounts(counts);
       }
+      if (data.success) {
+        setGraphData({ nodes: data.nodes, links: data.links });
+        setEdgeCount(data.links.length);  // ← count of edges
+      }
+      
       
       else setStatusMsg(data["error-message"]);
     } catch (err) {
@@ -229,6 +297,44 @@ export default function Home() {
           <Button onPress={() => callApi("/combine-communication-links")} className="mt-2" color="secondary">Combine Comm. Links</Button>
           <Button onPress={() => callApi("/remove-non-communication-links")} className="mt-2" color="secondary">Remove Non-Comm Links</Button>
 
+          <div className="mt-4">
+            <label className="text-sm font-medium">Filter visible node types:</label>
+            <select
+              className="mt-1 block w-full border rounded px-2 py-1 text-sm"
+              value={filterMode}
+              onChange={(e) => setFilterMode(e.target.value as any)}
+            >
+              <option value="all">Show Events & Relationships</option>
+              <option value="event">Show Events Only</option>
+              <option value="relationship">Show Relationships Only</option>
+            </select>
+          </div>
+
+          <div className="mt-4">
+            <label className="text-sm font-medium">Filter by Entity ID:</label>
+            <input
+              className="mt-1 block w-full border rounded px-2 py-1 text-sm"
+              type="text"
+              value={filterEntityId}
+              onChange={(e) => setFilterEntityId(e.target.value)}
+              placeholder="e.g., E001"
+            />
+          </div>
+
+          <div className="mt-2">
+            <label className="text-sm font-medium">Neighbor Depth (n):</label>
+            <input
+              className="mt-1 block w-full border rounded px-2 py-1 text-sm"
+              type="number"
+              min={0}
+              max={6}
+              value={filterDepth}
+              onChange={(e) => setFilterDepth(Number(e.target.value))}
+            />
+          </div>
+
+
+
           <div className="mt-4 flex items-center gap-2">
             <Switch isSelected={useAggregated} onValueChange={setUseAggregated} />
             <span>Use Aggregated View</span>
@@ -246,10 +352,19 @@ export default function Home() {
 
       {/* Subtype summary box */}
       <div className="w-[300px] flex-shrink-0 border rounded-lg p-4 overflow-y-auto" style={{ maxHeight: "600px" }}>
-        <h4 className="text-md font-semibold mb-2">Node Subtype Summary</h4>
+        <h4 className="text-md font-semibold mb-2">Graph Summary</h4>
+
+        {/* Edge count */}
+        <h5 className="text-sm font-semibold mb-2">Edge Summary</h5>
+        <p className="text-sm mb-4">
+          <span className="font-medium">Total Edges:</span> {edgeCount}
+        </p>
+
+        {/* Node subtype counts */}
+        <h5 className="text-sm font-semibold mb-2">Node Summary</h5>
         <ul className="list-disc list-inside text-sm space-y-1">
           {Object.entries(subtypeCounts)
-            .sort((a, b) => b[1] - a[1]) // sort by count descending
+            .sort((a, b) => b[1] - a[1])
             .map(([subtype, count]) => (
               <li key={subtype}>
                 <span className="font-medium">{subtype}</span>: {count}
@@ -257,6 +372,7 @@ export default function Home() {
             ))}
         </ul>
       </div>
+
     </div>
 
     </section>
