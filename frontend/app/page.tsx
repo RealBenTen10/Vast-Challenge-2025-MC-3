@@ -341,7 +341,7 @@ export default function Home() {
                 className="mt-1 block w-full border rounded px-2 py-1 text-sm"
                 type="number"
                 min={0}
-                max={6}
+                max={9}
                 value={filterDepth}
                 onChange={(e) => setFilterDepth(Number(e.target.value))}
               />
