@@ -35,6 +35,7 @@ export default function Home() {
   const [useAggregated, setUseAggregated] = useState<boolean>(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const graphContainerRef = useRef<HTMLDivElement | null>(null);
+  
 
   const drawGraph = () => {
     if (!svgRef.current || !graphContainerRef.current) return;
@@ -106,11 +107,64 @@ export default function Home() {
         }
       });
 
-    node.append("text")
+      node.append("text")
       .attr("text-anchor", "middle")
       .attr("dy", ".35em")
-      .attr("fill", "#fff")
-      .text((d: any) => d.label);
+      .attr("fill", "black")
+      .text((d: any) => {
+        if (d.type === "Entity") return d.id;
+        return d.label;
+      })
+      .style("font-size", (d: any) => {
+        const label = d.type === "Entity" ? d.id : d.label;
+        const baseSize = 12;
+        const maxLength = 10;
+        return `${Math.max(8, baseSize - (label.length - maxLength))}px`;
+      });
+
+      // Append legend
+      const legendData = [
+        { type: "Entity", color: "#1f77b4" },
+        { type: "Event", color: "#2ca02c" },
+        { type: "Relationship", color: "#d62728" }
+      ];
+
+      const legend = svg.append("g")
+        .attr("class", "legend")
+        .attr("transform", "translate(20, 20)"); // Position top-left (x=20, y=20)
+
+      // Add background rect behind legend
+      const legendBox = legend.append("rect")
+        .attr("x", -10)
+        .attr("y", -10)
+        .attr("width", 100)
+        .attr("height", legendData.length * 25)
+        .attr("fill", "#f8f8f8")
+        .attr("stroke", "#ccc")
+        .lower(); // Send to back
+
+
+      legend.selectAll("circle")
+        .data(legendData)
+        .enter()
+        .append("circle")
+        .attr("cx", 0)
+        .attr("cy", (d, i) => i * 25)
+        .attr("r", 8)
+        .attr("fill", d => d.color);
+
+      legend.selectAll("text")
+        .data(legendData)
+        .enter()
+        .append("text")
+        .attr("x", 15)
+        .attr("y", (d, i) => i * 25 + 5)
+        .text(d => d.type)
+        .attr("alignment-baseline", "middle")
+        .attr("font-size", "12px")
+        .attr("fill", "#333");
+
+    
 
     simulation.on("tick", () => {
       link.attr("x1", (d: any) => (d.source as any).x)
@@ -136,6 +190,8 @@ export default function Home() {
       setStatusMsg(`Failed to call ${endpoint}: ${err}`);
     }
   };
+
+  
 
   const loadGraph = async () => {
     try {

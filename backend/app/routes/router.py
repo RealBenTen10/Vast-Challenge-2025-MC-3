@@ -1,13 +1,14 @@
 import random
 from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse, JSONResponse
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from neo4j import GraphDatabase
 import os
 import time
 import pandas as pd
 from fastapi import BackgroundTasks
 import json
+from collections import defaultdict
 
 # Credentials
 NEO4J_URI = "bolt://" + os.environ.get('DB_HOST') + ":7687"
@@ -38,7 +39,7 @@ async def clear_db():
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")
         print("Database cleared.")
-        
+    print("Database cleared.")
     return {"success": True}
 
 
@@ -50,6 +51,7 @@ async def load_graph_json(background_tasks: BackgroundTasks):
 
 
 async def load_graph_json():
+    print("Loading graph data from JSON...")
     data_path = "MC3_graph.json"
     schema_path = "MC3_schema.json"
 
@@ -110,6 +112,7 @@ async def load_graph_json():
 @router.get("/flatten-communication-events", response_class=JSONResponse)
 async def flatten_communication_events():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    print("Flattening communication events...")
 
     with driver.session() as session:
         # Step 1: Find all Communication events and their metadata
@@ -154,7 +157,7 @@ async def flatten_communication_events():
                 MATCH (c:Event {id: $comm_id})
                 DETACH DELETE c
             """, comm_id=comm_id)
-
+    print("Flattening completed.")
     return {
         "success": True,
         "message": f"Flattened {len(communications)} Communication events and preserved metadata in new relationships."
@@ -163,6 +166,7 @@ async def flatten_communication_events():
 @router.get("/combine-communication-links", response_class=JSONResponse)
 async def combine_communication_links():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    print("Combining communication links...")
 
     with driver.session() as session:
         # Step 1: Find all unique (entity → target) communication link pairs
@@ -196,7 +200,7 @@ async def combine_communication_links():
                     r.contents = $contents
             """, source_id=source_id, target_id=target_id,
                  comm_ids=comm_ids, timestamps=timestamps, contents=contents)
-
+    print("Combining completed.")
     return {
         "success": True,
         "message": "All communication_links combined per entity-target pair"
@@ -204,7 +208,7 @@ async def combine_communication_links():
 @router.get("/remove-non-communication-links", response_class=JSONResponse)
 async def remove_non_communication_links():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-
+    print("Removing non-communication links...")
     with driver.session() as session:
         session.run("""
             MATCH (e:Entity)-[:communication_links]->(t)
@@ -213,52 +217,52 @@ async def remove_non_communication_links():
             WHERE type(r) <> 'communication_links'
             DELETE r
         """)
-
+    print("Removing completed.")
     return {
         "success": True,
         "message": "Removed all redundant non-communication links from Entity"
     }
 
 @router.get("/aggregate-entity-interactions", response_class=JSONResponse)
-async def aggregate_entity_interactions_on_the_fly():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+async def aggregate_entity_interactions():
+    """
+    Fetches graph data from Neo4j and optionally aggregates entity interactions.
 
-    with driver.session() as session:
-        # Load all Entity nodes
-        result_nodes = session.run("MATCH (n:Entity) RETURN n.id AS id, 'Entity' AS label")
-        nodes = [{"id": r["id"], "label": r["label"], "type": "Entity"} for r in result_nodes]
+    Args:
+        aggregate: A boolean flag to indicate whether to aggregate the graph data.
 
-        # Load and aggregate all intermediate Event/Relationship paths
-        result_edges = session.run("""
-            MATCH (e1:Entity)-[]->(x)<-[]-(e2:Entity)
-            WHERE (x:Event OR x:Relationship)
-              AND e1.id IS NOT NULL AND e2.id IS NOT NULL
-              AND e1.id <> e2.id
-            RETURN e1.id AS source, e2.id AS target,
-                   collect(x.id) AS ids,
-                   collect(labels(x)[0]) AS types,
-                   collect(CASE WHEN x.label IS NOT NULL THEN x.label ELSE '' END) AS labels
-        """)
+    Returns:
+        A JSON response containing the graph data.
+    """
+    aggregate = False
+    print("Getting graph data with aggregation: ", aggregate)
+    try:
+        with driver.session() as session:
+            result_nodes = session.run("MATCH (n) RETURN n")
+            nodes = []
+            for record in result_nodes:
+                node = record.data()["n"]
+                
+                # Extract all properties into a single dictionary
+                node_props = dict(node.items())
+                node_props["id"] = node.id
+                node_props["labels"] = list(node.labels)
+                
+                nodes.append(node_props)
 
-        links = []
-        for r in result_edges:
-            source = r["source"]
-            target = r["target"]
-            aggregated = list(set(r["ids"]))  # deduplicate
-            labels = list(set(r["labels"]))
-            types = list(set(r["types"]))
-            label_str = ", ".join([l for l in labels if l])
+            result_edges = session.run("MATCH (a)-[r]->(b) RETURN a.id AS source, b.id AS target, type(r) AS type")
+            links = [{"source": record.data()["source"], "target": record.data()["target"], "type": record.data()["type"]} for record in result_edges]
 
-            links.append({
-                "source": source,
-                "target": target,
-                "type": "+".join(types),
-                "value": len(aggregated),
-                "label": label_str,
-                "aggregatedEvents": aggregated
-            })
+            graph_data = {"nodes": nodes, "links": links}
 
-    return {"success": True, "nodes": nodes, "links": links}
+            if aggregate:
+                graph_data = aggregate_entity_interactions(graph_data["nodes"], graph_data["links"])
+                print("Graph data aggregated successfully.")
+            print("Graph data fetched successfully.")
+            return JSONResponse(content=graph_data)
+
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
 
@@ -328,13 +332,23 @@ async def get_airport_neighbourhood(iata: str = Query(...), depth: int = Query(.
         return {"success": False, "error-message": str(e)}
     
 
+@router.get("/entity-event-counts", response_class=JSONResponse)
+async def get_entity_event_counts():
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    with driver.session() as session:
+        result = session.run("""
+            MATCH (e:Entity)<--(ev:Event)
+            RETURN e.id AS entity_id, count(ev) AS event_count
+        """)
+        data = [{"entity": r["entity_id"], "count": r["event_count"]} for r in result]
+        return {"success": True, "data": data}
 
 @router.get("/read-db-graph", response_class=JSONResponse)
 async def read_db_graph():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-
+    print("Reading graph data from Neo4j...")
     with driver.session() as session:
-        result_nodes = session.run("MATCH (n) RETURN n.id AS id, labels(n) AS labels")
+        result_nodes = session.run("MATCH (n) RETURN n.id AS id, labels(n) AS labels, n.sub_type AS sub_type")
         nodes = []
         for r in result_nodes:
             node_type = "Unknown"
@@ -347,7 +361,7 @@ async def read_db_graph():
                 node_type = "Relationship"
             nodes.append({
                 "id": r["id"],
-                "label": node_type,
+                "label": r.get("sub_type"),
                 "type": node_type,
             })
 
@@ -356,7 +370,61 @@ async def read_db_graph():
             RETURN a.id AS source, b.id AS target, type(r) AS type
         """)
         links = [{"source": r["source"], "target": r["target"], "type": r["type"]} for r in result_edges]
-
+    print("Graph data read successfully.")
     return {"success": True, "nodes": nodes, "links": links}
+
+
+def aggregate_entity_interactions(nodes: List[Dict[str, Any]], links: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Aggregates Event and Relationship nodes between the same entities.
+
+    Args:
+        nodes: List of node dictionaries.
+        links: List of link dictionaries.
+
+    Returns:
+        A dictionary containing the aggregated nodes and links.
+    """
+    print("Aggregating entity interactions...")
+    aggregated_links: List[Dict[str, Any]] = []
+    node_map: Dict[str, Dict[str, Any]] = {node["id"]: node for node in nodes}
+    processed_pairs = set()  # To keep track of processed entity pairs
+
+    # Group events and relationships by source-target pairs
+    grouped_interactions = defaultdict(lambda: {"events": [], "relationships": []})
+
+    for link in links:
+        source_id = link["source"]
+        target_id = link["target"]
+        source_node = node_map.get(source_id)
+        target_node = node_map.get(target_id)
+
+        # Ensure source and target nodes are Entities
+        if source_node and target_node and source_node["type"] == "Entity" and target_node["type"] == "Entity":
+            pair = tuple(sorted((source_id, target_id)))  # Use sorted tuple to ignore direction
+
+            intermediate_node = node_map.get(link["source"]) #this is the event or relationship node
+
+            if intermediate_node:
+              if intermediate_node["type"] == "Event":
+                  grouped_interactions[pair]["events"].append(intermediate_node["id"])
+              elif intermediate_node["type"] == "Relationship":
+                  grouped_interactions[pair]["relationships"].append(intermediate_node["id"])
+
+    # Create aggregated links
+    for (source_id, target_id), interactions in grouped_interactions.items():
+        new_link = {
+            "source": source_id,
+            "target": target_id,
+            "type": ", ".join(interactions["events"] + interactions["relationships"]),  # Combine event and relationship ids
+        }
+        aggregated_links.append(new_link)
+
+    # Filter out intermediate Event and Relationship nodes from the aggregated graph
+    filtered_nodes = [node for node in nodes if node["type"] == "Entity"]
+    print("Aggregation completed.")
+    return {"nodes": filtered_nodes, "links": aggregated_links}
+
+
 
 
