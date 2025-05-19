@@ -40,6 +40,8 @@ export default function Home() {
   const [filterMode, setFilterMode] = useState<"all" | "event" | "relationship">("all");
   const [filterEntityId, setFilterEntityId] = useState<string>("");
   const [filterDepth, setFilterDepth] = useState<number>(1);
+  const [visibleEntities, setVisibleEntities] = useState<{ id: string; sub_type?: string }[]>([]);
+
 
   const drawGraph = () => {
     if (!svgRef.current || !graphContainerRef.current) return;
@@ -71,6 +73,7 @@ export default function Home() {
       return visible;
     }
 
+  
     // BFS for neighborhood up to depth n
     const queue = [filterEntityId];
     const visited = new Set<string>();
@@ -108,6 +111,13 @@ export default function Home() {
       (filterMode === "relationship" && d.type === "Relationship")
     )
   );
+
+  // Extract visible Entity nodes
+  const visibleEntityList = nodes
+    .filter(d => d.type === "Entity")
+    .map(d => ({ id: d.id, sub_type: d.label }));
+
+  setVisibleEntities(visibleEntityList);
 
   const links = graphData.links
     .filter(link =>
@@ -285,96 +295,117 @@ export default function Home() {
 
   return (
     <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-      <Card className="w-[500px]">
-        <CardHeader>
-          <h3 className="text-lg">Neo4j Graph Actions</h3>
-        </CardHeader>
-        <Divider />
-        <CardBody>
-          <Button onPress={() => callApi("/clear-db")} color="primary">Empty DB</Button>
-          <Button onPress={() => callApi("/load-graph-json")} className="mt-2" color="primary">Load JSON Graph</Button>
-          <Button onPress={() => callApi("/flatten-communication-events")} className="mt-2" color="secondary">Flatten Communication Events</Button>
-          <Button onPress={() => callApi("/combine-communication-links")} className="mt-2" color="secondary">Combine Comm. Links</Button>
-          <Button onPress={() => callApi("/remove-non-communication-links")} className="mt-2" color="secondary">Remove Non-Comm Links</Button>
-
-          <div className="mt-4">
-            <label className="text-sm font-medium">Filter visible node types:</label>
-            <select
-              className="mt-1 block w-full border rounded px-2 py-1 text-sm"
-              value={filterMode}
-              onChange={(e) => setFilterMode(e.target.value as any)}
-            >
-              <option value="all">Show Events & Relationships</option>
-              <option value="event">Show Events Only</option>
-              <option value="relationship">Show Relationships Only</option>
-            </select>
-          </div>
-
-          <div className="mt-4">
-            <label className="text-sm font-medium">Filter by Entity ID:</label>
-            <input
-              className="mt-1 block w-full border rounded px-2 py-1 text-sm"
-              type="text"
-              value={filterEntityId}
-              onChange={(e) => setFilterEntityId(e.target.value)}
-              placeholder="e.g., E001"
-            />
-          </div>
-
-          <div className="mt-2">
-            <label className="text-sm font-medium">Neighbor Depth (n):</label>
-            <input
-              className="mt-1 block w-full border rounded px-2 py-1 text-sm"
-              type="number"
-              min={0}
-              max={6}
-              value={filterDepth}
-              onChange={(e) => setFilterDepth(Number(e.target.value))}
-            />
-          </div>
-
-
-
-          <div className="mt-4 flex items-center gap-2">
-            <Switch isSelected={useAggregated} onValueChange={setUseAggregated} />
-            <span>Use Aggregated View</span>
-          </div>
-          <Button onPress={loadGraph} className="mt-2" color="success">Show Graph</Button>
-
-          <Alert isVisible={!!statusMsg} color="info" title="Status" description={statusMsg} className="mt-4" />
-        </CardBody>
-      </Card>
+  
+      {/* Filter + Entity list side-by-side */}
+      <div className="flex w-[800px] gap-4">
+        {/* Filter + Actions */}
+        <Card className="w-[500px]">
+          <CardHeader>
+            <h3 className="text-lg">Neo4j Graph Actions</h3>
+          </CardHeader>
+          <Divider />
+          <CardBody>
+            <Button onPress={() => callApi("/clear-db")} color="primary">Empty DB</Button>
+            <Button onPress={() => callApi("/load-graph-json")} className="mt-2" color="primary">Load JSON Graph</Button>
+            <Button onPress={() => callApi("/flatten-communication-events")} className="mt-2" color="secondary">Flatten Communication Events</Button>
+            <Button onPress={() => callApi("/combine-communication-links")} className="mt-2" color="secondary">Combine Comm. Links</Button>
+            <Button onPress={() => callApi("/remove-non-communication-links")} className="mt-2" color="secondary">Remove Non-Comm Links</Button>
+  
+            <div className="mt-4">
+              <label className="text-sm font-medium">Filter visible node types:</label>
+              <select
+                className="mt-1 block w-full border rounded px-2 py-1 text-sm"
+                value={filterMode}
+                onChange={(e) => setFilterMode(e.target.value as any)}
+              >
+                <option value="all">Show Events & Relationships</option>
+                <option value="event">Show Events Only</option>
+                <option value="relationship">Show Relationships Only</option>
+              </select>
+            </div>
+  
+            <div className="mt-4">
+              <label className="text-sm font-medium">Filter by Entity ID:</label>
+              <input
+                className="mt-1 block w-full border rounded px-2 py-1 text-sm"
+                type="text"
+                value={filterEntityId}
+                onChange={(e) => setFilterEntityId(e.target.value)}
+                placeholder="e.g., E001"
+              />
+            </div>
+  
+            <div className="mt-2">
+              <label className="text-sm font-medium">Neighbor Depth (n):</label>
+              <input
+                className="mt-1 block w-full border rounded px-2 py-1 text-sm"
+                type="number"
+                min={0}
+                max={6}
+                value={filterDepth}
+                onChange={(e) => setFilterDepth(Number(e.target.value))}
+              />
+            </div>
+  
+            <div className="mt-4 flex items-center gap-2">
+              <Switch isSelected={useAggregated} onValueChange={setUseAggregated} />
+              <span>Use Aggregated View</span>
+            </div>
+            <Button onPress={loadGraph} className="mt-2" color="success">Show Graph</Button>
+  
+            <Alert isVisible={!!statusMsg} color="info" title="Status" description={statusMsg} className="mt-4" />
+          </CardBody>
+        </Card>
+  
+        {/* Visible Entity List */}
+        <div className="w-[300px] flex-shrink-0 border rounded-lg p-4 overflow-y-auto" style={{ maxHeight: "600px" }}>
+          <h4 className="text-md font-semibold mb-2">Visible Entities: {visibleEntities.length}</h4>
+          <ul className="list-disc list-inside text-sm space-y-1">
+            {visibleEntities.length === 0 ? (
+              <li className="text-gray-500 italic">No entities visible</li>
+            ) : (
+              visibleEntities.map(entity => (
+                <li key={entity.id}>
+                  <span className="font-medium">{entity.sub_type ?? "Entity"}</span>: {entity.id}
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      </div>
+  
+      {/* Graph and Summary */}
       <div className="mt-10 w-full max-w-7xl flex gap-6">
-      {/* Graph container */}
-      <div ref={graphContainerRef} className="flex-1 border rounded-lg" style={{ height: "600px" }}>
-        <svg ref={svgRef} className="w-full h-full"></svg>
+        {/* Graph container */}
+        <div ref={graphContainerRef} className="flex-1 border rounded-lg" style={{ height: "600px" }}>
+          <svg ref={svgRef} className="w-full h-full"></svg>
+        </div>
+  
+        {/* Subtype summary box */}
+        <div className="w-[300px] flex-shrink-0 border rounded-lg p-4 overflow-y-auto" style={{ maxHeight: "600px" }}>
+          <h4 className="text-md font-semibold mb-2">Graph Summary</h4>
+  
+          {/* Edge count */}
+          <h5 className="text-sm font-semibold mb-2">Edge Summary</h5>
+          <p className="text-sm mb-4">
+            <span className="font-medium">Total Edges:</span> {edgeCount}
+          </p>
+  
+          {/* Node subtype counts */}
+          <h5 className="text-sm font-semibold mb-2">Node Summary</h5>
+          <ul className="list-disc list-inside text-sm space-y-1">
+            {Object.entries(subtypeCounts)
+              .sort((a, b) => b[1] - a[1])
+              .map(([subtype, count]) => (
+                <li key={subtype}>
+                  <span className="font-medium">{subtype}</span>: {count}
+                </li>
+              ))}
+          </ul>
+        </div>
       </div>
-
-      {/* Subtype summary box */}
-      <div className="w-[300px] flex-shrink-0 border rounded-lg p-4 overflow-y-auto" style={{ maxHeight: "600px" }}>
-        <h4 className="text-md font-semibold mb-2">Graph Summary</h4>
-
-        {/* Edge count */}
-        <h5 className="text-sm font-semibold mb-2">Edge Summary</h5>
-        <p className="text-sm mb-4">
-          <span className="font-medium">Total Edges:</span> {edgeCount}
-        </p>
-
-        {/* Node subtype counts */}
-        <h5 className="text-sm font-semibold mb-2">Node Summary</h5>
-        <ul className="list-disc list-inside text-sm space-y-1">
-          {Object.entries(subtypeCounts)
-            .sort((a, b) => b[1] - a[1])
-            .map(([subtype, count]) => (
-              <li key={subtype}>
-                <span className="font-medium">{subtype}</span>: {count}
-              </li>
-            ))}
-        </ul>
-      </div>
-
-    </div>
-
+  
     </section>
   );
+  
 }
