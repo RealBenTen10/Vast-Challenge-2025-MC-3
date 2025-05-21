@@ -1,5 +1,3 @@
-// This is the updated page.tsx file with UI to switch between normal and aggregated graph views
-
 "use client";
 
 import { title, subtitle } from "@/components/primitives";
@@ -41,6 +39,7 @@ export default function Home() {
   const [filterEntityId, setFilterEntityId] = useState<string>("");
   const [filterDepth, setFilterDepth] = useState<number>(1);
   const [visibleEntities, setVisibleEntities] = useState<{ id: string; sub_type?: string }[]>([]);
+  const [selectedInfo, setSelectedInfo] = useState<any>(null);
 
 
   const drawGraph = () => {
@@ -59,7 +58,6 @@ export default function Home() {
 
     svg.call(d3.zoom<SVGSVGElement, unknown>().scaleExtent([0.1, 4]).on("zoom", (event) => g.attr("transform", event.transform)));
 
-  // Logic for getting neighbours of entity (and filtering)
   const getVisibleNodeIds = (): Set<string> => {
     const visible = new Set<string>();
 
@@ -74,7 +72,6 @@ export default function Home() {
     }
 
   
-    // BFS for neighborhood up to depth n
     const queue = [filterEntityId];
     const visited = new Set<string>();
     let level = 0;
@@ -112,7 +109,6 @@ export default function Home() {
     )
   );
 
-  // Extract visible Entity nodes
   const visibleEntityList = nodes
     .filter(d => d.type === "Entity")
     .map(d => ({ id: d.id, sub_type: d.label }));
@@ -146,6 +142,10 @@ export default function Home() {
       .attr("stroke", "#999")
       .attr("stroke-opacity", 0.6)
       .attr("stroke-width", 1);
+    link.on("click", (event, d) => {
+        setSelectedInfo({ type: "link", data: d });
+      });
+      
 
     const node = g.append("g")
       .selectAll("g")
@@ -165,8 +165,11 @@ export default function Home() {
           if (!event.active) simulation.alphaTarget(0);
           d.fx = null;
           d.fy = null;
-        })
-      );
+        })      
+      )
+      .on("click", (event, d) => {
+      setSelectedInfo({ type: "node", data: d });
+      });
 
     node.append("circle")
       .attr("r", 20)
@@ -194,7 +197,6 @@ export default function Home() {
         return `${Math.max(8, baseSize - (label.length - maxLength))}px`;
       });
 
-      // Append legend
       const legendData = [
         { type: "Entity", color: "#1f77b4" },
         { type: "Event", color: "#2ca02c" },
@@ -203,9 +205,9 @@ export default function Home() {
 
       const legend = svg.append("g")
         .attr("class", "legend")
-        .attr("transform", "translate(20, 20)"); // Position top-left (x=20, y=20)
+        .attr("transform", "translate(20, 20)"); 
 
-      // Add background rect behind legend
+      
       const legendBox = legend.append("rect")
         .attr("x", -10)
         .attr("y", -10)
@@ -213,7 +215,7 @@ export default function Home() {
         .attr("height", legendData.length * 25)
         .attr("fill", "#f8f8f8")
         .attr("stroke", "#ccc")
-        .lower(); // Send to back
+        .lower();
 
 
       legend.selectAll("circle")
@@ -283,7 +285,7 @@ export default function Home() {
       }
       if (data.success) {
         setGraphData({ nodes: data.nodes, links: data.links });
-        setEdgeCount(data.links.length);  // ← count of edges
+        setEdgeCount(data.links.length);  
       }
       
       
@@ -403,6 +405,23 @@ export default function Home() {
               ))}
           </ul>
         </div>
+        {/* Clicked Node/Edge Info */}
+        <div className="w-[300px] flex-shrink-0 border rounded-lg p-4 overflow-y-auto" style={{ maxHeight: "600px" }}>
+          <h4 className="text-md font-semibold mb-2">Selected Info</h4>
+          {selectedInfo ? (
+            <div className="text-sm space-y-1">
+              <p><span className="font-medium">Type:</span> {selectedInfo.type}</p>
+              {Object.entries(selectedInfo.data).map(([key, value]) => (
+                <p key={key}>
+                  <span className="font-medium">{key}:</span> {typeof value === "object" ? JSON.stringify(value) : value?.toString()}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 italic">Click a node or edge to view details</p>
+          )}
+        </div>
+
       </div>
   
     </section>
