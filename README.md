@@ -1,5 +1,16 @@
 # Group 1
 
+## VAST Challenge MC3
+
+We decided to work on the Mini-Challenge 3 of the VAST Challenge 2025.
+For this we have to load the data into our neo4j database
+Next we want to reduce the graph to a more compact version without losing any (important) information
+Then we add some different visualization and filtering methods
+Afterwards we add the possibility to compare views to find outliers, pseudonyms, etc.
+We will somehow include the time variable to look at the time series part of the data
+Nadia Conti has to be explored in more detail - is she maybe a part of the conspiracy?
+At the end we should have a tool to analyse given data using visual analytic approach.
+
 ## Assignment 1
 The code is up to date and the PDF for exercise 2 is in the GROUP-1 folder: [Exercise 2](./AVA - Group 1 - Exercise 2.pdf)
 
