@@ -167,6 +167,17 @@ export default function Home() {
           d.fy = null;
         })      
       )
+      .on ("mouseover", (event, d) => {
+        d3.select(event.currentTarget)
+        .select("circle")
+        .attr("stroke", "purple")
+        .attr("stroke-width", 4);
+      })
+      .on("mouseout", (event, d) => {
+        d3.select(event.currentTarget)
+        .select("circle")
+        .attr("stroke", "none");
+      })
       .on("click", (event, d) => {
       setSelectedInfo({ type: "node", data: d });
       });
@@ -271,7 +282,7 @@ export default function Home() {
 
   const loadGraph = async () => {
     try {
-      const endpoint = useAggregated ? "/aggregate-entity-interactions" : "/read-db-graph";
+      const endpoint = useAggregated ? "/read-db-graph" : "/read-db-graph";
       const res = await fetch(`/api${endpoint}`);
       const data = await res.json();
       if (data.success) setGraphData({ nodes: data.nodes, links: data.links });
@@ -307,12 +318,7 @@ export default function Home() {
           </CardHeader>
           <Divider />
           <CardBody>
-            <Button onPress={() => callApi("/clear-db")} color="primary">Empty DB</Button>
-            <Button onPress={() => callApi("/load-graph-json")} className="mt-2" color="primary">Load JSON Graph</Button>
-            <Button onPress={() => callApi("/flatten-communication-events")} className="mt-2" color="secondary">Flatten Communication Events</Button>
-            <Button onPress={() => callApi("/combine-communication-links")} className="mt-2" color="secondary">Combine Comm. Links</Button>
-            <Button onPress={() => callApi("/remove-non-communication-links")} className="mt-2" color="secondary">Remove Non-Comm Links</Button>
-  
+            <Button onPress={() => callApi("/load-graph-json")} className="mt-2" color="primary">Load JSON Graph</Button>  
             <div className="mt-4">
               <label className="text-sm font-medium">Filter visible node types:</label>
               <select

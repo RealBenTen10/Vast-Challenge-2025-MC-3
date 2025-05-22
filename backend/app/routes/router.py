@@ -17,6 +17,9 @@ NEO4J_PASSWORD = os.environ.get('DB_PASSWORD')
 
 router = APIRouter()
 
+# Root endpoint
+# This is the root endpoint for the FastAPI application.
+# It returns a simple HTML page with the title "AVA Template Python API".
 @router.get("/", response_class=HTMLResponse, tags=["ROOT"])
 async def root():
     html_content = """
@@ -32,6 +35,8 @@ async def root():
     return HTMLResponse(content=html_content, status_code=200)
 # Just used for debugging
 
+# Clrear the database
+# This endpoint clears the Neo4j database by deleting all nodes and relationships.
 @router.get("/clear-db", response_class=JSONResponse)
 async def clear_db():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
@@ -42,14 +47,17 @@ async def clear_db():
     print("Database cleared.")
     return {"success": True}
 
-
+# Load graph from JSON
+# This endpoint loads graph data from a JSON file into the Neo4j database.
+# It uses a background task to perform the loading operation.
 @router.get("/load-graph-json", response_class=JSONResponse)
 async def load_graph_json(background_tasks: BackgroundTasks):
     background_tasks.add_task(load_graph_json)
     return {"success": True, "message": "Graph loading started in background."}
-
-
-
+# This function loads graph data from a JSON file into the Neo4j database.
+# It reads the data and schema from the specified JSON files, clears the database,
+# and then creates nodes and edges based on the data.
+# It is called in the background when the /load-graph-json endpoint is accessed.
 async def load_graph_json():
     print("Loading graph data from JSON...")
     data_path = "MC3_graph.json"
@@ -106,10 +114,12 @@ async def load_graph_json():
             if "source" in edge and "target" in edge:
                 session.write_transaction(create_edge, edge)
     print("Graph loaded successfully.")
+    await flatten_communication_events()
     return {"success": True, "message": "All nodes and edges loaded."}
 
-
-@router.get("/flatten-communication-events", response_class=JSONResponse)
+# Flatten communication events
+# This endpoint flattens communication events in the Neo4j database.
+# It retrieves communication events, their metadata, and creates new relationships
 async def flatten_communication_events():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     print("Flattening communication events...")
@@ -158,12 +168,15 @@ async def flatten_communication_events():
                 DETACH DELETE c
             """, comm_id=comm_id)
     print("Flattening completed.")
+    await combine_communication_links()
     return {
         "success": True,
         "message": f"Flattened {len(communications)} Communication events and preserved metadata in new relationships."
     }
 
-@router.get("/combine-communication-links", response_class=JSONResponse)
+# Combine communication links
+# This endpoint combines communication links in the Neo4j database.
+# It merges multiple communication links between the same entity-target pair into a single link.
 async def combine_communication_links():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     print("Combining communication links...")
@@ -201,11 +214,15 @@ async def combine_communication_links():
             """, source_id=source_id, target_id=target_id,
                  comm_ids=comm_ids, timestamps=timestamps, contents=contents)
     print("Combining completed.")
+    await remove_non_communication_links()
     return {
         "success": True,
         "message": "All communication_links combined per entity-target pair"
     }
-@router.get("/remove-non-communication-links", response_class=JSONResponse)
+
+# Remove non-communication links
+# This endpoint removes non-communication links from the Neo4j database.
+# It deletes all relationships that are not of type "communication_links" between entities.
 async def remove_non_communication_links():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     print("Removing non-communication links...")
@@ -218,53 +235,88 @@ async def remove_non_communication_links():
             DELETE r
         """)
     print("Removing completed.")
+    print("Successfully loaded graph data into Neo4j.")
     return {
         "success": True,
         "message": "Removed all redundant non-communication links from Entity"
     }
 
-@router.get("/aggregate-entity-interactions", response_class=JSONResponse)
-async def aggregate_entity_interactions():
-    """
-    Fetches graph data from Neo4j and optionally aggregates entity interactions.
+# Collpase relationships
+# This endpoint collapses relationships in the Neo4j database.
+# It deletes all relationships of type "related_to" and "evidence_for" between entities
+# and creates new relationship edges between them.
+@router.get("/collapse-relationship", response_class=JSONResponse)
+async def collapse_relationships():
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    print("Collapsing relationships...")
 
-    Args:
-        aggregate: A boolean flag to indicate whether to aggregate the graph data.
+    with driver.session() as session:
+        # Step 1: Find all Relationship nodes
+        result = session.run("""
+            MATCH (r:Relationship)
+            RETURN r.id AS rel_id, r.sub_type AS sub_type, properties(r) AS props
+        """)
+        relationships = result.data()
 
-    Returns:
-        A JSON response containing the graph data.
-    """
-    aggregate = False
-    print("Getting graph data with aggregation: ", aggregate)
-    try:
-        with driver.session() as session:
-            result_nodes = session.run("MATCH (n) RETURN n")
-            nodes = []
-            for record in result_nodes:
-                node = record.data()["n"]
-                
-                # Extract all properties into a single dictionary
-                node_props = dict(node.items())
-                node_props["id"] = node.id
-                node_props["labels"] = list(node.labels)
-                
-                nodes.append(node_props)
+        for rel in relationships:
+            rel_id = rel["rel_id"]
+            sub_type = rel.get("sub_type", "related_to")
+            properties = rel.get("props", {})
 
-            result_edges = session.run("MATCH (a)-[r]->(b) RETURN a.id AS source, b.id AS target, type(r) AS type")
-            links = [{"source": record.data()["source"], "target": record.data()["target"], "type": record.data()["type"]} for record in result_edges]
+            # Step 2: Find connected entities
+            entity_pair = session.run("""
+                MATCH (a:Entity)-[:related_to|evidence_for]->(r:Relationship {id: $rel_id})<-[:related_to|evidence_for]-(b:Entity)
+                RETURN a.id AS source_id, b.id AS target_id
+                LIMIT 1
+            """, rel_id=rel_id).single()
 
-            graph_data = {"nodes": nodes, "links": links}
+            if entity_pair:
+                source_id = entity_pair["source_id"]
+                target_id = entity_pair["target_id"]
 
-            if aggregate:
-                graph_data = aggregate_entity_interactions(graph_data["nodes"], graph_data["links"])
-                print("Graph data aggregated successfully.")
-            print("Graph data fetched successfully.")
-            return JSONResponse(content=graph_data)
+                # Step 3: Create new edge with metadata
+                set_clause = ", ".join([f"r.{k} = ${k}" for k in properties.keys()])
+                set_clause = f"SET {set_clause}" if set_clause else ""
 
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+                session.run(f"""
+                    MATCH (a:Entity {{id: $source_id}}), (b:Entity {{id: $target_id}})
+                    MERGE (a)-[r:collapsed_relationship]->(b)
+                    SET r.rel_id = $rel_id,
+                        r.sub_type = $sub_type
+                    {"," if set_clause else ""} {set_clause}
+                """, source_id=source_id, target_id=target_id, rel_id=rel_id, sub_type=sub_type, **properties)
 
+            # Step 4: Delete the original relationship node
+            session.run("""
+                MATCH (r:Relationship {id: $rel_id})
+                DETACH DELETE r
+            """, rel_id=rel_id)
 
+    print(f"Collapsed {len(relationships)} Relationship nodes into edges.")
+    return {
+        "success": True,
+        "message": f"Collapsed {len(relationships)} Relationship nodes into edges."
+    }
+
+    
+async def collapse_relationships():
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    print("Collapsing relationships...")
+    with driver.session() as session:
+        session.run("""
+            MATCH (a)-[r]->(b)
+            WHERE type(r) IN ['related_to', 'evidence_for']
+            DELETE r
+        """)
+    print("Collapsing completed.")
+    return {
+        "success": True,
+        "message": "Collapsed all relationships"
+    }
+
+# Entity event counts
+# This endpoint retrieves the count of events associated with each entity in the Neo4j database.
+# It returns a JSON response with the entity IDs and their corresponding event counts.
 @router.get("/entity-event-counts", response_class=JSONResponse)
 async def get_entity_event_counts():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
@@ -276,6 +328,9 @@ async def get_entity_event_counts():
         data = [{"entity": r["entity_id"], "count": r["event_count"]} for r in result]
         return {"success": True, "data": data}
 
+# Read DB graph
+# This endpoint reads the graph data from the Neo4j database.
+# It retrieves nodes and edges, categorizes them into different types, and returns them in a JSON response.
 @router.get("/read-db-graph", response_class=JSONResponse)
 async def read_db_graph():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
@@ -307,17 +362,11 @@ async def read_db_graph():
     return {"success": True, "nodes": nodes, "links": links}
 
 
+# Aggregate entity interactions
+# This endpoint aggregates interactions between entities in the Neo4j database.
+# It combines events and relationships into a single representation for each entity pair.
+# It is not used in the current code but is defined for potential future use.
 def aggregate_entity_interactions(nodes: List[Dict[str, Any]], links: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Aggregates Event and Relationship nodes between the same entities.
-
-    Args:
-        nodes: List of node dictionaries.
-        links: List of link dictionaries.
-
-    Returns:
-        A dictionary containing the aggregated nodes and links.
-    """
     print("Aggregating entity interactions...")
     aggregated_links: List[Dict[str, Any]] = []
     node_map: Dict[str, Dict[str, Any]] = {node["id"]: node for node in nodes}
