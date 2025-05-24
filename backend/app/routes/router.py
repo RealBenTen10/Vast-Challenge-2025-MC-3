@@ -102,311 +102,140 @@ async def load_graph_json():
         """, source_id=source_id, target_id=target_id, **props)
 
     with driver.session() as session:
-        # Clear DB
-        session.run("MATCH (n) DETACH DELETE n")
-
+        session.run("MATCH (n) DETACH DELETE n")  # Clear
+        print("Database cleared.")
         # Load nodes
         for node in data.get("nodes", []):
             session.write_transaction(create_node, node)
-
+        print("Nodes loaded successfully.")
         # Load edges
         for edge in data.get("edges", []):
             if "source" in edge and "target" in edge:
                 session.write_transaction(create_edge, edge)
+        print("Edges loaded successfully.")
+        # Transform Relationships
+        session.write_transaction(create_relationship_edges)
+        print("Relationships transformed successfully.")
+        # For testing purpose
+        if True:
+            # Transform Communication Events
+            session.write_transaction(create_communication_edges)
+            print("Communication events transformed successfully.")
+            # Prune unnecessary edges
+            session.run("""MATCH (a)-[r]->(b)
+                        WHERE NOT type(r) IN ['COMMUNICATION', 'Colleagues', 'AccessPermission', 'Operates', 'Suspicious', 'Reports', 'Jurisdiction', 'Unfriendly', 'Friends']
+                        WITH a, b, collect(r) AS non_essential, size([(a)-[x]->(b) WHERE type(x) IN ['COMMUNICATION', 'Colleagues', 'AccessPermission', 'Operates', 'Suspicious', 'Reports', 'Jurisdiction', 'Unfriendly', 'Friends'] | x]) AS essential_count
+                        WHERE essential_count > 0
+                        UNWIND non_essential AS r
+                        DELETE r
+                        """)
     print("Graph loaded successfully.")
-    await flatten_communication_events()
     return {"success": True, "message": "All nodes and edges loaded."}
 
-# Flatten communication events
-# This endpoint flattens communication events in the Neo4j database.
-# It retrieves communication events, their metadata, and creates new relationships
-async def flatten_communication_events():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    print("Flattening communication events...")
-
-    with driver.session() as session:
-        # Step 1: Find all Communication events and their metadata
-        result = session.run("""
-            MATCH (c:Event {sub_type: "Communication"})
-            RETURN c.id AS comm_id, c.timestamp AS timestamp, c.content AS content
-        """)
-        communications = [r.data() for r in result]
-
-        for comm in communications:
-            comm_id = comm["comm_id"]
-            timestamp = comm.get("timestamp")
-            content = comm.get("content")
-
-            # Step 2: Get all entities connected TO the communication event
-            entity_result = session.run("""
-                MATCH (e:Entity)-[:sent]->(c:Event {id: $comm_id})
-                RETURN e.id AS entity_id
-            """, comm_id=comm_id)
-            entity_ids = [r["entity_id"] for r in entity_result]
-
-            # Step 3: Get all targets connected FROM the communication event
-            target_result = session.run("""
-                MATCH (c:Event {id: $comm_id})-[:evidence_for]->(t)
-                RETURN t.id AS target_id
-            """, comm_id=comm_id)
-            target_ids = [r["target_id"] for r in target_result]
-
-            # Step 4: Create new relationships from entity to target, with metadata
-            for entity_id in entity_ids:
-                for target_id in target_ids:
-                    session.run("""
-                        MATCH (e:Entity {id: $entity_id}), (t {id: $target_id})
-                        MERGE (e)-[r:communication_links {comm_id: $comm_id}]->(t)
-                        SET r.timestamp = $timestamp,
-                            r.content = $content
-                    """, entity_id=entity_id, target_id=target_id,
-                         comm_id=comm_id, timestamp=timestamp, content=content)
-
-            # Step 5: Remove the original communication node
-            session.run("""
-                MATCH (c:Event {id: $comm_id})
-                DETACH DELETE c
-            """, comm_id=comm_id)
-    print("Flattening completed.")
-    await combine_communication_links()
-    return {
-        "success": True,
-        "message": f"Flattened {len(communications)} Communication events and preserved metadata in new relationships."
-    }
-
-# Combine communication links
-# This endpoint combines communication links in the Neo4j database.
-# It merges multiple communication links between the same entity-target pair into a single link.
-async def combine_communication_links():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    print("Combining communication links...")
-
-    with driver.session() as session:
-        # Step 1: Find all unique (entity → target) communication link pairs
-        pairs = session.run("""
-            MATCH (e:Entity)-[r:communication_links]->(t)
-            RETURN e.id AS source_id, t.id AS target_id,
-                   collect(r.comm_id) AS comm_ids,
-                   collect(r.timestamp) AS timestamps,
-                   collect(r.content) AS contents
-        """)
-
-        for record in pairs:
-            source_id = record["source_id"]
-            target_id = record["target_id"]
-            comm_ids = record["comm_ids"]
-            timestamps = record["timestamps"]
-            contents = record["contents"]
-
-            # Step 2: Delete old relationships between the same pair
-            session.run("""
-                MATCH (e:Entity {id: $source_id})-[r:communication_links]->(t {id: $target_id})
-                DELETE r
-            """, source_id=source_id, target_id=target_id)
-
-            # Step 3: Create a single relationship with merged metadata
-            session.run("""
-                MATCH (e:Entity {id: $source_id}), (t {id: $target_id})
-                MERGE (e)-[r:communication_links]->(t)
-                SET r.comm_ids = $comm_ids,
-                    r.timestamps = $timestamps,
-                    r.contents = $contents
-            """, source_id=source_id, target_id=target_id,
-                 comm_ids=comm_ids, timestamps=timestamps, contents=contents)
-    print("Combining completed.")
-    await remove_non_communication_links()
-    return {
-        "success": True,
-        "message": "All communication_links combined per entity-target pair"
-    }
-
-# Remove non-communication links
-# This endpoint removes non-communication links from the Neo4j database.
-# It deletes all relationships that are not of type "communication_links" between entities.
-async def remove_non_communication_links():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    print("Removing non-communication links...")
-    with driver.session() as session:
-        session.run("""
-            MATCH (e:Entity)-[:communication_links]->(t)
-            WITH e, t
-            MATCH (e)-[r]->(t)
-            WHERE type(r) <> 'communication_links'
-            DELETE r
-        """)
-    print("Removing completed.")
-    print("Successfully loaded graph data into Neo4j.")
-    return {
-        "success": True,
-        "message": "Removed all redundant non-communication links from Entity"
-    }
-
-# Collpase relationships
-# This endpoint collapses relationships in the Neo4j database.
-# It deletes all relationships of type "related_to" and "evidence_for" between entities
-# and creates new relationship edges between them.
-@router.get("/collapse-relationship", response_class=JSONResponse)
-async def collapse_relationships():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    print("Collapsing relationships...")
-
-    with driver.session() as session:
-        # Step 1: Find all Relationship nodes
-        result = session.run("""
-            MATCH (r:Relationship)
-            RETURN r.id AS rel_id, r.sub_type AS sub_type, properties(r) AS props
-        """)
-        relationships = result.data()
-
-        for rel in relationships:
-            rel_id = rel["rel_id"]
-            sub_type = rel.get("sub_type", "related_to")
-            properties = rel.get("props", {})
-
-            # Step 2: Find connected entities
-            entity_pair = session.run("""
-                MATCH (a:Entity)-[:related_to|evidence_for]->(r:Relationship {id: $rel_id})<-[:related_to|evidence_for]-(b:Entity)
-                RETURN a.id AS source_id, b.id AS target_id
-                LIMIT 1
-            """, rel_id=rel_id).single()
-
-            if entity_pair:
-                source_id = entity_pair["source_id"]
-                target_id = entity_pair["target_id"]
-
-                # Step 3: Create new edge with metadata
-                set_clause = ", ".join([f"r.{k} = ${k}" for k in properties.keys()])
-                set_clause = f"SET {set_clause}" if set_clause else ""
-
-                session.run(f"""
-                    MATCH (a:Entity {{id: $source_id}}), (b:Entity {{id: $target_id}})
-                    MERGE (a)-[r:collapsed_relationship]->(b)
-                    SET r.rel_id = $rel_id,
-                        r.sub_type = $sub_type
-                    {"," if set_clause else ""} {set_clause}
-                """, source_id=source_id, target_id=target_id, rel_id=rel_id, sub_type=sub_type, **properties)
-
-            # Step 4: Delete the original relationship node
-            session.run("""
-                MATCH (r:Relationship {id: $rel_id})
-                DETACH DELETE r
-            """, rel_id=rel_id)
-
-    print(f"Collapsed {len(relationships)} Relationship nodes into edges.")
-    return {
-        "success": True,
-        "message": f"Collapsed {len(relationships)} Relationship nodes into edges."
-    }
-
-    
-async def collapse_relationships():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    print("Collapsing relationships...")
-    with driver.session() as session:
-        session.run("""
-            MATCH (a)-[r]->(b)
-            WHERE type(r) IN ['related_to', 'evidence_for']
-            DELETE r
-        """)
-    print("Collapsing completed.")
-    return {
-        "success": True,
-        "message": "Collapsed all relationships"
-    }
-
-# Entity event counts
-# This endpoint retrieves the count of events associated with each entity in the Neo4j database.
-# It returns a JSON response with the entity IDs and their corresponding event counts.
-@router.get("/entity-event-counts", response_class=JSONResponse)
-async def get_entity_event_counts():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    with driver.session() as session:
-        result = session.run("""
-            MATCH (e:Entity)<--(ev:Event)
-            RETURN e.id AS entity_id, count(ev) AS event_count
-        """)
-        data = [{"entity": r["entity_id"], "count": r["event_count"]} for r in result]
-        return {"success": True, "data": data}
-
-# Read DB graph
-# This endpoint reads the graph data from the Neo4j database.
-# It retrieves nodes and edges, categorizes them into different types, and returns them in a JSON response.
-@router.get("/read-db-graph", response_class=JSONResponse)
-async def read_db_graph():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    print("Reading graph data from Neo4j...")
-    with driver.session() as session:
-        result_nodes = session.run("MATCH (n) RETURN n.id AS id, labels(n) AS labels, n.sub_type AS sub_type")
-        nodes = []
-        for r in result_nodes:
-            node_type = "Unknown"
-            labels = r["labels"]
-            if "Entity" in labels:
-                node_type = "Entity"
-            elif "Event" in labels:
-                node_type = "Event"
-            elif "Relationship" in labels:
-                node_type = "Relationship"
-            nodes.append({
-                "id": r["id"],
-                "label": r.get("sub_type"),
-                "type": node_type,
-            })
-
-        result_edges = session.run("""
-            MATCH (a)-[r]->(b)
-            RETURN a.id AS source, b.id AS target, type(r) AS type
-        """)
-        links = [{"source": r["source"], "target": r["target"], "type": r["type"]} for r in result_edges]
-    print("Graph data read successfully.")
-    return {"success": True, "nodes": nodes, "links": links}
 
 
-# Aggregate entity interactions
-# This endpoint aggregates interactions between entities in the Neo4j database.
-# It combines events and relationships into a single representation for each entity pair.
-# It is not used in the current code but is defined for potential future use.
-def aggregate_entity_interactions(nodes: List[Dict[str, Any]], links: List[Dict[str, Any]]) -> Dict[str, Any]:
-    print("Aggregating entity interactions...")
-    aggregated_links: List[Dict[str, Any]] = []
-    node_map: Dict[str, Dict[str, Any]] = {node["id"]: node for node in nodes}
-    processed_pairs = set()  # To keep track of processed entity pairs
+def create_relationship_edges(tx):
+    # Get all Relationship nodes
+    relationships = tx.run("MATCH (r:Relationship) RETURN r").data()
 
-    # Group events and relationships by source-target pairs
-    grouped_interactions = defaultdict(lambda: {"events": [], "relationships": []})
+    for record in relationships:
+        r = record['r']
+        r_id = r['id']
+        sub_type = r.get('sub_type', 'RELATIONSHIP')
+        props = dict(r)
 
-    for link in links:
-        source_id = link["source"]
-        target_id = link["target"]
-        source_node = node_map.get(source_id)
-        target_node = node_map.get(target_id)
+        # Find all connected Entities
+        entities = tx.run("""
+            MATCH (e:Entity)-[]-(r:Relationship {id: $r_id})
+            RETURN e.id AS entity_id
+        """, r_id=r_id).data()
 
-        # Ensure source and target nodes are Entities
-        if source_node and target_node and source_node["type"] == "Entity" and target_node["type"] == "Entity":
-            pair = tuple(sorted((source_id, target_id)))  # Use sorted tuple to ignore direction
+        entity_ids = [e['entity_id'] for e in entities]
 
-            intermediate_node = node_map.get(link["source"]) #this is the event or relationship node
+        # Create edges between all pairs of connected Entities
+        for i in range(len(entity_ids)):
+            for j in range(i + 1, len(entity_ids)):
+                source = entity_ids[i]
+                target = entity_ids[j]
 
-            if intermediate_node:
-              if intermediate_node["type"] == "Event":
-                  grouped_interactions[pair]["events"].append(intermediate_node["id"])
-              elif intermediate_node["type"] == "Relationship":
-                  grouped_interactions[pair]["relationships"].append(intermediate_node["id"])
+                tx.run(f"""
+                    MATCH (a:Entity {{id: $source}}), (b:Entity {{id: $target}})
+                    MERGE (a)-[rel:`{sub_type}`]->(b)
+                    SET rel += $props
+                """, source=source, target=target, props=props)
 
-    # Create aggregated links
-    for (source_id, target_id), interactions in grouped_interactions.items():
-        new_link = {
-            "source": source_id,
-            "target": target_id,
-            "type": ", ".join(interactions["events"] + interactions["relationships"]),  # Combine event and relationship ids
-        }
-        aggregated_links.append(new_link)
-
-    # Filter out intermediate Event and Relationship nodes from the aggregated graph
-    filtered_nodes = [node for node in nodes if node["type"] == "Entity"]
-    print("Aggregation completed.")
-    return {"nodes": filtered_nodes, "links": aggregated_links}
+        # Delete the Relationship node
+        tx.run("MATCH (r:Relationship {id: $r_id}) DETACH DELETE r", r_id=r_id)
 
 
+def create_communication_edges(tx):
+    # Get all Communication Events
+    comms = tx.run("MATCH (e:Event {sub_type: 'Communication'}) RETURN e").data()
+
+    for comm in comms:
+        event = comm['e']
+        event_id = event['id']
+        props = dict(event)
+
+        # Get sender and receiver Entities
+        participants = tx.run("""
+            MATCH (a:Entity)-[:sent]->(comm:Event {id: $event_id})-[:received]->(b:Entity)
+            RETURN a.id AS sender, b.id AS receiver
+        """, event_id=event_id).data()
+
+        if not participants:
+            continue  # Skip if no sender/receiver found
+
+        sender = participants[0]['sender']
+        receiver = participants[0]['receiver']
+
+        # Get all `evidence_for` targets
+        evidence_links = tx.run("""
+            MATCH (comm:Event {id: $event_id})-[:evidence_for]->(target)
+            RETURN target.id AS target_id, labels(target) AS target_labels
+        """, event_id=event_id).data()
+
+        if evidence_links:
+            for link in evidence_links:
+                target_id = link['target_id']
+                target_labels = link['target_labels']
+
+                if 'Event' in target_labels:
+                    # Create A -> EVIDENCE_FOR -> Event
+                    tx.run("""
+                        MATCH (a:Entity {id: $sender}), (e:Event {id: $target_id})
+                        MERGE (a)-[r:EVIDENCE_FOR]->(e)
+                        SET r += $props
+                    """, sender=sender, target_id=target_id, props=props)
+
+                    # Create Event -> EVIDENCE_FOR -> B
+                    tx.run("""
+                        MATCH (e:Event {id: $target_id}), (b:Entity {id: $receiver})
+                        MERGE (e)-[r:EVIDENCE_FOR]->(b)
+                        SET r += $props
+                    """, target_id=target_id, receiver=receiver, props=props)
+
+                elif 'Relationship' in target_labels:
+                    # Add metadata to existing Relationship edges between Entities
+                    tx.run("""
+                        MATCH (a:Entity)-[r]->(b:Entity)
+                        WHERE (a.id = $sender AND b.id = $receiver) OR (a.id = $receiver AND b.id = $sender)
+                        AND type(r) = $rel_type
+                        SET r += $props
+                    """, sender=sender, receiver=receiver, rel_type=tx.run("""
+                        MATCH (r:Relationship {id: $target_id}) RETURN r.sub_type AS rel_type
+                    """, target_id=target_id).single()['rel_type'], props=props)
+
+        else:
+            # Pure communication between Entities
+            tx.run("""
+                MATCH (a:Entity {id: $sender}), (b:Entity {id: $receiver})
+                MERGE (a)-[r:COMMUNICATION]->(b)
+                SET r += $props
+            """, sender=sender, receiver=receiver, props=props)
+
+        # Delete the Communication node
+        tx.run("MATCH (e:Event {id: $event_id}) DETACH DELETE e", event_id=event_id)
 
 
+# Old functions removed
