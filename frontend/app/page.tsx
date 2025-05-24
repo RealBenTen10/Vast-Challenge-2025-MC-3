@@ -127,7 +127,17 @@ export default function Home() {
       value: link.value || 1
     }));
 
-    
+    // Recompute node subtype counts
+    const counts: Record<string, number> = {};
+    nodes.forEach((node: any) => {
+      const subtype = node.sub_type || node.label || "Unknown";
+      counts[subtype] = (counts[subtype] || 0) + 1;
+    });
+    setSubtypeCounts(counts);
+
+    // Update edge count
+    setEdgeCount(links.length);
+
 
     const simulation = d3.forceSimulation(nodes)
       .force("link", d3.forceLink(links).id((d: any) => d.id).distance(200))
@@ -140,12 +150,13 @@ export default function Home() {
       .data(links)
       .enter().append("line")
       .attr("stroke", (d: any) => {
+        if (d.type === "COMMUNICATION") return "#2ca02c";  // Green for Communication
+        if (d.type === "EVIDENCE_FOR") return "#800080";    // Purple for Evidence links
         if (d.type && d.type.match(/AccessPermission|Operates|Colleagues|Suspicious|Reports|Jurisdiction|Unfriendly|Friends/)) {
-          return "brown"; // Relationship edges in brown
+          return "brown";  // Brown for Relationship edges
         }
-        return "#999"; // Default grey for other edges
+        return "#999";  // Gray fallback
       })
-
       .attr("stroke-opacity", 0.6)
       .attr("stroke-width", 1);
     link.on("click", (event, d) => {
@@ -220,42 +231,12 @@ export default function Home() {
         { type: "Relationship", color: "#d62728" }
       ];
 
-      const legend = svg.append("g")
-        .attr("class", "legend")
-        .attr("transform", "translate(20, 20)"); 
-
-      
-      const legendBox = legend.append("rect")
-        .attr("x", -10)
-        .attr("y", -10)
-        .attr("width", 100)
-        .attr("height", legendData.length * 25)
-        .attr("fill", "#f8f8f8")
-        .attr("stroke", "#ccc")
-        .lower();
-
-
-      legend.selectAll("circle")
-        .data(legendData)
-        .enter()
-        .append("circle")
-        .attr("cx", 0)
-        .attr("cy", (d, i) => i * 25)
-        .attr("r", 8)
-        .attr("fill", d => d.color);
-
-      legend.selectAll("text")
-        .data(legendData)
-        .enter()
-        .append("text")
-        .attr("x", 15)
-        .attr("y", (d, i) => i * 25 + 5)
-        .text(d => d.type)
-        .attr("alignment-baseline", "middle")
-        .attr("font-size", "12px")
-        .attr("fill", "#333");
-
-    
+      const edgeLegendData = [
+        { type: "Communication", color: "#2ca02c" },
+        { type: "Evidence For", color: "#800080" },
+        { type: "Relationship", color: "brown" },
+        { type: "Related To", color: "#999" },
+      ];    
 
     simulation.on("tick", () => {
       link.attr("x1", (d: any) => (d.source as any).x)
@@ -292,20 +273,6 @@ export default function Home() {
       const res = await fetch(`/api${endpoint}`);
       const data = await res.json();
       if (data.success) setGraphData({ nodes: data.nodes, links: data.links });
-      if (data.nodes) {
-        const counts: Record<string, number> = {};
-        data.nodes.forEach((node: any) => {
-          const subtype = node.label ?? "Unknown";
-          counts[subtype] = (counts[subtype] || 0) + 1;
-        });
-        setSubtypeCounts(counts);
-      }
-      if (data.success) {
-        setGraphData({ nodes: data.nodes, links: data.links });
-        setEdgeCount(data.links.length);  
-      }
-      
-      
       else setStatusMsg(data["error-message"]);
     } catch (err) {
       setStatusMsg(`Graph loading failed: ${err}`);
@@ -394,7 +361,7 @@ export default function Home() {
         <div ref={graphContainerRef} className="flex-1 border rounded-lg" style={{ height: "600px" }}>
           <svg ref={svgRef} className="w-full h-full"></svg>
         </div>
-  
+
         {/* Subtype summary box */}
         <div className="w-[300px] flex-shrink-0 border rounded-lg p-4 overflow-y-auto" style={{ maxHeight: "600px" }}>
           <h4 className="text-md font-semibold mb-2">Graph Summary</h4>
@@ -423,8 +390,6 @@ export default function Home() {
           {selectedInfo ? (
             <div className="text-sm space-y-1">
               <h5 className="text-lg font-semibold">{selectedInfo.data.id}</h5>
-              <p><span className="font-medium">Type:</span> {selectedInfo.type}</p>
-              {selectedInfo.data.label && <p><span className="font-medium">Label:</span> {selectedInfo.data.label}</p>}
               {selectedInfo.data.type && <p><span className="font-medium">Type:</span> {selectedInfo.data.type}</p>}
               {selectedInfo.data.sub_type && <p><span className="font-medium">Sub Type:</span> {selectedInfo.data.sub_type}</p>}
               {selectedInfo.data.name && <p><span className="font-medium">Name:</span> {selectedInfo.data.name}</p>}
@@ -469,6 +434,32 @@ export default function Home() {
         </div>
 
       </div>
+
+      {/* Legends below the graph */}
+      <div className="mt-4 flex flex-wrap gap-8">
+        {/* Node Legend */}
+        <div className="border rounded-lg p-4">
+          <h5 className="text-md font-semibold mb-2">Node Legend</h5>
+          <ul className="text-sm space-y-1">
+            <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#1f77b4" }}></span>Entity</li>
+            <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#2ca02c" }}></span>Event</li>
+            <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#d62728" }}></span>Relationship</li>
+          </ul>
+        </div>
+
+        {/* Edge Legend */}
+        <div className="border rounded-lg p-4">
+          <h5 className="text-md font-semibold mb-2">Edge Legend</h5>
+          <ul className="text-sm space-y-1">
+            <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>Communication</li>
+            <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#800080" }}></span>Evidence For</li>
+            <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "brown" }}></span>Relationship</li>
+            <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#999" }}></span>Other</li>
+          </ul>
+        </div>
+      </div>
+
+
   
     </section>
   );
