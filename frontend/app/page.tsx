@@ -139,7 +139,13 @@ export default function Home() {
       .selectAll("line")
       .data(links)
       .enter().append("line")
-      .attr("stroke", "#999")
+      .attr("stroke", (d: any) => {
+        if (d.type && d.type.match(/AccessPermission|Operates|Colleagues|Suspicious|Reports|Jurisdiction|Unfriendly|Friends/)) {
+          return "brown"; // Relationship edges in brown
+        }
+        return "#999"; // Default grey for other edges
+      })
+
       .attr("stroke-opacity", 0.6)
       .attr("stroke-width", 1);
     link.on("click", (event, d) => {
@@ -416,16 +422,50 @@ export default function Home() {
           <h4 className="text-md font-semibold mb-2">Selected Info</h4>
           {selectedInfo ? (
             <div className="text-sm space-y-1">
+              <h5 className="text-lg font-semibold">{selectedInfo.data.id}</h5>
               <p><span className="font-medium">Type:</span> {selectedInfo.type}</p>
-              {Object.entries(selectedInfo.data).map(([key, value]) => (
-                <p key={key}>
-                  <span className="font-medium">{key}:</span> {typeof value === "object" ? JSON.stringify(value) : value?.toString()}
-                </p>
-              ))}
+              {selectedInfo.data.label && <p><span className="font-medium">Label:</span> {selectedInfo.data.label}</p>}
+              {selectedInfo.data.type && <p><span className="font-medium">Type:</span> {selectedInfo.data.type}</p>}
+              {selectedInfo.data.sub_type && <p><span className="font-medium">Sub Type:</span> {selectedInfo.data.sub_type}</p>}
+              {selectedInfo.data.name && <p><span className="font-medium">Name:</span> {selectedInfo.data.name}</p>}
+
+              {/* Optional fields */}
+              {selectedInfo.data.timestamp && <p><span className="font-medium">Timestamp:</span> {selectedInfo.data.timestamp}</p>}
+              {selectedInfo.data.content && <p><span className="font-medium">Content:</span> {selectedInfo.data.content}</p>}
+              {selectedInfo.data.monitoring_type && <p><span className="font-medium">Monitoring Type:</span> {selectedInfo.data.monitoring_type}</p>}
+              {selectedInfo.data.findings && <p><span className="font-medium">Findings:</span> {selectedInfo.data.findings}</p>}
+              {selectedInfo.data.assessment_type && <p><span className="font-medium">Assessment Type:</span> {selectedInfo.data.assessment_type}</p>}
+              {selectedInfo.data.results && <p><span className="font-medium">Results:</span> {selectedInfo.data.results}</p>}
+              {selectedInfo.data.movement_type && <p><span className="font-medium">Movement Type:</span> {selectedInfo.data.movement_type}</p>}
+              {selectedInfo.data.destination && <p><span className="font-medium">Destination:</span> {selectedInfo.data.destination}</p>}
+              {selectedInfo.data.enforcement_type && <p><span className="font-medium">Enforcement Type:</span> {selectedInfo.data.enforcement_type}</p>}
+              {selectedInfo.data.outcome && <p><span className="font-medium">Outcome:</span> {selectedInfo.data.outcome}</p>}
+              {selectedInfo.data.activity_type && <p><span className="font-medium">Activity Type:</span> {selectedInfo.data.activity_type}</p>}
+              {selectedInfo.data.participants && <p><span className="font-medium">Participants:</span> {selectedInfo.data.participants}</p>}
+              {selectedInfo.data.permission_type && <p><span className="font-medium">Permission Type:</span> {selectedInfo.data.permission_type}</p>}
+              {selectedInfo.data.start_date && <p><span className="font-medium">Start Date:</span> {selectedInfo.data.start_date}</p>}
+              {selectedInfo.data.end_date && <p><span className="font-medium">End Date:</span> {selectedInfo.data.end_date}</p>}
+
+              {/* Display any remaining fields */}
+              {Object.entries(selectedInfo.data)
+                .filter(([key]) =>
+                  ![
+                    "id", "label", "type", "sub_type", "name",
+                    "timestamp", "content", "monitoring_type", "findings",
+                    "assessment_type", "results", "movement_type", "destination",
+                    "enforcement_type", "outcome", "activity_type", "participants",
+                    "permission_type", "start_date", "end_date",
+                    "x", "y", "vx", "vy", "fx", "fy", "index"
+                  ].includes(key)
+                )
+                .map(([key, value]) => (
+                  <p key={key}><span className="font-medium">{key}:</span> {typeof value === "object" ? JSON.stringify(value) : value?.toString()}</p>
+                ))}
             </div>
           ) : (
             <p className="text-gray-500 italic">Click a node or edge to view details</p>
           )}
+
         </div>
 
       </div>

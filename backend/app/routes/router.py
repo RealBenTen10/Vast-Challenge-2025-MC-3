@@ -245,7 +245,7 @@ async def read_db_graph():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     print("Reading graph data from Neo4j...")
     with driver.session() as session:
-        result_nodes = session.run("MATCH (n) RETURN n.id AS id, labels(n) AS labels, n.sub_type AS sub_type")
+        result_nodes = session.run("MATCH (n) RETURN n.id AS id, labels(n) AS labels, n.sub_type AS sub_type, properties(n) AS props")
         nodes = []
         for r in result_nodes:
             node_type = "Unknown"
@@ -258,8 +258,10 @@ async def read_db_graph():
                 node_type = "Relationship"
             nodes.append({
                 "id": r["id"],
-                "label": r.get("sub_type"),
+                "label": r.get("label"),
                 "type": node_type,
+                "sub_type": r.get("sub_type"),
+                **r["props"]
             })
 
         result_edges = session.run("""
