@@ -237,5 +237,37 @@ def create_communication_edges(tx):
         # Delete the Communication node
         tx.run("MATCH (e:Event {id: $event_id}) DETACH DELETE e", event_id=event_id)
 
+# Read DB graph
+# This endpoint reads the graph data from the Neo4j database.
+# It retrieves nodes and edges, categorizes them into different types, and returns them in a JSON response.
+@router.get("/read-db-graph", response_class=JSONResponse)
+async def read_db_graph():
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    print("Reading graph data from Neo4j...")
+    with driver.session() as session:
+        result_nodes = session.run("MATCH (n) RETURN n.id AS id, labels(n) AS labels, n.sub_type AS sub_type")
+        nodes = []
+        for r in result_nodes:
+            node_type = "Unknown"
+            labels = r["labels"]
+            if "Entity" in labels:
+                node_type = "Entity"
+            elif "Event" in labels:
+                node_type = "Event"
+            elif "Relationship" in labels:
+                node_type = "Relationship"
+            nodes.append({
+                "id": r["id"],
+                "label": r.get("sub_type"),
+                "type": node_type,
+            })
+
+        result_edges = session.run("""
+            MATCH (a)-[r]->(b)
+            RETURN a.id AS source, b.id AS target, type(r) AS type
+        """)
+        links = [{"source": r["source"], "target": r["target"], "type": r["type"]} for r in result_edges]
+    print("Graph data read successfully.")
+    return {"success": True, "nodes": nodes, "links": links}
 
 # Old functions removed
