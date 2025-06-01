@@ -17,6 +17,9 @@ NEO4J_PASSWORD = os.environ.get('DB_PASSWORD')
 
 router = APIRouter()
 
+# Global variables
+grouped_entity_map: dict[str, list[str]] = {}
+
 # Root endpoint
 # This is the root endpoint for the FastAPI application.
 # It returns a simple HTML page with the title "AVA Template Python API".
@@ -272,4 +275,87 @@ async def read_db_graph():
     print("Graph data read successfully.")
     return {"success": True, "nodes": nodes, "links": links}
 
-# Old functions removed
+# Groups
+@router.get("/group-by", response_class=JSONResponse)
+async def group_by(group_id: str, entity_ids: str):
+    entity_id_list = [eid.strip() for eid in entity_ids.split(",")]
+    updated_links = []
+
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    with driver.session() as session:
+        # Retrieve nodes tbs
+        nodes_query = "MATCH (n:Entity) WHERE n.id IN $ids RETURN n"
+        result_nodes = session.run(nodes_query, ids=entity_id_list)
+        original_nodes = [record["n"] for record in result_nodes]
+
+        if not original_nodes:
+            return {
+                "success": False,
+                "message": "No matching entities found.",
+                "nodes": [],
+                "links": []
+            }
+
+        group_node = {
+            "id": group_id,
+            "label": group_id,
+            "type": "Entity",
+            "sub_type": "Grouped Entity",
+            "name": group_id,
+            "Entities": f"{', '.join(entity_id_list)}"         
+        }
+
+        # Get all Edges
+        edges_query = """
+            MATCH (a)-[r]->(b)
+            RETURN a.id AS source, b.id AS target, type(r) AS type
+        """
+        result_edges = session.run(edges_query)
+        updated_links = []
+        for record in result_edges:
+            src, tgt, rtype = record["source"], record["target"], record["type"]
+            
+            # Ignore intern Edges
+            if src in entity_id_list and tgt in entity_id_list:
+                continue
+            
+            # Replace old edges
+            new_source = group_id if src in entity_id_list else src
+            new_target = group_id if tgt in entity_id_list else tgt
+
+            # Prevent duplicates
+            if {"source": new_source, "target": new_target, "type": rtype} not in updated_links:
+                updated_links.append({
+                    "source": new_source,
+                    "target": new_target,
+                    "type": rtype
+                })
+
+
+        # Get all non-grouped Entity Nodes
+        remaining_nodes_query = """
+            MATCH (n:Entity)
+            WHERE NOT n.id IN $ids
+            RETURN n.id AS id, n.label AS label, 'Entity' AS type, n.sub_type AS sub_type, properties(n) AS props
+        """
+        result_remaining = session.run(remaining_nodes_query, ids=entity_id_list).data()
+        remaining_nodes = []
+        for n in result_remaining:
+            props = dict(n["props"])
+            props.update({
+                "id": n["id"],
+                "label": n["label"],
+                "type": "Entity",
+                "sub_type": n["sub_type"]
+            })
+            remaining_nodes.append(props)
+        # Saves grouped nodes in a dict
+        grouped_entity_map[group_id] = entity_id_list
+
+    return {
+        "success": True,
+        "message": f"Grouped {entity_id_list} into '{group_id}'",
+        "grouped_entities": grouped_entity_map[group_id],
+        "nodes": remaining_nodes + [group_node],
+        "links": updated_links
+    }

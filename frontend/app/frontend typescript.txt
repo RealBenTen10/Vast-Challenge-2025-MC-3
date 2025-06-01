@@ -2,7 +2,6 @@
 
 import { title, subtitle } from "@/components/primitives";
 import { ThemeSwitch } from "@/components/theme-switch";
-import CommunicationMessages from "@/components/CommunicationMessages";
 import { Card, CardHeader, CardBody, Divider, Button, Alert, Switch } from "@heroui/react";
 import React, { ReactElement, useEffect, useState, useRef } from "react";
 import * as d3 from "d3";
@@ -41,35 +40,6 @@ export default function Home() {
   const [filterDepth, setFilterDepth] = useState<number>(1);
   const [visibleEntities, setVisibleEntities] = useState<{ id: string; sub_type?: string }[]>([]);
   const [selectedInfo, setSelectedInfo] = useState<any>(null);
-  const [groupId, setGroupId] = useState("");
-  const [groupMembers, setGroupMembers] = useState("");
-  console.log("graphData nodes", graphData.nodes);
-
-
-  const groupEntities = async () => {
-    const groupId = prompt("Neue Gruppen-ID?");
-    const entityInput = prompt("Kommaseparierte Entity-IDs?");
-    if (!groupId || !entityInput) return;
-
-    try {
-      const res = await fetch(`/api/group-by?group_id=${groupId}&entity_ids=${entityInput}`);
-      const data = await res.json();
-
-      if (!data.success || !data.nodes || !data.links) {
-        setStatusMsg(data.message || "Ungültige Antwort vom Backend.");
-        return;
-      }
-
-      setGraphData({
-        nodes: data.nodes,
-        links: data.links
-      });
-
-      setStatusMsg(`Group ${groupId} erfolgreich hinzugefügt.`);
-    } catch (err) {
-      setStatusMsg("Fehler beim Gruppieren: " + err);
-    }
-  };
 
 
   const drawGraph = () => {
@@ -232,13 +202,13 @@ export default function Home() {
     node.append("circle")
       .attr("r", 20)
       .attr("fill", (d: any) => {
-        if (d.id === groupId) return "gold"; 
-        if (d.type === "Entity") return "#1f77b4";
-        if (d.type === "Event") return "#2ca02c";
-        if (d.type === "Relationship") return "#d62728";
-        return "#999999";
+        switch (d.type) {
+          case "Entity": return "#1f77b4";
+          case "Event": return "#2ca02c";
+          case "Relationship": return "#d62728";
+          default: return "#999999";
+        }
       });
-
 
       node.append("text")
       .attr("text-anchor", "middle")
@@ -313,7 +283,7 @@ export default function Home() {
     <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
   
       {/* Filter + Entity list side-by-side */}
-      <div className="flex w-[1400px] gap-4">
+      <div className="flex w-[800px] gap-4">
         {/* Filter + Actions */}
         <Card className="w-[500px]">
           <CardHeader>
@@ -363,47 +333,8 @@ export default function Home() {
               <span>Use Aggregated View</span>
             </div>
             <Button onPress={loadGraph} className="mt-2" color="success">Show Graph</Button>
-
-            <div className="mt-6">
-              <label className="text-sm font-medium">Entity Grouping:</label>
-              <input
-                className="mt-1 block w-full border rounded px-2 py-1 text-sm"
-                type="text"
-                value={groupId}
-                onChange={(e) => setGroupId(e.target.value)}
-                placeholder="Group-ID (e.g. Musicians)"
-              />
-              <input
-                className="mt-2 block w-full border rounded px-2 py-1 text-sm"
-                type="text"
-                value={groupMembers}
-                onChange={(e) => setGroupMembers(e.target.value)}
-                placeholder="Entities (e.g. Boss,The Lookout)"
-              />
-              <Button
-                onPress={async () => {
-                  setStatusMsg("Grouping...");
-                  try {
-                    const res = await fetch(`/api/group-by?group_id=${encodeURIComponent(groupId)}&entity_ids=${encodeURIComponent(groupMembers)}`);
-                    const data = await res.json();
-                    if (data.success) {
-                      setGraphData({ nodes: data.nodes, links: data.links });
-                      setStatusMsg(`Success: ${data.message}`);
-                    } else {
-                      setStatusMsg(`Error: ${data.message}`);
-                    }
-                  } catch (err) {
-                    setStatusMsg(`Error Grouping: ${err}`);
-                  }
-                }}
-                className="mt-2"
-                color="success"
-              >
-                Create Entity Group
-              </Button>
-            </div>
+  
             <Alert isVisible={!!statusMsg} color="info" title="Status" description={statusMsg} className="mt-4" />
-            
           </CardBody>
         </Card>
   
@@ -422,10 +353,6 @@ export default function Home() {
             )}
           </ul>
         </div>
-
-          {/* Communcation Messsages */}
-          {/* <CommunicationMessages nodes={graphData.nodes} /> */}
-
       </div>
   
       {/* Graph and Summary */}
