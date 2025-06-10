@@ -117,7 +117,7 @@ async def load_graph_json():
         session.write_transaction(create_relationship_edges)
         print("Relationships transformed successfully.")
         # For testing purpose
-        if True:
+        if False:
             # Transform Communication Events
             session.write_transaction(create_communication_edges)
             print("Communication events transformed successfully.")
@@ -131,6 +131,7 @@ async def load_graph_json():
                         """)
     print("Graph loaded successfully.")
     return {"success": True, "message": "All nodes and edges loaded."}
+
 
 
 
@@ -240,8 +241,8 @@ def create_communication_edges(tx):
 # Read DB graph
 # This endpoint reads the graph data from the Neo4j database.
 # It retrieves nodes and edges, categorizes them into different types, and returns them in a JSON response.
-@router.get("/read-db-graph", response_class=JSONResponse)
-async def read_db_graph():
+@router.get("/read-db-graph_2", response_class=JSONResponse)
+async def read_db_graph_2():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     print("Reading graph data from Neo4j...")
     with driver.session() as session:
@@ -273,3 +274,193 @@ async def read_db_graph():
     return {"success": True, "nodes": nodes, "links": links}
 
 # Old functions removed
+@router.get("/read-db-graph", response_class=JSONResponse)
+async def read_db_graph():
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    nodes = []
+    edges = []
+
+    with driver.session() as session:
+        result = session.run("MATCH (n) RETURN n")
+        for record in result:
+            n = record["n"]
+            node_data = dict(n.items())
+            node_data["id"] = n.get("id")
+            nodes.append(node_data)
+
+        result = session.run("MATCH (a)-[r]->(b) RETURN a.id AS source, b.id AS target, r")
+        for record in result:
+            r = record["r"]
+            edge_data = dict(r.items())
+            edge_data["source"] = record["source"]
+            edge_data["target"] = record["target"]
+            edge_data["type"] = r.type if hasattr(r, "type") else r.get("type", "")
+            edges.append(edge_data)
+
+    return {"success": True, "nodes": nodes, "links": edges}
+
+@router.get("/get-events-by-date", response_class=JSONResponse)
+async def get_events_by_date(date: str):
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+
+    cypher = """
+    MATCH (e:Event)
+    WHERE date(e.timestamp) = date($date)
+    OPTIONAL MATCH (e)-[r]-(n)
+    RETURN e, r, n
+    """
+    result_nodes = []
+    result_links = []
+
+    with driver.session() as session:
+        res = session.run(cypher, date=date)
+        for record in res:
+            e = record["e"]
+            n = record.get("n")
+            r = record.get("r")
+            result_nodes.append(dict(e))
+            if n:
+                result_nodes.append(dict(n))
+            if r:
+                result_links.append({
+                    "source": r.start_node["id"],
+                    "target": r.end_node["id"],
+                    "type": r.type,
+                    **dict(r)
+                })
+    return {"success": True, "nodes": result_nodes, "links": result_links}
+
+@router.get("/filter-by-date", response_class=JSONResponse)
+async def filter_by_date(date: str = Query(..., description="YYYY-MM-DD format")):
+    """
+    Filter graph based on Event timestamp (date). Returns matching Events and their 1-hop neighbors.
+    """
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    nodes = []
+    edges = []
+    print(f"Filtering graph by date: {date}")
+
+    try:
+        with driver.session() as session:
+            query = """
+            MATCH (e:Event)
+            WHERE substring(e.timestamp, 0, 10) = $date
+            OPTIONAL MATCH (e)-[r]-(m)
+            RETURN DISTINCT e, r, m
+            """
+            result = session.run(query, date=date)
+
+            node_map = {}
+            edge_list = []
+
+            for record in result:
+                e_node = record["e"]
+                m_node = record.get("m")
+                r = record.get("r")
+
+                # Add Event node
+                if e_node and e_node.id not in node_map:
+                    node_map[e_node.id] = e_node
+                # Add neighbor node
+                if m_node and m_node.id not in node_map:
+                    node_map[m_node.id] = m_node
+                # Add relationship
+                if r:
+                    edge_list.append({
+                        "source": r.start_node.id,
+                        "target": r.end_node.id,
+                        "type": r.type,
+                        **r._properties
+                    })
+
+            nodes = [dict(n._properties, id=n.id) for n in node_map.values()]
+            edges = edge_list
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        driver.close()
+
+    return {"success": True, "nodes": nodes, "links": edges}
+
+@router.get("/sankey-communication-flows", response_class=JSONResponse)
+async def sankey_communication_flows(entity_id: str = Query(...), date: str = Query(None)):
+    """
+    Aggregate communication flows: Sender (Entity) → Communication (Event) → Receiver (Entity)
+    """
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    try:
+        with driver.session() as session:
+            query = """
+            MATCH (sender:Entity {id: $entity_id})-[r1:sent]->(comm:Event {sub_type: 'Communication'})-[r2:received]->(receiver:Entity)
+            WHERE substring(comm.timestamp, 0, 10) = $date
+            RETURN sender.id AS source, receiver.id AS target, count(comm) AS count
+            
+            """
+            result = session.run(query)
+
+            sankey_data = []
+            for record in result:
+                sankey_data.append({
+                    "source": record["source"],
+                    "target": record["target"],
+                    "value": record["count"]
+                })
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        driver.close()
+    print(sankey_data)
+    return {"success": True, "links": sankey_data}
+
+@router.get("/filter-by-content", response_class=JSONResponse)
+async def filter_by_content(query: str = Query(..., description="Search string for content field")):
+    """
+    Filter graph for communication events by content substring match. Returns matching communication events and their 1-hop neighbors.
+    """
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    nodes = []
+    edges = []
+
+    print(f"Filtering communication events by content: {query}")
+
+    try:
+        with driver.session() as session:
+            neo_query = """
+            MATCH (e:Event {sub_type: 'Communication'})
+            WHERE toLower(e.content) CONTAINS toLower($query)
+            OPTIONAL MATCH (e)-[r]-(n)
+            RETURN DISTINCT e, r, n
+            """
+            result = session.run(neo_query, query=query)
+
+            node_map = {}
+            edge_list = []
+
+            for record in result:
+                e_node = record["e"]
+                n_node = record.get("n")
+                r = record.get("r")
+
+                if e_node and e_node.id not in node_map:
+                    node_map[e_node.id] = e_node
+                if n_node and n_node.id not in node_map:
+                    node_map[n_node.id] = n_node
+                if r:
+                    edge_list.append({
+                        "source": r.start_node.id,
+                        "target": r.end_node.id,
+                        "type": r.type,
+                        **r._properties
+                    })
+
+            nodes = [dict(n._properties, id=n.id) for n in node_map.values()]
+            edges = edge_list
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        driver.close()
+
+    return {"success": True, "nodes": nodes, "links": edges}
