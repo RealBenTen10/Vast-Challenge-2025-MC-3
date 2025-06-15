@@ -9,7 +9,7 @@ export function getVisibleNodeIds(
 ): Set<string> {
   let visible = new Set<string>();
 
-  // 1️⃣ Entity Filter + Depth
+  // Entity Filter + Depth
   if (filterEntityId) {
     const queue = [filterEntityId];
     let level = 0;
@@ -42,7 +42,7 @@ export function getVisibleNodeIds(
     graphData.nodes.forEach(node => visible.add(node.id));
   }
 
-  // 2️⃣ Content Filter
+  // Content Filter
   if (filterContent && filterContent.trim() !== "") {
     const contentLower = filterContent.toLowerCase();
     const relevantEvents = new Set<string>();
@@ -78,7 +78,7 @@ export function getVisibleNodeIds(
     );
   }
 
-  // 3️⃣ Timestamp Filter (applies only to Events, keeps all Entities/Relationships)
+  // Timestamp Filter (applies only to Events, keeps all Entities/Relationships)
   if (selectedTimestamp && selectedTimestamp.trim() !== "") {
 
     visible = new Set(

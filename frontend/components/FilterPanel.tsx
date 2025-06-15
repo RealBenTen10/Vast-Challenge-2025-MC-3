@@ -11,7 +11,6 @@ interface FilterPanelProps {
   filterDepth: number;
   setFilterDepth: (n: number) => void;
   callApi: (endpoint: string) => void;
-  loadGraph: () => void;
   statusMsg: string;
 }
 
@@ -69,7 +68,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         />
       </div>
 
-      <Button onPress={loadGraph} className="mt-2" color="success">
+      <Button onPress={() => callApi("/read-db-graph")} className="mt-2" color="success">
         Show Graph
       </Button>
 

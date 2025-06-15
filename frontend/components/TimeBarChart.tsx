@@ -2,30 +2,23 @@
 
 import React, { useEffect, useRef } from "react";
 import * as d3 from "d3";
+import { Node } from "./types";
 
-interface Props {
-  graphData: any;
-  setSelectedTimestamp: (date: string) => void;
-  filterMode: string;
-  filterEntityId: string;
-  filterDepth: number;
-  filterContent: string;
+interface TimeBarChartProps {
+  graphData: { nodes: Node[] };
   selectedTimestamp: string | null;
+  setSelectedTimestamp: (date: string) => void;
 }
 
-const TimeSeriesView: React.FC<Props> = ({
+const TimeBarChart: React.FC<TimeBarChartProps> = ({
   graphData,
-  setSelectedTimestamp,
-  filterMode,
-  filterEntityId,
-  filterDepth,
-  filterContent,
   selectedTimestamp,
+  setSelectedTimestamp,
 }) => {
   const timeSeriesRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
-    if (!timeSeriesRef.current) return;
+    if (!timeSeriesRef.current || graphData.nodes.length === 0) return;
     d3.select(timeSeriesRef.current).selectAll("*").remove();
 
     const timestamps: string[] = graphData.nodes
@@ -41,7 +34,10 @@ const TimeSeriesView: React.FC<Props> = ({
       dateCounts[day] = (dateCounts[day] || 0) + 1;
     });
 
-    const data = Object.entries(dateCounts).map(([date, count]) => ({ date: new Date(date), count }));
+    const data = Object.entries(dateCounts).map(([date, count]) => ({
+      date: new Date(date),
+      count
+    }));
 
     const svg = d3.select(timeSeriesRef.current);
     const width = svg.node()?.clientWidth || 600;
@@ -110,12 +106,14 @@ const TimeSeriesView: React.FC<Props> = ({
       .attr("text-anchor", "middle")
       .attr("fill", "black")
       .text("Event Count");
-
-  }, [graphData, filterMode, filterEntityId, filterDepth, filterContent, selectedTimestamp]);
+  }, [graphData, selectedTimestamp]);
 
   return (
-    <svg ref={timeSeriesRef} className="w-full h-60" />
+    <div className="w-full max-w-7xl mt-6">
+      <h4 className="text-md font-semibold mb-2">Communication Time Bar Chart</h4>
+      <svg ref={timeSeriesRef} className="w-full h-60"></svg>
+    </div>
   );
 };
 
-export default TimeSeriesView;
+export default TimeBarChart;
