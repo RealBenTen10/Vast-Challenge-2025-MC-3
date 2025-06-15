@@ -2,7 +2,11 @@
 
 import React, { useEffect, useRef } from "react";
 import * as d3 from "d3";
-import { SankeyGraph, sankey as d3Sankey, sankeyLinkHorizontal } from "d3-sankey";
+import {
+  SankeyGraph,
+  sankey as d3Sankey,
+  sankeyLinkHorizontal,
+} from "d3-sankey";
 
 interface SankeyDataItem {
   source: string;
@@ -29,11 +33,15 @@ export default function Sankey({ entityId, selectedDate }: SankeyProps) {
         const res = await fetch(`/api/sankey-communication-flows?${params.toString()}`);
         const json = await res.json();
 
-        if (json.success && Array.isArray(json.links)) {
+        // 🛡️ Only render if data is valid
+        if (json.success && Array.isArray(json.links) && json.links.length > 0) {
           drawSankeyDiagram(json.links);
+        } else {
+          d3.select(svgRef.current).selectAll("*").remove();
         }
       } catch (err) {
         console.error("Error loading Sankey data:", err);
+        d3.select(svgRef.current).selectAll("*").remove();
       }
     };
 
@@ -55,29 +63,43 @@ export default function Sankey({ entityId, selectedDate }: SankeyProps) {
       .nodePadding(20)
       .extent([[0, 0], [width, height]]);
 
-    const nodesMap: Record<string, { name: string }> = {};
+    const nodeMap = new Map<string, { name: string }>();
     data.forEach(d => {
-      nodesMap[d.source] = { name: d.source };
-      nodesMap[d.target] = { name: d.target };
+      if (!nodeMap.has(d.source)) nodeMap.set(d.source, { name: d.source });
+      if (!nodeMap.has(d.target)) nodeMap.set(d.target, { name: d.target });
     });
 
-    const sankeyGraph: SankeyGraph<any, any> = {
-      nodes: Object.values(nodesMap),
-      links: data.map(d => ({
-        source: d.source,
-        target: d.target,
-        value: d.value,
-      })),
-    };
+    const nodes = Array.from(nodeMap.values());
+
+    const links = data.map(d => ({
+      source: nodeMap.get(d.source)!,
+      target: nodeMap.get(d.target)!,
+      value: d.value,
+    }));
+
+    const sankeyGraph: SankeyGraph<any, any> = { nodes, links };
 
     sankey(sankeyGraph);
 
-    const color = d3.scaleOrdinal(d3.schemeTableau10).domain(Object.keys(nodesMap));
+    const color = d3.scaleOrdinal(d3.schemeTableau10).domain(nodes.map(d => d.name));
 
     const g = svg
       .attr("viewBox", [0, 0, width, height].toString())
       .append("g");
 
+    // Tooltip div
+    const tooltip = d3.select("body")
+      .append("div")
+      .style("position", "absolute")
+      .style("z-index", "10")
+      .style("visibility", "hidden")
+      .style("background", "#fff")
+      .style("border", "1px solid #ccc")
+      .style("padding", "8px")
+      .style("border-radius", "4px")
+      .style("font-size", "0.85rem");
+
+    // Nodes
     g.append("g")
       .selectAll("rect")
       .data(sankeyGraph.nodes)
@@ -88,9 +110,19 @@ export default function Sankey({ entityId, selectedDate }: SankeyProps) {
       .attr("width", d => d.x1! - d.x0!)
       .attr("height", d => Math.max(1, d.y1! - d.y0!))
       .attr("fill", d => color(d.name))
-      .append("title")
-      .text(d => `${d.name}`);
+      .on("mouseover", function (event, d) {
+        tooltip.html(`<strong>${d.name}</strong><br/>In: ${d.value}`)
+          .style("visibility", "visible");
+      })
+      .on("mousemove", event => {
+        tooltip.style("top", `${event.pageY + 10}px`)
+          .style("left", `${event.pageX + 10}px`);
+      })
+      .on("mouseout", () => {
+        tooltip.style("visibility", "hidden");
+      });
 
+    // Links
     g.append("g")
       .selectAll("path")
       .data(sankeyGraph.links)
@@ -98,11 +130,23 @@ export default function Sankey({ entityId, selectedDate }: SankeyProps) {
       .append("path")
       .attr("d", sankeyLinkHorizontal())
       .attr("fill", "none")
-      .attr("stroke", d => color((d as any).source.name))
+      .attr("stroke", d => color(d.source.name))
       .attr("stroke-width", d => Math.max(1, d.width!))
       .attr("stroke-opacity", 0.6)
-      .append("title")
-      .text(d => `${(d as any).source.name} → ${(d as any).target.name}: ${d.value}`);
+      .on("mouseover", function (event, d) {
+        tooltip.html(`
+          <strong>From:</strong> ${d.source.name}<br/>
+          <strong>To:</strong> ${d.target.name}<br/>
+          <strong>Value:</strong> ${d.value}
+        `).style("visibility", "visible");
+      })
+      .on("mousemove", event => {
+        tooltip.style("top", `${event.pageY + 10}px`)
+          .style("left", `${event.pageX + 10}px`);
+      })
+      .on("mouseout", () => {
+        tooltip.style("visibility", "hidden");
+      });
   };
 
   return (

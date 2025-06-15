@@ -10,7 +10,7 @@ interface MSVItem {
   sub_type: string;
 }
 
-export default function MassiveSequenceView() {
+export default function CommunicationView() {
   const [msvData, setMsvData] = useState<MSVItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +52,7 @@ export default function MassiveSequenceView() {
   return (
     <Card className="w-full max-w-7xl mt-8">
       <CardHeader>
-        <h4 className="text-lg font-semibold">Massive Sequence View</h4>
+        <h4 className="text-lg font-semibold">Messages</h4>
       </CardHeader>
       <CardBody>
         {/* Filters */}
@@ -72,13 +72,12 @@ export default function MassiveSequenceView() {
           <p>No sequence data found.</p>
         ) : (
           <div className="overflow-auto max-h-96 border rounded">
-            <table className="min-w-full text-sm text-left">
+            <table className="min-w-full text-sm text-left table-auto">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="p-2">Timestamp</th>
-                  <th className="p-2">Source</th>
-                  <th className="p-2">Target</th>
-                  <th className="p-2">Event Type</th>
+                  <th className="p-2 w-32">Timestamp</th>
+                  <th className="p-2 w-24">Source</th>
+                  <th className="p-2 w-24">Target</th>
                   <th className="p-2">Content</th>
                 </tr>
               </thead>
@@ -88,8 +87,7 @@ export default function MassiveSequenceView() {
                     <td className="p-2">{item.timestamp}</td>
                     <td className="p-2">{item.source}</td>
                     <td className="p-2">{item.target}</td>
-                    <td className="p-2">{item.sub_type}</td>
-                    <td className="p-2 truncate max-w-xs">{item.content}</td>
+                    <td className="p-2 whitespace-pre-wrap break-words">{item.content}</td>
                   </tr>
                 ))}
               </tbody>

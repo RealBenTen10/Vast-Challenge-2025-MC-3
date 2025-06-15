@@ -34,25 +34,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
       <Button onPress={() => callApi("/load-graph-json")} className="mt-2" color="primary">
         Load JSON Graph
       </Button>
-      <div className="mt-4">
-        <label className="text-sm font-medium">Filter by Event Subtype(s):</label>
-        <select
-          multiple
-          className="mt-1 block w-full border rounded px-2 py-1 text-sm"
-          value={selectedEventTypes}
-          onChange={(e) => {
-            const options = Array.from(e.target.selectedOptions, option => option.value);
-            setSelectedEventTypes(options);
-          }}
-        >
-          <option value="Communication">Communication</option>
-          <option value="VesselMovement">Vessel Movement</option>
-          <option value="Inspection">Inspection</option>
-          <option value="Delivery">Delivery</option>
-          <option value="Permit">Permit</option>
-        </select>
-      </div>
-
+      
       <div className="mt-4">
         <label className="text-sm font-medium">Filter by Entity ID:</label>
         <input

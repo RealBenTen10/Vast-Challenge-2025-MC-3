@@ -415,7 +415,8 @@ async def sankey_communication_flows(
         return {"success": False, "error": str(e)}
     finally:
         driver.close()
-
+    if sankey_data == []:
+        return {"success": False, "message": "No communication flows found for the given parameters."}
     return {"success": True, "links": sankey_data}
 
 @router.get("/filter-by-content", response_class=JSONResponse)
@@ -473,42 +474,65 @@ async def filter_by_content(query: str = Query(..., description="Search string f
 async def massive_sequence_view(
     start_date: Optional[str] = Query(None, description="Start date in YYYY-MM-DD"),
     end_date: Optional[str] = Query(None, description="End date in YYYY-MM-DD"),
-    entity_ids: Optional[List[str]] = Query(None, description="List of Entity IDs"),
+    entity_ids: Optional[str] = Query(None, description="List of Entity IDs"),
     keyword: Optional[str] = Query(None, description="Search keyword in content fields")
 ):
+    print(entity_ids)
+    
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     results = []
+
     try:
         with driver.session() as session:
-            cypher = """
-            MATCH (e:Event {sub_type: 'Communication'})
-            OPTIONAL MATCH (src)-[s:SENT]->(e)
-            OPTIONAL MATCH (e)-[r:RECEIVED]->(tgt)
-            WHERE 
-                ($start_date IS NULL OR date(e.timestamp) >= date($start_date)) AND
-                ($end_date IS NULL OR date(e.timestamp) <= date($end_date)) AND
-                ($keyword IS NULL OR any(field IN [e.content, e.findings, e.results, e.destination, e.outcome, e.reference] 
-                    WHERE toLower(field) CONTAINS toLower($keyword))) AND
-                ($entity_ids IS NULL OR src.id IN $entity_ids OR tgt.id IN $entity_ids)
-            RETURN e, src.id AS source_id, tgt.id AS target_id
-            ORDER BY e.timestamp
-            """
+            # Base MATCH pattern
+            cypher_parts = [
+                "MATCH (sender:Entity)-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity)"
+            ]
+
+            # WHERE clause parts
+            where_clauses = []
+
+            if entity_ids:
+                where_clauses.append("sender.id = $entity_ids OR receiver.id = $entity_ids")
+
+            if start_date:
+                where_clauses.append("substring(comm.timestamp, 0, 10) >= $start_date")
+
+            if end_date:
+                where_clauses.append("substring(comm.timestamp, 0, 10) <= $end_date")
+
+            if keyword:
+                where_clauses.append("""
+                    any(field IN [comm.content, comm.findings, comm.results, comm.destination, comm.outcome, comm.reference] 
+                    WHERE toLower(field) CONTAINS toLower($keyword))
+                """)
+
+            if where_clauses:
+                cypher_parts.append("WHERE " + " AND ".join(where_clauses))
+
+            # Final RETURN clause
+            cypher_parts.append("RETURN comm, sender.id AS source, receiver.id AS target ORDER BY comm.timestamp")
+
+            # Join all parts
+            cypher_query = "\n".join(cypher_parts)
+
             params = {
                 "start_date": start_date,
                 "end_date": end_date,
                 "entity_ids": entity_ids,
-                "keyword": keyword
+                "keyword": keyword,
             }
 
-            records = session.run(cypher, **params)
+            records = session.run(cypher_query, **params)
+
             for record in records:
-                event = record["e"]
+                event = record["comm"]
                 results.append({
                     "event_id": event.id,
                     "timestamp": event["timestamp"],
-                    "source": record.get("source_id"),
-                    "target": record.get("target_id"),
-                    "content": event.get("content", "")[:100],  # Truncated preview
+                    "source": record.get("source") or "–",
+                    "target": record.get("target") or "–",
+                    "content": event.get("content", ""),
                     "sub_type": event.get("sub_type", ""),
                 })
 
