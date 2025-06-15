@@ -16,7 +16,6 @@ import CommunicationView from "@/components/CommunicationView";
 import FilterPanel from "@/components/FilterPanel";
 import GraphView from "@/components/GraphView";
 import TimeBarChart from "@/components/TimeBarChart";
-import QuestionInput from "@/components/QuestionInput";
 
 export default function Home() {
   const [statusMsg, setStatusMsg] = useState<string>("");
@@ -116,7 +115,7 @@ export default function Home() {
     <Sankey entityId={filterEntityId} selectedDate={selectedTimestamp} />
     
     { /* GraphRAG LLM Component */}
-    <QuestionInput />
+    
   </section>
 );
 
