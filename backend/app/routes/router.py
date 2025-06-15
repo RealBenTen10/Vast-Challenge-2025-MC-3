@@ -241,7 +241,7 @@ def create_communication_edges(tx):
 # Read DB graph
 # This endpoint reads the graph data from the Neo4j database.
 # It retrieves nodes and edges, categorizes them into different types, and returns them in a JSON response.
-@router.get("/read-db-graph_2", response_class=JSONResponse)
+@router.get("/read-db-graph-2", response_class=JSONResponse)
 async def read_db_graph_2():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     print("Reading graph data from Neo4j...")
@@ -276,6 +276,7 @@ async def read_db_graph_2():
 # Old functions removed
 @router.get("/read-db-graph", response_class=JSONResponse)
 async def read_db_graph():
+    print("Reading graph data from Neo4j...")
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     nodes = []
     edges = []
