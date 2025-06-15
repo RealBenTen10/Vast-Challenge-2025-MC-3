@@ -3,35 +3,14 @@
 import { title, subtitle } from "@/components/primitives";
 import { ThemeSwitch } from "@/components/theme-switch";
 import MassiveSequenceView from "@/components/MassiveSequenceView";
+import Sankey from "@/components/Sankey";
+import { Node, Link, GraphData } from "@/components/types";
 import { Card, CardHeader, CardBody, Divider, Button, Alert, Switch } from "@heroui/react";
 import React, { ReactElement, useEffect, useState, useRef } from "react";
 import * as d3 from "d3";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { sankey, sankeyLinkHorizontal, SankeyGraph } from 'd3-sankey';
 
-
-interface Node {
-  id: string;
-  label: string;
-  type?: string;
-  group?: number;
-  degree?: number;
-  [key: string]: any;
-}
-
-interface Link {
-  source: string | Node;
-  target: string | Node;
-  type?: string;
-  value?: number;
-  timestamp?: string;
-  [key: string]: any;
-}
-
-interface GraphData {
-  nodes: Node[];
-  links: Link[];
-}
 
 export default function Home() {
   const [statusMsg, setStatusMsg] = useState<string>("");
@@ -387,6 +366,7 @@ export default function Home() {
 
 
 
+
   const callApi = async (endpoint: string) => {
     setStatusMsg(`Calling ${endpoint}...`);
     try {
@@ -559,6 +539,10 @@ export default function Home() {
       <svg ref={svgRef} className="w-full h-full"></svg>
     </div>
 
+    {filterEntityId && (
+      <Sankey entityId={filterEntityId} selectedDate={selectedTimestamp} />
+    )}
+
     {/* Time Series Chart */}
     <div className="w-full max-w-7xl mt-6">
       <h4 className="text-md font-semibold mb-2">Communication Time Series</h4>
@@ -588,9 +572,9 @@ export default function Home() {
         </ul>
       </div>
       
-    )}
     </div>
     <MassiveSequenceView className="mt-6" />
+    
   </section>
 );
 

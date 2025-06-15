@@ -384,20 +384,23 @@ async def filter_by_date(date: str = Query(..., description="YYYY-MM-DD format")
     return {"success": True, "nodes": nodes, "links": edges}
 
 @router.get("/sankey-communication-flows", response_class=JSONResponse)
-async def sankey_communication_flows(entity_id: str = Query(...), date: str = Query(None)):
+async def sankey_communication_flows(
+    entity_id: str = Query(..., description="Entity ID to filter communications from"),
+    date: str = Query(None, description="Optional date filter in YYYY-MM-DD format")
+):
     """
-    Aggregate communication flows: Sender (Entity) → Communication (Event) → Receiver (Entity)
+    Returns Sankey data showing how many communications were sent from `entity_id` to other entities,
+    optionally filtered by date.
     """
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     try:
         with driver.session() as session:
             query = """
-            MATCH (sender:Entity {id: $entity_id})-[r1:sent]->(comm:Event {sub_type: 'Communication'})-[r2:received]->(receiver:Entity)
-            WHERE substring(comm.timestamp, 0, 10) = $date
-            RETURN sender.id AS source, receiver.id AS target, count(comm) AS count
-            
+            MATCH (sender:Entity {id: $entity_id})-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity)
+            WHERE $date IS NULL OR substring(comm.timestamp, 0, 10) = $date
+            RETURN sender.id AS source, receiver.id AS target, count(*) AS count
             """
-            result = session.run(query)
+            result = session.run(query, entity_id=entity_id, date=date)
 
             sankey_data = []
             for record in result:
@@ -411,7 +414,7 @@ async def sankey_communication_flows(entity_id: str = Query(...), date: str = Qu
         return {"success": False, "error": str(e)}
     finally:
         driver.close()
-    print(sankey_data)
+
     return {"success": True, "links": sankey_data}
 
 @router.get("/filter-by-content", response_class=JSONResponse)
@@ -464,3 +467,53 @@ async def filter_by_content(query: str = Query(..., description="Search string f
         driver.close()
 
     return {"success": True, "nodes": nodes, "links": edges}
+
+@router.get("/massive-sequence-view")
+async def massive_sequence_view(
+    start_date: Optional[str] = Query(None, description="Start date in YYYY-MM-DD"),
+    end_date: Optional[str] = Query(None, description="End date in YYYY-MM-DD"),
+    entity_ids: Optional[List[str]] = Query(None, description="List of Entity IDs"),
+    keyword: Optional[str] = Query(None, description="Search keyword in content fields")
+):
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    results = []
+    try:
+        with driver.session() as session:
+            cypher = """
+            MATCH (e:Event {sub_type: 'Communication'})
+            OPTIONAL MATCH (src)-[s:SENT]->(e)
+            OPTIONAL MATCH (e)-[r:RECEIVED]->(tgt)
+            WHERE 
+                ($start_date IS NULL OR date(e.timestamp) >= date($start_date)) AND
+                ($end_date IS NULL OR date(e.timestamp) <= date($end_date)) AND
+                ($keyword IS NULL OR any(field IN [e.content, e.findings, e.results, e.destination, e.outcome, e.reference] 
+                    WHERE toLower(field) CONTAINS toLower($keyword))) AND
+                ($entity_ids IS NULL OR src.id IN $entity_ids OR tgt.id IN $entity_ids)
+            RETURN e, src.id AS source_id, tgt.id AS target_id
+            ORDER BY e.timestamp
+            """
+            params = {
+                "start_date": start_date,
+                "end_date": end_date,
+                "entity_ids": entity_ids,
+                "keyword": keyword
+            }
+
+            records = session.run(cypher, **params)
+            for record in records:
+                event = record["e"]
+                results.append({
+                    "event_id": event.id,
+                    "timestamp": event["timestamp"],
+                    "source": record.get("source_id"),
+                    "target": record.get("target_id"),
+                    "content": event.get("content", "")[:100],  # Truncated preview
+                    "sub_type": event.get("sub_type", ""),
+                })
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        driver.close()
+
+    return {"success": True, "data": results}
