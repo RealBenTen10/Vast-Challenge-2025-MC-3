@@ -24,7 +24,6 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   filterDepth,
   setFilterDepth,
   callApi,
-  loadGraph,
   statusMsg,
 }) => {
   return (
