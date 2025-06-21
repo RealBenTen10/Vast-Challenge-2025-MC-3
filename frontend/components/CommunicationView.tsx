@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, CardHeader, CardBody, Button, Input } from "@heroui/react";
+import { Card, CardHeader, CardBody } from "@heroui/react";
 
 interface MSVItem {
   event_id: string;
@@ -10,29 +10,35 @@ interface MSVItem {
   sub_type: string;
 }
 
-export default function CommunicationView() {
+interface CommunicationViewProps {
+  filterEntityId: string;
+  filterContent: string;
+  selectedTimestamp: string | null;
+}
+
+export default function CommunicationView({
+  filterEntityId,
+  filterContent,
+  selectedTimestamp,
+}: CommunicationViewProps) {
   const [msvData, setMsvData] = useState<MSVItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
-  const [entityFilter, setEntityFilter] = useState<string>("");
-  const [keyword, setKeyword] = useState<string>("");
-
   const loadMSV = async () => {
     setLoading(true);
     setError(null);
+
     try {
       const params = new URLSearchParams();
-      if (startDate) params.append("start_date", startDate);
-      if (endDate) params.append("end_date", endDate);
-      if (entityFilter) params.append("entity_ids", entityFilter);
-      if (keyword) params.append("keyword", keyword);
+      if (selectedTimestamp) params.append("start_date", selectedTimestamp);
+      if (selectedTimestamp) params.append("end_date", selectedTimestamp);
+      if (filterEntityId) params.append("entity_ids", filterEntityId);
+      if (filterContent) params.append("keyword", filterContent);
 
       const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
       const data = await res.json();
+
       if (data.success) {
         setMsvData(data.data);
       } else {
@@ -47,7 +53,7 @@ export default function CommunicationView() {
 
   useEffect(() => {
     loadMSV();
-  }, []);
+  }, [filterEntityId, filterContent, selectedTimestamp]);
 
   return (
     <Card className="w-full max-w-7xl mt-8">
@@ -55,15 +61,6 @@ export default function CommunicationView() {
         <h4 className="text-lg font-semibold">Messages</h4>
       </CardHeader>
       <CardBody>
-        {/* Filters */}
-        <div className="flex flex-wrap gap-4 mb-4">
-          <Input label="Start Date (YYYY-MM-DD)" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          <Input label="End Date (YYYY-MM-DD)" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          <Input label="Entity ID" value={entityFilter} onChange={(e) => setEntityFilter(e.target.value)} />
-          <Input label="Keyword" value={keyword} onChange={(e) => setKeyword(e.target.value)} />
-          <Button color="primary" onClick={loadMSV}>Apply Filters</Button>
-        </div>
-
         {loading ? (
           <p>Loading sequence data...</p>
         ) : error ? (

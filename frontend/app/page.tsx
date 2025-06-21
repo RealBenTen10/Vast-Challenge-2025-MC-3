@@ -109,7 +109,12 @@ export default function Home() {
     <LegendPanel />
 
     {/* Massive Sequence View */}
-    <CommunicationView className="mt-6" />
+    <CommunicationView
+  filterEntityId={filterEntityId}
+  filterContent={filterContent}
+  selectedTimestamp={selectedTimestamp}
+/>
+
     
     {/* Sankey  */}
     <Sankey entityId={filterEntityId} selectedDate={selectedTimestamp} />

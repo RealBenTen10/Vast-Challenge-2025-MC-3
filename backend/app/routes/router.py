@@ -493,13 +493,13 @@ async def massive_sequence_view(
             where_clauses = []
 
             if entity_ids:
-                where_clauses.append("sender.id = $entity_ids OR receiver.id = $entity_ids")
+                where_clauses.append("(sender.id = $entity_ids OR receiver.id = $entity_ids)")
 
             if start_date:
-                where_clauses.append("substring(comm.timestamp, 0, 10) >= $start_date")
+                where_clauses.append(f"substring(comm.timestamp, 0, {len(start_date)}) >= $start_date")
 
             if end_date:
-                where_clauses.append("substring(comm.timestamp, 0, 10) <= $end_date")
+                where_clauses.append(f"substring(comm.timestamp, 0, {len(end_date)}) <= $end_date")
 
             if keyword:
                 where_clauses.append("""
