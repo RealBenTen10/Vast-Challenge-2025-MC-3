@@ -90,6 +90,20 @@ const GraphView: React.FC<Props> = ({
         graphData.nodes.forEach(n => visible.add(n.id));
       }
 
+      if (timestampFilterStart || timestampFilterEnd) {
+        visible = new Set(
+          Array.from(visible).filter(id => {
+            const node = graphData.nodes.find(n => n.id === id);
+            if (!node || node.type !== "Event" || !node.timestamp) return true;
+            const ts = new Date(node.timestamp);
+            const start = timestampFilterStart ? new Date(timestampFilterStart) : null;
+            const end = timestampFilterEnd ? new Date(timestampFilterEnd) : null;
+            return (!start || ts >= start) && (!end || ts <= end);
+          })
+        );
+      }
+
+
       if (filterContent.trim()) {
         const lowerContent = filterContent.toLowerCase();
         const relevantEvents = new Set<string>();
@@ -133,16 +147,29 @@ const GraphView: React.FC<Props> = ({
 
     setVisibleEntities(nodes.filter(d => d.type === "Entity").map(d => ({ id: d.id, sub_type: d.label })));
 
-    const links = graphData.links.filter(link =>
-      visibleIds.has(typeof link.source === "string" ? link.source : link.source.id) &&
-      visibleIds.has(typeof link.target === "string" ? link.target : link.target.id)
-    ).map(link => ({
+    const links = graphData.links.filter(link => {
+      const src = typeof link.source === "string" ? link.source : link.source.id;
+      const tgt = typeof link.target === "string" ? link.target : link.target.id;
+      const isVisible = visibleIds.has(src) && visibleIds.has(tgt);
+
+      if (!isVisible) return false;
+
+      if (link.type === "COMMUNICATION" && link.timestamp) {
+        const ts = new Date(link.timestamp);
+        const start = timestampFilterStart ? new Date(timestampFilterStart) : null;
+        const end = timestampFilterEnd ? new Date(timestampFilterEnd) : null;
+        return (!start || ts >= start) && (!end || ts <= end);
+      }
+
+      return true;
+    }).map(link => ({
       source: typeof link.source === "string" ? link.source : link.source.id,
       target: typeof link.target === "string" ? link.target : link.target.id,
       type: link.type || '',
       timestamp: link.timestamp,
       value: link.value || 1
     }));
+
 
     const subtypeCounts: Record<string, number> = {};
     nodes.forEach(node => {

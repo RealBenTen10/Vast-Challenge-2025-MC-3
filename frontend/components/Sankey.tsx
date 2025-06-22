@@ -19,7 +19,8 @@ interface SankeyProps {
   setFilterSender: (id: string) => void;
   filterReceiver: string;
   setFilterReceiver: (id: string) => void;
-  selectedDate: string | null;
+  timestampFilterStart: string;
+  timestampFilterEnd: string;
 }
 
 export default function Sankey({
@@ -27,12 +28,12 @@ export default function Sankey({
   setFilterSender,
   filterReceiver,
   setFilterReceiver,
-  selectedDate,
+  timestampFilterStart,
+  timestampFilterEnd,
 }: SankeyProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
-    // Skip if no sender and no receiver
     if (!filterSender && !filterReceiver) return;
 
     const fetchDataAndDraw = async () => {
@@ -40,7 +41,8 @@ export default function Sankey({
         const params = new URLSearchParams();
         if (filterSender) params.append("sender", filterSender);
         if (filterReceiver) params.append("receiver", filterReceiver);
-        if (selectedDate) params.append("date", selectedDate);
+        if (timestampFilterStart) params.append("start_date", timestampFilterStart);
+        if (timestampFilterEnd) params.append("end_date", timestampFilterEnd);
 
         const res = await fetch(`/api/sankey-communication-flows?${params.toString()}`);
         const json = await res.json();
@@ -57,7 +59,7 @@ export default function Sankey({
     };
 
     fetchDataAndDraw();
-  }, [filterSender, filterReceiver, selectedDate]);
+  }, [filterSender, filterReceiver, timestampFilterStart, timestampFilterEnd]);
 
   const drawSankeyDiagram = (data: SankeyDataItem[]) => {
     const svg = d3.select(svgRef.current);
@@ -97,7 +99,6 @@ export default function Sankey({
       .attr("viewBox", `0 0 ${width} ${height}`)
       .append("g");
 
-    // Tooltip
     const tooltip = d3
       .select("body")
       .append("div")
@@ -110,7 +111,6 @@ export default function Sankey({
       .style("border-radius", "4px")
       .style("font-size", "0.85rem");
 
-    // Nodes
     g.append("g")
       .selectAll("rect")
       .data(sankeyGraph.nodes)
@@ -130,20 +130,18 @@ export default function Sankey({
           .style("left", `${event.pageX + 10}px`);
       })
       .on("click", function (event, d) {
-        // Determine whether to set as sender or receiver by position
         if (d.x0! < width / 2) {
           setFilterSender(d.name);
-          setFilterReceiver(""); // Clear receiver if sender is set
+          setFilterReceiver("");
         } else {
           setFilterReceiver(d.name);
-          setFilterSender(""); // Clear sender if receiver is set
+          setFilterSender("");
         }
       })
       .on("mouseout", () => {
         tooltip.style("visibility", "hidden");
       });
 
-    // Labels
     g.append("g")
       .selectAll("text")
       .data(sankeyGraph.nodes)
@@ -156,7 +154,6 @@ export default function Sankey({
       .text((d) => d.name)
       .style("font-size", "12px");
 
-    // Links
     g.append("g")
       .selectAll("path")
       .data(sankeyGraph.links)

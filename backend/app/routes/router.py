@@ -429,12 +429,16 @@ async def filter_by_date(date: str = Query(..., description="YYYY-MM-DD format")
 async def sankey_communication_flows(
     sender: Optional[str] = Query(None, description="Sender Entity ID"),
     receiver: Optional[str] = Query(None, description="Receiver Entity ID"),
-    date: Optional[str] = Query(None, description="Optional date filter in YYYY-MM-DD format")
+    start_date: Optional[str] = Query(None, description="Start of timestamp filter (e.g., '2040-10-01 09:00:00')"),
+    end_date: Optional[str] = Query(None, description="End of timestamp filter (e.g., '2040-10-01 11:00:00')")
 ):
     """
     Returns Sankey data showing how many communications were sent from one entity to another,
-    optionally filtered by sender, receiver, and date.
+    optionally filtered by sender, receiver, and timestamp range.
     """
+    print(f"Fetching communication flows for Sankey with parameters: sender={sender}, receiver={receiver}, start_date={start_date}, end_date={end_date}")
+    start_date = start_date.replace("T", " ") if start_date else None
+    end_date = end_date.replace("T", " ") if end_date else None
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     try:
         with driver.session() as session:
@@ -448,9 +452,12 @@ async def sankey_communication_flows(
                 where_clauses.append("sender.id = $sender")
             if receiver:
                 where_clauses.append("receiver.id = $receiver")
-            if date:
-                where_clauses.append("substring(comm.timestamp, 0, 10) = $date")
-            where_clauses.append("sender.id <> receiver.id")  # Ensure sender and receiver are different
+            if start_date:
+                where_clauses.append("comm.timestamp >= $start_date")
+            if end_date:
+                where_clauses.append("comm.timestamp <= $end_date")
+            where_clauses.append("sender.id <> receiver.id")  
+
             if where_clauses:
                 cypher_parts.append("WHERE " + " AND ".join(where_clauses))
 
@@ -459,7 +466,7 @@ async def sankey_communication_flows(
             """)
 
             query = "\n".join(cypher_parts)
-            result = session.run(query, sender=sender, receiver=receiver, date=date)
+            result = session.run(query, sender=sender, receiver=receiver, start_date=start_date, end_date=end_date)
 
             sankey_data = [
                 {
@@ -479,6 +486,7 @@ async def sankey_communication_flows(
         return {"success": False, "message": "No communication flows found for the given parameters."}
 
     return {"success": True, "links": sankey_data}
+
 
 @router.get("/filter-by-content", response_class=JSONResponse)
 async def filter_by_content(query: str = Query(..., description="Search string for content field")):
@@ -543,6 +551,8 @@ async def massive_sequence_view(
     
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     results = []
+    start_date = start_date.replace("T", " ") if start_date else None
+    end_date = end_date.replace("T", " ") if end_date else None
 
     try:
         with driver.session() as session:
@@ -600,7 +610,6 @@ async def massive_sequence_view(
                     "content": event.get("content", ""),
                     "sub_type": event.get("sub_type", ""),
                 })
-                print(f"Processed event: {event.id}, timestamp: {event['timestamp']}, source: {record.get('source')}, target: {record.get('target')}")
 
     except Exception as e:
         return {"success": False, "error": str(e)}

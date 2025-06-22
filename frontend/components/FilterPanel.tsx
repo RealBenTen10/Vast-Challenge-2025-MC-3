@@ -40,14 +40,6 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   statusMsg,
   setGraphData,
 }) => {
-  const handleShowGraph = () => {
-    const params = new URLSearchParams();
-    if (filterSender) params.append("filterSender", filterSender);
-    if (filterReceiver) params.append("filterReceiver", filterReceiver);
-    if (filterContent) params.append("filterContent", filterContent);
-    const endpoint = `/read-db-graph?${params.toString()}`;
-    callApi(endpoint);
-  };
 
   return (
     <div className="w-[400px] flex-shrink-0 border rounded-lg p-4">
@@ -55,7 +47,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
       <Button onPress={() => callApi("/load-graph-json")} className="mt-2" color="primary">
         Load JSON Graph
       </Button>
-      
+
       <div className="mt-4">
         <label className="text-sm font-medium">Filter sender by Entity ID:</label>
         <input
@@ -101,7 +93,25 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         />
       </div>
 
-      
+      <div className="mt-4">
+        <label className="text-sm font-medium">Start Timestamp (ISO):</label>
+        <input
+          className="mt-1 block w-full border rounded px-2 py-1 text-sm"
+          type="datetime-local"
+          value={timestampFilterStart ?? ""}
+          onChange={(e) => setTimestampFilterStart(e.target.value || null)}
+        />
+      </div>
+
+      <div className="mt-4">
+        <label className="text-sm font-medium">End Timestamp (ISO):</label>
+        <input
+          className="mt-1 block w-full border rounded px-2 py-1 text-sm"
+          type="datetime-local"
+          value={timestampFilterEnd ?? ""}
+          onChange={(e) => setTimestampFilterEnd(e.target.value || null)}
+        />
+      </div>
 
       <Alert isVisible={!!statusMsg} color="info" title="Status" description={statusMsg} className="mt-4" />
     </div>

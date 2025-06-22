@@ -137,8 +137,8 @@ export default function Home() {
       filterReceiver={filterReceiver}
       setFilterReceiver={setFilterReceiver}
       filterContent={filterContent}
-      filtertimestampStart={timestampFilterStart}
-      filtertimestampEnd={timestampFilterEnd}
+      timestampFilterStart={timestampFilterStart}
+      timestampFilterEnd={timestampFilterEnd}
     />
 
     
@@ -148,8 +148,8 @@ export default function Home() {
     setFilterSender={setFilterSender}
     filterReceiver={filterReceiver}
     setFilterReceiver={setFilterReceiver}
-    filtertimestampStart={timestampFilterStart}
-    filtertimestampEnd={timestampFilterEnd} 
+    timestampFilterStart={timestampFilterStart}
+    timestampFilterEnd={timestampFilterEnd} 
     />
     
     { /* GraphRAG LLM Component */}

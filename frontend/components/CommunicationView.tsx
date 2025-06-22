@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, CardHeader, CardBody } from "@heroui/react";
+import { Card, CardHeader, CardBody, Badge } from "@heroui/react";
 
 interface MSVItem {
   event_id: string;
@@ -16,7 +16,8 @@ interface CommunicationViewProps {
   filterReceiver: string;
   setFilterReceiver: (id: string) => void;
   filterContent: string;
-  selectedTimestamp: string | null;
+  timestampFilterStart: string;
+  timestampFilterEnd: string;
 }
 
 export default function CommunicationView({
@@ -25,7 +26,8 @@ export default function CommunicationView({
   filterReceiver,
   setFilterReceiver,
   filterContent,
-  selectedTimestamp,
+  timestampFilterStart,
+  timestampFilterEnd,
 }: CommunicationViewProps) {
   const [msvData, setMsvData] = useState<MSVItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,8 +39,8 @@ export default function CommunicationView({
 
     try {
       const params = new URLSearchParams();
-      if (selectedTimestamp) params.append("start_date", selectedTimestamp);
-      if (selectedTimestamp) params.append("end_date", selectedTimestamp);
+      if (timestampFilterStart) params.append("start_date", timestampFilterStart);
+      if (timestampFilterEnd) params.append("end_date", timestampFilterEnd);
       if (filterSender) params.append("sender", filterSender);
       if (filterReceiver) params.append("receiver", filterReceiver);
       if (filterContent) params.append("keyword", filterContent);
@@ -60,12 +62,22 @@ export default function CommunicationView({
 
   useEffect(() => {
     loadMSV();
-  }, [filterSender, filterReceiver, filterContent, selectedTimestamp]);
+  }, [filterSender, filterReceiver, filterContent, timestampFilterEnd, timestampFilterStart]);
 
   return (
     <Card className="w-full max-w-7xl mt-8">
       <CardHeader>
         <h4 className="text-lg font-semibold">Messages</h4>
+        <div className="mt-1 flex flex-wrap gap-2 text-sm">
+          {filterSender && <Badge color="blue">Sender: {filterSender}</Badge>}
+          {filterReceiver && <Badge color="green">Receiver: {filterReceiver}</Badge>}
+          {filterContent && <Badge color="purple">Keyword: {filterContent}</Badge>}
+          {timestampFilterStart && timestampFilterEnd && (
+            <Badge color="gray">
+              {new Date(timestampFilterStart).toLocaleString()} – {new Date(timestampFilterEnd).toLocaleString()}
+            </Badge>
+          )}
+        </div>
       </CardHeader>
       <CardBody>
         {loading ? (
@@ -73,7 +85,7 @@ export default function CommunicationView({
         ) : error ? (
           <p className="text-red-500">{error}</p>
         ) : msvData.length === 0 ? (
-          <p>No sequence data found.</p>
+          <p>No communication records found.</p>
         ) : (
           <div className="overflow-auto max-h-96 border rounded">
             <table className="min-w-full text-sm text-left table-auto">
@@ -89,8 +101,12 @@ export default function CommunicationView({
                 {msvData.map((item) => (
                   <tr key={item.event_id} className="border-b hover:bg-gray-50">
                     <td className="p-2">{item.timestamp}</td>
-                    <td className="p-2">{item.source}</td>
-                    <td className="p-2">{item.target}</td>
+                    <td className="p-2 text-blue-600 hover:underline cursor-pointer" onClick={() => setFilterSender(item.source)}>
+                      {item.source}
+                    </td>
+                    <td className="p-2 text-green-600 hover:underline cursor-pointer" onClick={() => setFilterReceiver(item.target)}>
+                      {item.target}
+                    </td>
                     <td className="p-2 whitespace-pre-wrap break-words">{item.content}</td>
                   </tr>
                 ))}
