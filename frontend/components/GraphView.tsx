@@ -1,12 +1,17 @@
+"use client";
+
 import React, { useEffect } from "react";
 import * as d3 from "d3";
-import { GraphData, Node, Link } from "@/components/types";
+import { GraphData } from "@/components/types";
 
 interface Props {
   graphData: GraphData;
   svgRef: React.RefObject<SVGSVGElement>;
   graphContainerRef: React.RefObject<HTMLDivElement>;
-  filterEntityId: string;
+  filterSender: string;
+  setFilterSender: (id: string) => void;
+  filterReceiver: string;
+  setFilterReceiver: (id: string) => void;
   filterDepth: number;
   filterContent: string;
   filterMode: string;
@@ -16,13 +21,17 @@ interface Props {
   setEdgeTypeCounts: (counts: Record<string, number>) => void;
   setEdgeCount: (count: number) => void;
   setSelectedInfo: (info: any) => void;
+  callApi: (endpoint: string) => void;
 }
 
 const GraphView: React.FC<Props> = ({
   graphData,
   svgRef,
   graphContainerRef,
-  filterEntityId,
+  filterSender,
+  setFilterSender,
+  filterReceiver,
+  setFilterReceiver,
   filterDepth,
   filterContent,
   filterMode,
@@ -31,13 +40,27 @@ const GraphView: React.FC<Props> = ({
   setSubtypeCounts,
   setEdgeTypeCounts,
   setEdgeCount,
-  setSelectedInfo
+  setSelectedInfo,
+  callApi
 }) => {
+  const handleShowGraph = () => {
+    const params = new URLSearchParams();
+    if (filterSender) params.append("filterSender", filterSender);
+    if (filterReceiver) params.append("filterReceiver", filterReceiver);
+    if (filterContent) params.append("filterContent", filterContent);
+    if (selectedTimestamp) params.append("selectedTimestamp", selectedTimestamp);
+    if (filterDepth) params.append("filterDepth", filterDepth.toString());
+    const endpoint = `/read-db-graph?${params.toString()}`;
+    callApi(endpoint);
+  };
+
+  useEffect(() => {
+    handleShowGraph();
+  }, [filterSender, filterReceiver, filterContent, filterMode, selectedTimestamp]);
   useEffect(() => {
     if (!svgRef.current || !graphContainerRef.current || graphData.nodes.length === 0) return;
 
     d3.select(svgRef.current).selectAll("*").remove();
-
     const width = graphContainerRef.current.clientWidth;
     const height = 500;
     const svg = d3.select(svgRef.current)
@@ -46,27 +69,24 @@ const GraphView: React.FC<Props> = ({
       .attr("viewBox", `0 0 ${width} ${height}`);
 
     const g = svg.append("g");
-
     svg.call(d3.zoom().scaleExtent([0.1, 4]).on("zoom", (event) => g.attr("transform", event.transform)));
 
     const getVisibleNodeIds = (): Set<string> => {
       let visible = new Set<string>();
-      if (filterEntityId) {
-        const queue = [filterEntityId];
+
+      const filterEntities = [filterSender, filterReceiver].filter(Boolean);
+      if (filterEntities.length > 0) {
+        const queue = [...filterEntities];
         let level = 0;
         while (queue.length > 0 && level <= filterDepth) {
           const nextQueue: string[] = [];
           for (const id of queue) {
             if (visible.has(id)) continue;
             visible.add(id);
-            const neighbors = graphData.links.filter(link => {
+            const neighbors = graphData.links.flatMap(link => {
               const src = typeof link.source === "string" ? link.source : link.source.id;
               const tgt = typeof link.target === "string" ? link.target : link.target.id;
-              return src === id || tgt === id;
-            }).map(link => {
-              const src = typeof link.source === "string" ? link.source : link.source.id;
-              const tgt = typeof link.target === "string" ? link.target : link.target.id;
-              return src === id ? tgt : src;
+              return src === id ? [tgt] : tgt === id ? [src] : [];
             });
             nextQueue.push(...neighbors);
           }
@@ -167,7 +187,11 @@ const GraphView: React.FC<Props> = ({
       .selectAll("line")
       .data(links)
       .enter().append("line")
-      .attr("stroke", d => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
+      .attr("stroke", d => {
+        if (d.type === "COMMUNICATION") return "#2ca02c";
+        if (d.type === "EVIDENCE_FOR") return "#800080";
+        return "#999";
+      })
       .attr("stroke-opacity", 0.6)
       .attr("stroke-width", 1)
       .on("click", (event, d) => setSelectedInfo({ type: "link", data: d }));
@@ -182,7 +206,12 @@ const GraphView: React.FC<Props> = ({
         .on("end", (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }))
       .on("mouseover", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4))
       .on("mouseout", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "none"))
-      .on("click", (event, d) => setSelectedInfo({ type: "node", data: d }));
+      .on("click", (event, d) => {
+        setSelectedInfo({ type: "node", data: d });
+        if (d.type === "Entity") {
+          setFilterSender(d.id); // Optional: update sender on click
+        }
+      });
 
     node.append("circle")
       .attr("r", 20)
@@ -196,14 +225,23 @@ const GraphView: React.FC<Props> = ({
       .style("font-size", d => `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.label)?.length - 10))}px`);
 
     simulation.on("tick", () => {
-      link.attr("x1", d => (d.source as any).x)
-          .attr("y1", d => (d.source as any).y)
-          .attr("x2", d => (d.target as any).x)
-          .attr("y2", d => (d.target as any).y);
+      link
+        .attr("x1", d => (d.source as any).x)
+        .attr("y1", d => (d.source as any).y)
+        .attr("x2", d => (d.target as any).x)
+        .attr("y2", d => (d.target as any).y);
 
       node.attr("transform", d => `translate(${d.x},${d.y})`);
     });
-  }, [graphData, filterEntityId, filterDepth, filterContent, selectedTimestamp, filterMode]);
+  }, [
+    graphData,
+    filterSender,
+    filterReceiver,
+    filterDepth,
+    filterContent,
+    selectedTimestamp,
+    filterMode,
+  ]);
 
   return null;
 };

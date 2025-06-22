@@ -4,28 +4,43 @@ import { Button, Alert } from "@heroui/react";
 interface FilterPanelProps {
   selectedEventTypes: string[];
   setSelectedEventTypes: (types: string[]) => void;
-  filterEntityId: string;
-  setFilterEntityId: (id: string) => void;
+  filterSender: string;
+  setFilterSender: (id: string) => void;
+  filterReceiver: string;
+  setFilterReceiver: (id: string) => void;
   filterContent: string;
   setFilterContent: (c: string) => void;
   filterDepth: number;
   setFilterDepth: (n: number) => void;
   callApi: (endpoint: string) => void;
   statusMsg: string;
+  setGraphData: (data: any) => void;
 }
 
 const FilterPanel: React.FC<FilterPanelProps> = ({
   selectedEventTypes,
   setSelectedEventTypes,
-  filterEntityId,
-  setFilterEntityId,
+  filterSender,
+  setFilterSender,
+  filterReceiver,
+  setFilterReceiver,
   filterContent,
   setFilterContent,
   filterDepth,
   setFilterDepth,
   callApi,
   statusMsg,
+  setGraphData,
 }) => {
+  const handleShowGraph = () => {
+    const params = new URLSearchParams();
+    if (filterSender) params.append("filterSender", filterSender);
+    if (filterReceiver) params.append("filterReceiver", filterReceiver);
+    if (filterContent) params.append("filterContent", filterContent);
+    const endpoint = `/read-db-graph?${params.toString()}`;
+    callApi(endpoint);
+  };
+
   return (
     <div className="w-[400px] flex-shrink-0 border rounded-lg p-4">
       <h3 className="text-lg font-semibold mb-2">Neo4j Graph Actions</h3>
@@ -34,12 +49,23 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
       </Button>
       
       <div className="mt-4">
-        <label className="text-sm font-medium">Filter by Entity ID:</label>
+        <label className="text-sm font-medium">Filter sender by Entity ID:</label>
         <input
           className="mt-1 block w-full border rounded px-2 py-1 text-sm"
           type="text"
-          value={filterEntityId}
-          onChange={(e) => setFilterEntityId(e.target.value)}
+          value={filterSender}
+          onChange={(e) => setFilterSender(e.target.value)}
+          placeholder="e.g., Boss"
+        />
+      </div>
+
+      <div className="mt-4">
+        <label className="text-sm font-medium">Filter receiver by Entity ID:</label>
+        <input
+          className="mt-1 block w-full border rounded px-2 py-1 text-sm"
+          type="text"
+          value={filterReceiver}
+          onChange={(e) => setFilterReceiver(e.target.value)}
           placeholder="e.g., Boss"
         />
       </div>
@@ -67,9 +93,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         />
       </div>
 
-      <Button onPress={() => callApi("/read-db-graph")} className="mt-2" color="success">
-        Show Graph
-      </Button>
+      
 
       <Alert isVisible={!!statusMsg} color="info" title="Status" description={statusMsg} className="mt-4" />
     </div>

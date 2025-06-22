@@ -38,6 +38,8 @@ export default function Home() {
   const [filterDate, setFilterDate] = useState<string | null>(null);
   const [sankeyData, setSankeyData] = useState<{ source: string, target: string, value: number }[]>([]);
   const [filterContent, setFilterContent] = useState<string>("");
+  const [filterSender, setFilterSender] = useState<string>("");
+  const [filterReceiver, setFilterReceiver] = useState<string>("");
 
 
   // Don't change this function
@@ -46,8 +48,8 @@ export default function Home() {
     try {
       const res = await fetch(`/api${endpoint}`);
       const data = await res.json();
-      if (data.success && endpoint=="/read-db-graph") setGraphData({ nodes: data.nodes, links: data.links }), setStatusMsg("Graph loaded successfully.");
-      else setStatusMsg(data["error-message"]);
+      if (endpoint === "/load-graph-json") {}
+      else setGraphData({ nodes: data.nodes, links: data.links }), setStatusMsg("Graph loaded successfully.");
     } catch (err) {
       setStatusMsg(`Failed to call ${endpoint}: ${err}`);
     }
@@ -60,16 +62,20 @@ export default function Home() {
     {/* Top Row: Filters + Graph Summary + Selected Info */}
     <div className="flex w-full max-w-7xl gap-4">
       {/* Filters and Actions */}
-      <FilterPanel selectedEventTypes={selectedEventTypes}
+      <FilterPanel 
+        selectedEventTypes={selectedEventTypes}
         setSelectedEventTypes={setSelectedEventTypes}
-        filterEntityId={filterEntityId}
-        setFilterEntityId={setFilterEntityId}
+        filterSender={filterSender}
+        setFilterSender={setFilterSender}
+        filterReceiver={filterReceiver}
+        setFilterReceiver={setFilterReceiver}
         filterContent={filterContent}
         setFilterContent={setFilterContent}
         filterDepth={filterDepth}
         setFilterDepth={setFilterDepth}
         callApi={callApi}
-        statusMsg={statusMsg} />
+        statusMsg={statusMsg}
+        setGraphData={setGraphData} />
       
       {/* Graph Summary */}
       <GraphSummary edgeCount={edgeCount} edgeTypeCounts={edgeTypeCounts} subtypeCounts={subtypeCounts} />
@@ -86,7 +92,10 @@ export default function Home() {
       graphData={graphData}
       svgRef={svgRef}
       graphContainerRef={graphContainerRef}
-      filterEntityId={filterEntityId}
+      filterSender={filterSender}
+      setFilterSender={setFilterSender}
+      filterReceiver={filterReceiver}
+      setFilterReceiver={setFilterReceiver}
       filterDepth={filterDepth}
       filterContent={filterContent}
       filterMode={filterMode}
@@ -96,6 +105,7 @@ export default function Home() {
       setEdgeTypeCounts={setEdgeTypeCounts}
       setEdgeCount={setEdgeCount}
       setSelectedInfo={setSelectedInfo}
+      callApi={callApi}
     />
 
     {/* Time Bar Chart */}
@@ -103,6 +113,10 @@ export default function Home() {
       graphData={graphData}
       selectedTimestamp={selectedTimestamp}
       setSelectedTimestamp={setSelectedTimestamp}
+      filterSender={filterSender}
+      setFilterSender={setFilterSender}
+      filterReceiver={filterReceiver}
+      setFilterReceiver={setFilterReceiver}
     />
 
     {/* Legends */}
@@ -110,14 +124,22 @@ export default function Home() {
 
     {/* Massive Sequence View */}
     <CommunicationView
-  filterEntityId={filterEntityId}
-  filterContent={filterContent}
-  selectedTimestamp={selectedTimestamp}
+      filterSender={filterSender}
+      setFilterSender={setFilterSender}
+      filterReceiver={filterReceiver}
+      setFilterReceiver={setFilterReceiver}
+      filterContent={filterContent}
+      selectedTimestamp={selectedTimestamp}
 />
 
     
     {/* Sankey  */}
-    <Sankey entityId={filterEntityId} selectedDate={selectedTimestamp} />
+    <Sankey 
+    filterSender={filterSender}
+    setFilterSender={setFilterSender}
+    filterReceiver={filterReceiver}
+    setFilterReceiver={setFilterReceiver}
+    selectedDate={selectedTimestamp} />
     
     { /* GraphRAG LLM Component */}
     

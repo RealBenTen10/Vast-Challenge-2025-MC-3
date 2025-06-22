@@ -11,13 +11,19 @@ interface MSVItem {
 }
 
 interface CommunicationViewProps {
-  filterEntityId: string;
+  filterSender: string;
+  setFilterSender: (id: string) => void;
+  filterReceiver: string;
+  setFilterReceiver: (id: string) => void;
   filterContent: string;
   selectedTimestamp: string | null;
 }
 
 export default function CommunicationView({
-  filterEntityId,
+  filterSender,
+  setFilterSender,
+  filterReceiver,
+  setFilterReceiver,
   filterContent,
   selectedTimestamp,
 }: CommunicationViewProps) {
@@ -33,7 +39,8 @@ export default function CommunicationView({
       const params = new URLSearchParams();
       if (selectedTimestamp) params.append("start_date", selectedTimestamp);
       if (selectedTimestamp) params.append("end_date", selectedTimestamp);
-      if (filterEntityId) params.append("entity_ids", filterEntityId);
+      if (filterSender) params.append("sender", filterSender);
+      if (filterReceiver) params.append("receiver", filterReceiver);
       if (filterContent) params.append("keyword", filterContent);
 
       const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
@@ -53,7 +60,7 @@ export default function CommunicationView({
 
   useEffect(() => {
     loadMSV();
-  }, [filterEntityId, filterContent, selectedTimestamp]);
+  }, [filterSender, filterReceiver, filterContent, selectedTimestamp]);
 
   return (
     <Card className="w-full max-w-7xl mt-8">

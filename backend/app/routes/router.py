@@ -3,6 +3,8 @@ from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 from typing import Optional, List, Dict, Any
 from neo4j import GraphDatabase
+import networkx as nx
+from networkx.readwrite import json_graph
 import os
 import time
 import pandas as pd
@@ -52,13 +54,65 @@ async def clear_db():
 # It uses a background task to perform the loading operation.
 @router.get("/load-graph-json", response_class=JSONResponse)
 async def load_graph_json(background_tasks: BackgroundTasks):
-    background_tasks.add_task(load_graph_json)
+    background_tasks.add_task(_load_graph_json)
     return {"success": True, "message": "Graph loading started in background."}
+
+# Tried using networkx to load graph data
+async def _load_data():
+    print("Loading graph data from file...")
+    data_path = "MC3_graph.json"
+    schema_path = "MC3_schema.json"
+
+    with open(data_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    with open(schema_path, "r", encoding="utf-8") as f:
+        schema = json.load(f)["schema"]
+
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    print("Connecting to Neo4j database...")
+    try:
+        
+        G = json_graph.node_link_graph(data, directed=True, multigraph=False)
+        print("Still going...")
+        driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+        with driver.session() as session:
+            session.run("MATCH (n) DETACH DELETE n")  # Optionally clear the database
+            print("Database cleared.")
+            # Add Nodes
+            for node_id, attrs in G.nodes(data=True):
+                attrs["id"] = attrs.get("id", node_id)
+                node_type = attrs.get("type", "Unknown")
+                label = node_type  # Use the node type as the label in Neo4j
+
+                props_str = ", ".join(f"{k}: ${k}" for k in attrs)
+                query = f"MERGE (n:{label} {{id: $id}}) SET n += {{{props_str}}}"
+                session.run(query, **attrs)
+            print("Nodes loaded successfully.")
+            # Add Edges
+            for u, v, edge_attrs in G.edges(data=True):
+                edge_type = edge_attrs.get("type", "RELATED_TO")
+                edge_attrs["source"] = u
+                edge_attrs["target"] = v
+
+                props_str = ", ".join(f"{k}: ${k}" for k in edge_attrs if k not in ("source", "target"))
+                query = f"""
+                MATCH (a {{id: $source}}), (b {{id: $target}})
+                MERGE (a)-[r:{edge_type}]->(b)
+                SET r += {{{props_str}}}
+                """
+                session.run(query, **edge_attrs)
+            print("Edges loaded successfully.")
+        print("Graph loaded successfully.")
+        return {"success": True, "message": "Graph loaded into Neo4j successfully."}
+
+    except Exception as e:
+        print("failed to load graph data:", str(e))
+        return {"success": False, "error": str(e)}
 # This function loads graph data from a JSON file into the Neo4j database.
 # It reads the data and schema from the specified JSON files, clears the database,
 # and then creates nodes and edges based on the data.
 # It is called in the background when the /load-graph-json endpoint is accessed.
-async def load_graph_json():
+async def _load_graph_json():
     print("Loading graph data from JSON...")
     data_path = "MC3_graph.json"
     schema_path = "MC3_schema.json"
@@ -116,23 +170,8 @@ async def load_graph_json():
         # Transform Relationships
         session.write_transaction(create_relationship_edges)
         print("Relationships transformed successfully.")
-        # For testing purpose
-        if False:
-            # Transform Communication Events
-            session.write_transaction(create_communication_edges)
-            print("Communication events transformed successfully.")
-            # Prune unnecessary edges
-            session.run("""MATCH (a)-[r]->(b)
-                        WHERE NOT type(r) IN ['COMMUNICATION', 'Colleagues', 'AccessPermission', 'Operates', 'Suspicious', 'Reports', 'Jurisdiction', 'Unfriendly', 'Friends']
-                        WITH a, b, collect(r) AS non_essential, size([(a)-[x]->(b) WHERE type(x) IN ['COMMUNICATION', 'Colleagues', 'AccessPermission', 'Operates', 'Suspicious', 'Reports', 'Jurisdiction', 'Unfriendly', 'Friends'] | x]) AS essential_count
-                        WHERE essential_count > 0
-                        UNWIND non_essential AS r
-                        DELETE r
-                        """)
     print("Graph loaded successfully.")
     return {"success": True, "message": "All nodes and edges loaded."}
-
-
 
 
 def create_relationship_edges(tx):
@@ -273,7 +312,9 @@ async def read_db_graph_2():
     print("Graph data read successfully.")
     return {"success": True, "nodes": nodes, "links": links}
 
-# Old functions removed
+
+
+
 @router.get("/read-db-graph", response_class=JSONResponse)
 async def read_db_graph():
     print("Reading graph data from Neo4j...")
@@ -386,37 +427,57 @@ async def filter_by_date(date: str = Query(..., description="YYYY-MM-DD format")
 
 @router.get("/sankey-communication-flows", response_class=JSONResponse)
 async def sankey_communication_flows(
-    entity_id: str = Query(..., description="Entity ID to filter communications from"),
-    date: str = Query(None, description="Optional date filter in YYYY-MM-DD format")
+    sender: Optional[str] = Query(None, description="Sender Entity ID"),
+    receiver: Optional[str] = Query(None, description="Receiver Entity ID"),
+    date: Optional[str] = Query(None, description="Optional date filter in YYYY-MM-DD format")
 ):
     """
-    Returns Sankey data showing how many communications were sent from `entity_id` to other entities,
-    optionally filtered by date.
+    Returns Sankey data showing how many communications were sent from one entity to another,
+    optionally filtered by sender, receiver, and date.
     """
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     try:
         with driver.session() as session:
-            query = """
-            MATCH (sender:Entity {id: $entity_id})-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity)
-            WHERE $date IS NULL OR substring(comm.timestamp, 0, 10) = $date
-            RETURN sender.id AS source, receiver.id AS target, count(*) AS count
-            """
-            result = session.run(query, entity_id=entity_id, date=date)
+            cypher_parts = [
+                "MATCH (sender:Entity)-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity)"
+            ]
 
-            sankey_data = []
-            for record in result:
-                sankey_data.append({
+            where_clauses = []
+
+            if sender:
+                where_clauses.append("sender.id = $sender")
+            if receiver:
+                where_clauses.append("receiver.id = $receiver")
+            if date:
+                where_clauses.append("substring(comm.timestamp, 0, 10) = $date")
+
+            if where_clauses:
+                cypher_parts.append("WHERE " + " AND ".join(where_clauses))
+
+            cypher_parts.append("""
+                RETURN sender.id AS source, receiver.id AS target, count(*) AS count
+            """)
+
+            query = "\n".join(cypher_parts)
+            result = session.run(query, sender=sender, receiver=receiver, date=date)
+
+            sankey_data = [
+                {
                     "source": record["source"],
                     "target": record["target"],
                     "value": record["count"]
-                })
+                }
+                for record in result
+            ]
 
     except Exception as e:
         return {"success": False, "error": str(e)}
     finally:
         driver.close()
-    if sankey_data == []:
+
+    if not sankey_data:
         return {"success": False, "message": "No communication flows found for the given parameters."}
+
     return {"success": True, "links": sankey_data}
 
 @router.get("/filter-by-content", response_class=JSONResponse)
@@ -474,10 +535,11 @@ async def filter_by_content(query: str = Query(..., description="Search string f
 async def massive_sequence_view(
     start_date: Optional[str] = Query(None, description="Start date in YYYY-MM-DD"),
     end_date: Optional[str] = Query(None, description="End date in YYYY-MM-DD"),
-    entity_ids: Optional[str] = Query(None, description="List of Entity IDs"),
+    sender: Optional[str] = Query(None, description="Sender Entity ID"),
+    receiver: Optional[str] = Query(None, description="Receiver Entity ID"),
     keyword: Optional[str] = Query(None, description="Search keyword in content fields")
 ):
-    print(entity_ids)
+    print(f"Fetching data for parameters: start_date={start_date}, end_date={end_date}, sender={sender}, receiver={receiver}, keyword={keyword}")
     
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     results = []
@@ -491,9 +553,11 @@ async def massive_sequence_view(
 
             # WHERE clause parts
             where_clauses = []
-
-            if entity_ids:
-                where_clauses.append("(sender.id = $entity_ids OR receiver.id = $entity_ids)")
+            if sender != receiver:
+                if sender:
+                    where_clauses.append("sender.id = $sender")
+                if receiver:
+                    where_clauses.append("receiver.id = $receiver")
 
             if start_date:
                 where_clauses.append(f"substring(comm.timestamp, 0, {len(start_date)}) >= $start_date")
@@ -519,7 +583,8 @@ async def massive_sequence_view(
             params = {
                 "start_date": start_date,
                 "end_date": end_date,
-                "entity_ids": entity_ids,
+                "sender": sender,
+                "receiver": receiver,
                 "keyword": keyword,
             }
 
@@ -535,12 +600,12 @@ async def massive_sequence_view(
                     "content": event.get("content", ""),
                     "sub_type": event.get("sub_type", ""),
                 })
+                print(f"Processed event: {event.id}, timestamp: {event['timestamp']}, source: {record.get('source')}, target: {record.get('target')}")
 
     except Exception as e:
         return {"success": False, "error": str(e)}
     finally:
         driver.close()
-
     return {"success": True, "data": results}
 
 '''

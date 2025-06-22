@@ -15,25 +15,36 @@ interface SankeyDataItem {
 }
 
 interface SankeyProps {
-  entityId: string;
+  filterSender: string;
+  setFilterSender: (id: string) => void;
+  filterReceiver: string;
+  setFilterReceiver: (id: string) => void;
   selectedDate: string | null;
 }
 
-export default function Sankey({ entityId, selectedDate }: SankeyProps) {
+export default function Sankey({
+  filterSender,
+  setFilterSender,
+  filterReceiver,
+  setFilterReceiver,
+  selectedDate,
+}: SankeyProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
-    if (!entityId) return;
+    // Skip if no sender and no receiver
+    if (!filterSender && !filterReceiver) return;
 
     const fetchDataAndDraw = async () => {
       try {
-        const params = new URLSearchParams({ entity_id: entityId });
+        const params = new URLSearchParams();
+        if (filterSender) params.append("sender", filterSender);
+        if (filterReceiver) params.append("receiver", filterReceiver);
         if (selectedDate) params.append("date", selectedDate);
 
         const res = await fetch(`/api/sankey-communication-flows?${params.toString()}`);
         const json = await res.json();
 
-        // 🛡️ Only render if data is valid
         if (json.success && Array.isArray(json.links) && json.links.length > 0) {
           drawSankeyDiagram(json.links);
         } else {
@@ -46,7 +57,7 @@ export default function Sankey({ entityId, selectedDate }: SankeyProps) {
     };
 
     fetchDataAndDraw();
-  }, [entityId, selectedDate]);
+  }, [filterSender, filterReceiver, selectedDate]);
 
   const drawSankeyDiagram = (data: SankeyDataItem[]) => {
     const svg = d3.select(svgRef.current);
@@ -64,31 +75,31 @@ export default function Sankey({ entityId, selectedDate }: SankeyProps) {
       .extent([[0, 0], [width, height]]);
 
     const nodeMap = new Map<string, { name: string }>();
-    data.forEach(d => {
+    data.forEach((d) => {
       if (!nodeMap.has(d.source)) nodeMap.set(d.source, { name: d.source });
       if (!nodeMap.has(d.target)) nodeMap.set(d.target, { name: d.target });
     });
 
     const nodes = Array.from(nodeMap.values());
 
-    const links = data.map(d => ({
+    const links = data.map((d) => ({
       source: nodeMap.get(d.source)!,
       target: nodeMap.get(d.target)!,
       value: d.value,
     }));
 
     const sankeyGraph: SankeyGraph<any, any> = { nodes, links };
-
     sankey(sankeyGraph);
 
-    const color = d3.scaleOrdinal(d3.schemeTableau10).domain(nodes.map(d => d.name));
+    const color = d3.scaleOrdinal(d3.schemeTableau10).domain(nodes.map((d) => d.name));
 
     const g = svg
-      .attr("viewBox", [0, 0, width, height].toString())
+      .attr("viewBox", `0 0 ${width} ${height}`)
       .append("g");
 
-    // Tooltip div
-    const tooltip = d3.select("body")
+    // Tooltip
+    const tooltip = d3
+      .select("body")
       .append("div")
       .style("position", "absolute")
       .style("z-index", "10")
@@ -105,22 +116,45 @@ export default function Sankey({ entityId, selectedDate }: SankeyProps) {
       .data(sankeyGraph.nodes)
       .enter()
       .append("rect")
-      .attr("x", d => d.x0!)
-      .attr("y", d => d.y0!)
-      .attr("width", d => d.x1! - d.x0!)
-      .attr("height", d => Math.max(1, d.y1! - d.y0!))
-      .attr("fill", d => color(d.name))
+      .attr("x", (d) => d.x0!)
+      .attr("y", (d) => d.y0!)
+      .attr("width", (d) => d.x1! - d.x0!)
+      .attr("height", (d) => Math.max(1, d.y1! - d.y0!))
+      .attr("fill", (d) => color(d.name))
       .on("mouseover", function (event, d) {
-        tooltip.html(`<strong>${d.name}</strong><br/>In: ${d.value}`)
-          .style("visibility", "visible");
+        tooltip.html(`<strong>${d.name}</strong><br/>Total: ${d.value}`).style("visibility", "visible");
       })
-      .on("mousemove", event => {
-        tooltip.style("top", `${event.pageY + 10}px`)
+      .on("mousemove", (event) => {
+        tooltip
+          .style("top", `${event.pageY + 10}px`)
           .style("left", `${event.pageX + 10}px`);
+      })
+      .on("click", function (event, d) {
+        // Determine whether to set as sender or receiver by position
+        if (d.x0! < width / 2) {
+          setFilterSender(d.name);
+          setFilterReceiver(""); // Clear receiver if sender is set
+        } else {
+          setFilterReceiver(d.name);
+          setFilterSender(""); // Clear sender if receiver is set
+        }
       })
       .on("mouseout", () => {
         tooltip.style("visibility", "hidden");
       });
+
+    // Labels
+    g.append("g")
+      .selectAll("text")
+      .data(sankeyGraph.nodes)
+      .enter()
+      .append("text")
+      .attr("x", (d) => (d.x0! < width / 2 ? d.x0! - 6 : d.x1! + 6))
+      .attr("y", (d) => (d.y0! + d.y1!) / 2)
+      .attr("dy", "0.35em")
+      .attr("text-anchor", (d) => (d.x0! < width / 2 ? "end" : "start"))
+      .text((d) => d.name)
+      .style("font-size", "12px");
 
     // Links
     g.append("g")
@@ -130,19 +164,26 @@ export default function Sankey({ entityId, selectedDate }: SankeyProps) {
       .append("path")
       .attr("d", sankeyLinkHorizontal())
       .attr("fill", "none")
-      .attr("stroke", d => color(d.source.name))
-      .attr("stroke-width", d => Math.max(1, d.width!))
+      .attr("stroke", (d) => color(d.source.name))
+      .attr("stroke-width", (d) => Math.max(1, d.width!))
       .attr("stroke-opacity", 0.6)
       .on("mouseover", function (event, d) {
-        tooltip.html(`
-          <strong>From:</strong> ${d.source.name}<br/>
-          <strong>To:</strong> ${d.target.name}<br/>
-          <strong>Value:</strong> ${d.value}
-        `).style("visibility", "visible");
+        tooltip
+          .html(`
+            <strong>From:</strong> ${d.source.name}<br/>
+            <strong>To:</strong> ${d.target.name}<br/>
+            <strong>Value:</strong> ${d.value}
+          `)
+          .style("visibility", "visible");
       })
-      .on("mousemove", event => {
-        tooltip.style("top", `${event.pageY + 10}px`)
+      .on("mousemove", (event) => {
+        tooltip
+          .style("top", `${event.pageY + 10}px`)
           .style("left", `${event.pageX + 10}px`);
+      })
+      .on("click", function (event, d) {
+        setFilterSender(d.source.name);
+        setFilterReceiver(d.target.name);
       })
       .on("mouseout", () => {
         tooltip.style("visibility", "hidden");
