@@ -69,9 +69,9 @@ export default function CommunicationView({
       <CardHeader>
         <h4 className="text-lg font-semibold">Messages</h4>
         <div className="mt-1 flex flex-wrap gap-2 text-sm">
-          {filterSender && <Badge color="blue">Sender: {filterSender}</Badge>}
-          {filterReceiver && <Badge color="green">Receiver: {filterReceiver}</Badge>}
-          {filterContent && <Badge color="purple">Keyword: {filterContent}</Badge>}
+          {filterSender && <Badge color="blue"> Sender: {filterSender}</Badge>}
+          {filterReceiver && <Badge color="green"> Receiver: {filterReceiver}</Badge>}
+          {filterContent && <Badge color="purple"> Keyword: {filterContent}</Badge>}
           {timestampFilterStart && timestampFilterEnd && (
             <Badge color="gray">
               {new Date(timestampFilterStart).toLocaleString()} – {new Date(timestampFilterEnd).toLocaleString()}

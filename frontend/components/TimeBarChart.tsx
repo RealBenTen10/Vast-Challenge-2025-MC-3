@@ -4,27 +4,24 @@ import React, { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import { Node, Link, GraphData } from "./types";
 
-
 interface TimeBarChartProps {
   graphData: GraphData;
-  filterSender: string;
-  filterReceiver: string;
-  filterDepth: number;
+  visibleEntities: string[]; 
   timestampFilterStart: string;
   timestampFilterEnd: string;
   setTimestampFilterStart: (start: string) => void;
   setTimestampFilterEnd: (end: string) => void;
+  communicationEvents: Node[];
 }
 
 const TimeBarChart: React.FC<TimeBarChartProps> = ({
   graphData,
-  filterSender,
-  filterReceiver,
-  filterDepth,
+  visibleEntities, 
   timestampFilterStart,
   timestampFilterEnd,
   setTimestampFilterStart,
-  setTimestampFilterEnd
+  setTimestampFilterEnd,
+  communicationEvents
 }) => {
   const timeSeriesRef = useRef<SVGSVGElement | null>(null);
 
@@ -32,57 +29,21 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
     if (!timeSeriesRef.current || graphData.nodes.length === 0) return;
     d3.select(timeSeriesRef.current).selectAll("*").remove();
 
-    const getRelevantNodeIds = (): Set<string> => {
-      const visible = new Set<string>();
-      const queue = [filterSender, filterReceiver].filter(Boolean);
-      let level = 0;
+    const visibleSet = new Set(visibleEntities);
 
-      while (queue.length > 0 && level <= filterDepth) {
-        const nextQueue: string[] = [];
-        for (const id of queue) {
-          if (visible.has(id)) continue;
-          visible.add(id);
-          const neighbors = graphData.links.filter(link =>
-            link.type === "COMMUNICATION" &&
-            (link.source === id || link.target === id)
-          ).map(link =>
-            link.source === id ? link.target as string : link.source as string
-          );
-          nextQueue.push(...neighbors);
-        }
-        queue.length = 0;
-        queue.push(...nextQueue);
-        level++;
-      }
+    console.warn("Communication events:", communicationEvents);
 
-      return visible;
-    };
+    const filteredTimestamps = communicationEvents
+    .map(node => new Date(node.timestamp!))
+    .filter(date => !isNaN(date.getTime()));
 
-    const allowedEntities = getRelevantNodeIds();
-
-    const filteredTimestamps = graphData.nodes
-      .filter(node =>
-        node.type?.toLowerCase() === "event" &&
-        node.timestamp &&
-        (!filterSender && !filterReceiver || // if no filters, accept all
-          graphData.links.some(link =>
-            link.type === "COMMUNICATION" &&
-            link.source === node.id &&
-            allowedEntities.has(link.target as string) ||
-            link.target === node.id &&
-            allowedEntities.has(link.source as string)
-          )
-        )
-      )
-      .map(node => new Date(node.timestamp!))
-      .filter(date => !isNaN(date.getTime()));
 
     if (filteredTimestamps.length === 0) return;
 
     const grouped = d3.rollup(
       filteredTimestamps,
       v => v.length,
-      d => new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()) 
+      d => new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours())
     );
 
     const data = Array.from(grouped.entries()).map(([date, count]) => ({
@@ -143,9 +104,8 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
         d3.select(this).attr("fill", "#1f77b4");
         tooltip.transition().duration(200).style("opacity", 0);
       });
-    
-    // D3 Brush for range selection
-    const brush = d3.brushX<Date>()
+
+    const brush = d3.brushX()
       .extent([[0, 0], [innerWidth, innerHeight]])
       .on("end", (event) => {
         const selection = event.selection;
@@ -155,8 +115,6 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
         const end = x.invert(x1).toISOString().slice(0, 19);
         setTimestampFilterStart(start);
         setTimestampFilterEnd(end);
-        console.error(`Brush selection: ${start} to ${end}`);
-        
       });
 
     g.append("g").attr("class", "brush").call(brush);
@@ -175,13 +133,10 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
       .text("Event Count");
   }, [
     graphData,
-    filterSender,
-    filterReceiver,
-    filterDepth,
+    visibleEntities,
     timestampFilterStart,
     timestampFilterEnd,
-    setTimestampFilterStart,
-    setTimestampFilterEnd
+    communicationEvents
   ]);
 
   return (

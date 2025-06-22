@@ -22,6 +22,7 @@ interface Props {
   setEdgeTypeCounts: (counts: Record<string, number>) => void;
   setEdgeCount: (count: number) => void;
   setSelectedInfo: (info: any) => void;
+  setCommunicationEvents: (nodes: Node[]) => void;
   callApi: (endpoint: string) => void;
 }
 
@@ -43,6 +44,7 @@ const GraphView: React.FC<Props> = ({
   setEdgeTypeCounts,
   setEdgeCount,
   setSelectedInfo,
+  setCommunicationEvents,
   callApi
 }) => {
   useEffect(() => {
@@ -67,43 +69,61 @@ const GraphView: React.FC<Props> = ({
       let visible = new Set<string>();
 
       const filterEntities = [filterSender, filterReceiver].filter(Boolean);
+
       if (filterEntities.length > 0) {
         const queue = [...filterEntities];
         let level = 0;
-        while (queue.length > 0 && level <= filterDepth) {
-          const nextQueue: string[] = [];
-          for (const id of queue) {
-            if (visible.has(id)) continue;
-            visible.add(id);
-            const neighbors = graphData.links.flatMap(link => {
-              const src = typeof link.source === "string" ? link.source : link.source.id;
-              const tgt = typeof link.target === "string" ? link.target : link.target.id;
-              return src === id ? [tgt] : tgt === id ? [src] : [];
-            });
-            nextQueue.push(...neighbors);
+
+        // show communication events between sender and receiver
+        if (filterSender && filterReceiver && filterDepth === 0) {
+          visible.add(filterSender);
+          visible.add(filterReceiver);
+
+          // ✅ Get all event nodes that connect sender and receiver
+          graphData.nodes.forEach(node => {
+            if (node.type === "Event") {
+              let connectedToSender = false;
+              let connectedToReceiver = false;
+
+              for (const link of graphData.links) {
+                const src = typeof link.source === "string" ? link.source : link.source.id;
+                const tgt = typeof link.target === "string" ? link.target : link.target.id;
+
+                if (tgt === node.id && src === filterSender) connectedToSender = true;
+
+                if (src === node.id && tgt === filterReceiver) connectedToReceiver = true;
+
+                if (connectedToSender && connectedToReceiver) {
+                  visible.add(node.id);
+                  break; // No need to continue checking other links for this node
+                }
+              }
+            }
+          });
+        } else {
+          // Get all nodes connected to the sender/receiver
+          // add events
+          while (queue.length > 0 && level <= filterDepth) {
+            const nextQueue: string[] = [];
+            for (const id of queue) {
+              if (visible.has(id)) continue;
+              visible.add(id);
+              const neighbors = graphData.links.flatMap(link => {
+                const src = typeof link.source === "string" ? link.source : link.source.id;
+                const tgt = typeof link.target === "string" ? link.target : link.target.id;
+                return src === id ? [tgt] : tgt === id ? [src] : [];
+              });
+              nextQueue.push(...neighbors);
+            }
+            queue.length = 0;
+            queue.push(...nextQueue);
+            level++;
           }
-          queue.length = 0;
-          queue.push(...nextQueue);
-          level++;
         }
       } else {
         graphData.nodes.forEach(n => visible.add(n.id));
       }
-
-      if (timestampFilterStart || timestampFilterEnd) {
-        visible = new Set(
-          Array.from(visible).filter(id => {
-            const node = graphData.nodes.find(n => n.id === id);
-            if (!node || node.type !== "Event" || !node.timestamp) return true;
-            const ts = new Date(node.timestamp);
-            const start = timestampFilterStart ? new Date(timestampFilterStart) : null;
-            const end = timestampFilterEnd ? new Date(timestampFilterEnd) : null;
-            return (!start || ts >= start) && (!end || ts <= end);
-          })
-        );
-      }
-
-
+      // Filter by content
       if (filterContent.trim()) {
         const lowerContent = filterContent.toLowerCase();
         const relevantEvents = new Set<string>();
@@ -131,6 +151,32 @@ const GraphView: React.FC<Props> = ({
             if (node.type === "Entity") return connectedEntities.has(id);
             if (node.type === "Event") return relevantEvents.has(id);
             return true;
+          })
+        );
+      }
+      // Capture visible communication events BEFORE time filter
+      const visibleSetBeforeTimeFilter = new Set(visible);
+      const visibleCommunicationEvents = graphData.nodes
+        .filter(n =>
+          n.type === "Event" &&
+          n.sub_type === "Communication" &&
+          visibleSetBeforeTimeFilter.has(n.id)
+        );
+
+      // Save a copy to trigger React updates reliably
+      setCommunicationEvents([...visibleCommunicationEvents]);
+
+      
+
+      if (timestampFilterStart || timestampFilterEnd) {
+        visible = new Set(
+          Array.from(visible).filter(id => {
+            const node = graphData.nodes.find(n => n.id === id);
+            if (!node || node.type !== "Event" || !node.timestamp) return true;
+            const ts = new Date(node.timestamp);
+            const start = timestampFilterStart ? new Date(timestampFilterStart) : null;
+            const end = timestampFilterEnd ? new Date(timestampFilterEnd) : null;
+            return (!start || ts >= start) && (!end || ts <= end);
           })
         );
       }

@@ -41,6 +41,7 @@ export default function Home() {
   const [filterReceiver, setFilterReceiver] = useState<string>("");
   const [timestampFilterStart, setTimestampFilterStart] = useState<string | null>(null);
   const [timestampFilterEnd, setTimestampFilterEnd] = useState<string | null>(null);
+  const [communicationEvents, setCommunicationEvents] = useState<Node[]>([]);
 
 
   // Don't change this function
@@ -111,12 +112,14 @@ export default function Home() {
       setEdgeTypeCounts={setEdgeTypeCounts}
       setEdgeCount={setEdgeCount}
       setSelectedInfo={setSelectedInfo}
+      setCommunicationEvents={setCommunicationEvents}
       callApi={callApi}
     />
 
     {/* Time Bar Chart */}
     <TimeBarChart
       graphData={graphData}
+      visibleEntities={visibleEntities}
       timestampFilterStart={timestampFilterStart}
       timestampFilterEnd={timestampFilterEnd}
       setTimestampFilterStart={setTimestampFilterStart}
@@ -125,6 +128,7 @@ export default function Home() {
       setFilterSender={setFilterSender}
       filterReceiver={filterReceiver}
       setFilterReceiver={setFilterReceiver}
+      communicationEvents={communicationEvents}
     />
 
     {/* Legends */}
