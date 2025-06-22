@@ -34,12 +34,13 @@ export default function Home() {
   const [filterDepth, setFilterDepth] = useState<number>(1);
   const [visibleEntities, setVisibleEntities] = useState<{ id: string; sub_type?: string }[]>([]);
   const [selectedInfo, setSelectedInfo] = useState<any>(null);
-  const [selectedTimestamp, setSelectedTimestamp] = useState<string | null>(null);
   const [filterDate, setFilterDate] = useState<string | null>(null);
   const [sankeyData, setSankeyData] = useState<{ source: string, target: string, value: number }[]>([]);
   const [filterContent, setFilterContent] = useState<string>("");
   const [filterSender, setFilterSender] = useState<string>("");
   const [filterReceiver, setFilterReceiver] = useState<string>("");
+  const [timestampFilterStart, setTimestampFilterStart] = useState<string | null>(null);
+  const [timestampFilterEnd, setTimestampFilterEnd] = useState<string | null>(null);
 
 
   // Don't change this function
@@ -73,6 +74,10 @@ export default function Home() {
         setFilterContent={setFilterContent}
         filterDepth={filterDepth}
         setFilterDepth={setFilterDepth}
+        timestampFilterStart={timestampFilterStart}
+        timestampFilterEnd={timestampFilterEnd}
+        setTimestampFilterStart={setTimestampFilterStart}
+        setTimestampFilterEnd={setTimestampFilterEnd}
         callApi={callApi}
         statusMsg={statusMsg}
         setGraphData={setGraphData} />
@@ -99,7 +104,8 @@ export default function Home() {
       filterDepth={filterDepth}
       filterContent={filterContent}
       filterMode={filterMode}
-      selectedTimestamp={selectedTimestamp}
+      timestampFilterStart={timestampFilterStart}
+      timestampFilterEnd={timestampFilterEnd}
       setVisibleEntities={setVisibleEntities}
       setSubtypeCounts={setSubtypeCounts}
       setEdgeTypeCounts={setEdgeTypeCounts}
@@ -111,8 +117,10 @@ export default function Home() {
     {/* Time Bar Chart */}
     <TimeBarChart
       graphData={graphData}
-      selectedTimestamp={selectedTimestamp}
-      setSelectedTimestamp={setSelectedTimestamp}
+      timestampFilterStart={timestampFilterStart}
+      timestampFilterEnd={timestampFilterEnd}
+      setTimestampFilterStart={setTimestampFilterStart}
+      setTimestampFilterEnd={setTimestampFilterEnd}
       filterSender={filterSender}
       setFilterSender={setFilterSender}
       filterReceiver={filterReceiver}
@@ -129,8 +137,9 @@ export default function Home() {
       filterReceiver={filterReceiver}
       setFilterReceiver={setFilterReceiver}
       filterContent={filterContent}
-      selectedTimestamp={selectedTimestamp}
-/>
+      filtertimestampStart={timestampFilterStart}
+      filtertimestampEnd={timestampFilterEnd}
+    />
 
     
     {/* Sankey  */}
@@ -139,7 +148,9 @@ export default function Home() {
     setFilterSender={setFilterSender}
     filterReceiver={filterReceiver}
     setFilterReceiver={setFilterReceiver}
-    selectedDate={selectedTimestamp} />
+    filtertimestampStart={timestampFilterStart}
+    filtertimestampEnd={timestampFilterEnd} 
+    />
     
     { /* GraphRAG LLM Component */}
     

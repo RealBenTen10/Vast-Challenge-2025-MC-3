@@ -15,7 +15,8 @@ interface Props {
   filterDepth: number;
   filterContent: string;
   filterMode: string;
-  selectedTimestamp: string | null;
+  timestampFilterStart: string;
+  timestampFilterEnd: string;
   setVisibleEntities: (entities: { id: string; sub_type?: string }[]) => void;
   setSubtypeCounts: (counts: Record<string, number>) => void;
   setEdgeTypeCounts: (counts: Record<string, number>) => void;
@@ -35,7 +36,8 @@ const GraphView: React.FC<Props> = ({
   filterDepth,
   filterContent,
   filterMode,
-  selectedTimestamp,
+  timestampFilterStart,
+  timestampFilterEnd,
   setVisibleEntities,
   setSubtypeCounts,
   setEdgeTypeCounts,
@@ -43,20 +45,10 @@ const GraphView: React.FC<Props> = ({
   setSelectedInfo,
   callApi
 }) => {
-  const handleShowGraph = () => {
-    const params = new URLSearchParams();
-    if (filterSender) params.append("filterSender", filterSender);
-    if (filterReceiver) params.append("filterReceiver", filterReceiver);
-    if (filterContent) params.append("filterContent", filterContent);
-    if (selectedTimestamp) params.append("selectedTimestamp", selectedTimestamp);
-    if (filterDepth) params.append("filterDepth", filterDepth.toString());
-    const endpoint = `/read-db-graph?${params.toString()}`;
-    callApi(endpoint);
-  };
-
   useEffect(() => {
-    handleShowGraph();
-  }, [filterSender, filterReceiver, filterContent, filterMode, selectedTimestamp]);
+    callApi("/read-db-graph"); // Load full graph once
+  }, []);
+
   useEffect(() => {
     if (!svgRef.current || !graphContainerRef.current || graphData.nodes.length === 0) return;
 
@@ -124,17 +116,6 @@ const GraphView: React.FC<Props> = ({
             if (!node) return false;
             if (node.type === "Entity") return connectedEntities.has(id);
             if (node.type === "Event") return relevantEvents.has(id);
-            return true;
-          })
-        );
-      }
-
-      if (selectedTimestamp?.trim()) {
-        visible = new Set(
-          Array.from(visible).filter(id => {
-            const node = graphData.nodes.find(n => n.id === id);
-            if (!node) return false;
-            if (node.type === "Event") return node.timestamp?.startsWith(selectedTimestamp);
             return true;
           })
         );
@@ -209,7 +190,7 @@ const GraphView: React.FC<Props> = ({
       .on("click", (event, d) => {
         setSelectedInfo({ type: "node", data: d });
         if (d.type === "Entity") {
-          setFilterSender(d.id); // Optional: update sender on click
+          setFilterSender(d.id); 
         }
       });
 
@@ -239,7 +220,8 @@ const GraphView: React.FC<Props> = ({
     filterReceiver,
     filterDepth,
     filterContent,
-    selectedTimestamp,
+    timestampFilterStart,
+    timestampFilterEnd,
     filterMode,
   ]);
 

@@ -450,7 +450,7 @@ async def sankey_communication_flows(
                 where_clauses.append("receiver.id = $receiver")
             if date:
                 where_clauses.append("substring(comm.timestamp, 0, 10) = $date")
-
+            where_clauses.append("sender.id <> receiver.id")  # Ensure sender and receiver are different
             if where_clauses:
                 cypher_parts.append("WHERE " + " AND ".join(where_clauses))
 

@@ -11,6 +11,10 @@ interface FilterPanelProps {
   filterContent: string;
   setFilterContent: (c: string) => void;
   filterDepth: number;
+  timestampFilterStart: string | null;
+  timestampFilterEnd: string | null;
+  setTimestampFilterStart: (start: string | null) => void;
+  setTimestampFilterEnd: (end: string | null) => void;
   setFilterDepth: (n: number) => void;
   callApi: (endpoint: string) => void;
   statusMsg: string;
@@ -28,6 +32,10 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   setFilterContent,
   filterDepth,
   setFilterDepth,
+  timestampFilterStart,
+  timestampFilterEnd,
+  setTimestampFilterStart,
+  setTimestampFilterEnd,
   callApi,
   statusMsg,
   setGraphData,
