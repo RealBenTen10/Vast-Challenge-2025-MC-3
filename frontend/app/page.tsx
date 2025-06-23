@@ -43,6 +43,8 @@ export default function Home() {
   const [timestampFilterEnd, setTimestampFilterEnd] = useState<string | null>(null);
   const [communicationEvents, setCommunicationEvents] = useState<Node[]>([]);
   const [communicationEventsAfterTimeFilter, setCommunicationEventsAfterTimeFilter] = useState<Node[]>([]);
+  const [filterModeMessages, setFilterModeMessages] = useState<"all" | "filtered" | "direct" | "directed">("all");
+
 
 
   // Don't change this function
@@ -147,6 +149,8 @@ export default function Home() {
       timestampFilterEnd={timestampFilterEnd}
       visibleEntities={visibleEntities}
       communicationEventsWithTimeFilter={communicationEventsAfterTimeFilter}
+      filterModeMessages={filterModeMessages}
+      setFilterModeMessages={setFilterModeMessages}
     />
 
     
@@ -157,7 +161,8 @@ export default function Home() {
     filterReceiver={filterReceiver}
     setFilterReceiver={setFilterReceiver}
     timestampFilterStart={timestampFilterStart}
-    timestampFilterEnd={timestampFilterEnd} 
+    timestampFilterEnd={timestampFilterEnd}
+    setFilterModeMessages={setFilterModeMessages}
     />
     
     { /* GraphRAG LLM Component */}

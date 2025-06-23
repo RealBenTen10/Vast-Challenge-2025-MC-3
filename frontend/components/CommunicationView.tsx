@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Card, CardHeader, CardBody, Badge } from "@heroui/react";
+import { Card, CardHeader, CardBody, Badge, Button } from "@heroui/react";
 
 interface MSVItem {
   event_id: string;
@@ -29,6 +29,8 @@ interface CommunicationViewProps {
   timestampFilterEnd: string;
   visibleEntities: { id: string; sub_type?: string }[];
   communicationEventsWithTimeFilter: Node[];
+  filterModeMessages: "all" | "filtered" | "direct" | "directed";
+  setFilterModeMessages: (mode: "all" | "filtered" | "direct" | "directed") => void;
 }
 
 export default function CommunicationView({
@@ -41,6 +43,8 @@ export default function CommunicationView({
   timestampFilterEnd,
   visibleEntities,
   communicationEventsWithTimeFilter,
+  filterModeMessages,
+  setFilterModeMessages,
 }: CommunicationViewProps) {
   const [msvData, setMsvData] = useState<MSVItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,12 +74,8 @@ export default function CommunicationView({
         batch.forEach((id) => params.append("event_ids", id));
 
         const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
-
-        // Check for valid response
         const text = await res.text();
-        if (!text) {
-          throw new Error("Empty response from server");
-        }
+        if (!text) throw new Error("Empty response from server");
 
         const data = JSON.parse(text);
         if (data.success) {
@@ -97,29 +97,98 @@ export default function CommunicationView({
     loadMSV();
   }, [communicationEventsWithTimeFilter]);
 
+  const filteredData = msvData.filter((item) => {
+    if (filterModeMessages === "all") return true;
+    if (filterModeMessages === "filtered") {
+      return (
+        (filterSender && item.source === filterSender) ||
+        (filterReceiver && item.target === filterReceiver)
+      );
+    }
+    if (filterModeMessages === "direct") {
+      return (
+        (filterSender &&
+        filterReceiver &&
+        item.source === filterSender &&
+        item.target === filterReceiver) ||
+        (filterSender &&
+        filterReceiver &&
+        item.source === filterReceiver &&
+        item.target === filterSender)
+      );
+    }
+    if (filterModeMessages === "directed") {
+      return (
+        (filterSender &&
+        filterReceiver &&
+        item.source === filterSender &&
+        item.target === filterReceiver)
+      );
+    }
+    return true;
+  });
+
   return (
     <Card className="w-full max-w-7xl mt-8">
       <CardHeader>
-        <h4 className="text-lg font-semibold">{msvData.length} Messages</h4>
-        <div className="mt-1 flex flex-wrap gap-1 text-sm">
-          <span className="ml-2"> for following filter setting - </span>
-          {filterSender && <Badge color="blue"> Sender: {filterSender}</Badge>}
-          {filterReceiver && <Badge color="green"> Receiver: {filterReceiver}</Badge>}
-          {filterContent && <Badge color="purple"> Keyword: {filterContent}</Badge>}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <h4 className="text-lg font-semibold">{filteredData.length} Messages</h4>
+          <div className="flex gap-2">
+            <button
+              className={`px-3 py-1 text-sm border rounded ${
+                filterModeMessages === "all" ? "bg-blue-500 text-white" : "bg-gray-100"
+              }`}
+              onClick={() => setFilterModeMessages("all")}
+            >
+              Show all Messages
+            </button>
+            <button
+              className={`px-3 py-1 text-sm border rounded ${
+                filterModeMessages === "filtered" ? "bg-blue-500 text-white" : "bg-gray-100"
+              }`}
+              onClick={() => setFilterModeMessages("filtered")}
+            >
+              Show filtered Messages
+            </button>
+            <button
+              className={`px-3 py-1 text-sm border rounded ${
+                filterModeMessages === "direct" ? "bg-blue-500 text-white" : "bg-gray-100"
+              }`}
+              onClick={() => setFilterModeMessages("direct")}
+            >
+              Show direct Messages
+            </button>
+            <button
+              className={`px-3 py-1 text-sm border rounded ${
+                filterModeMessages === "directed" ? "bg-blue-500 text-white" : "bg-gray-100"
+              }`}
+              onClick={() => setFilterModeMessages("directed")}
+            >
+              Show directed Messages
+            </button>
+          </div>
+        </div>
+
+        
+      </CardHeader>
+      <div className="mt-2 flex flex-wrap gap-1 text-sm">
+          <span className="ml-4"> Following Filters are active: </span>
+          {filterSender && <Badge color="blue"> - Sender: {filterSender}</Badge>}
+          {filterReceiver && <Badge color="green"> - Receiver: {filterReceiver}</Badge>}
+          {filterContent && <Badge color="purple"> - Keyword: {filterContent}</Badge>}
           {timestampFilterStart && timestampFilterEnd && (
             <Badge color="gray">
-              {new Date(timestampFilterStart).toLocaleString()} –{" "}
+              - {new Date(timestampFilterStart).toLocaleString()} –{" "}
               {new Date(timestampFilterEnd).toLocaleString()}
             </Badge>
           )}
         </div>
-      </CardHeader>
       <CardBody>
         {loading ? (
           <p>Loading sequence data...</p>
         ) : error ? (
           <p className="text-red-500">{error}</p>
-        ) : msvData.length === 0 ? (
+        ) : filteredData.length === 0 ? (
           <p>No communication records found.</p>
         ) : (
           <div className="overflow-auto max-h-96 border rounded">
@@ -133,7 +202,7 @@ export default function CommunicationView({
                 </tr>
               </thead>
               <tbody>
-                {msvData.map((item) => (
+                {filteredData.map((item) => (
                   <tr key={item.event_id} className="border-b hover:bg-gray-50">
                     <td className="p-2">{item.timestamp}</td>
                     <td

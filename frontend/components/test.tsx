@@ -45,11 +45,11 @@ export default function CommunicationView({
   const [msvData, setMsvData] = useState<MSVItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [onlyFiltered, setOnlyFiltered] = useState(false); // <-- new state
 
   const loadMSV = async () => {
     setLoading(true);
     setError(null);
-
     try {
       const eventIds = communicationEventsWithTimeFilter.map((e) => e.id);
       if (eventIds.length === 0) {
@@ -57,17 +57,32 @@ export default function CommunicationView({
         return;
       }
 
-      const params = new URLSearchParams();
-      eventIds.forEach((id) => params.append("event_ids", id));
+      const BATCH_SIZE = 300;
+      const batches = [];
 
-      const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
-      const data = await res.json();
-
-      if (data.success) {
-        setMsvData(data.data);
-      } else {
-        setError(data.error || "Failed to load data");
+      for (let i = 0; i < eventIds.length; i += BATCH_SIZE) {
+        batches.push(eventIds.slice(i, i + BATCH_SIZE));
       }
+
+      const allResults: MSVItem[] = [];
+
+      for (const batch of batches) {
+        const params = new URLSearchParams();
+        batch.forEach((id) => params.append("event_ids", id));
+
+        const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
+        const text = await res.text();
+        if (!text) throw new Error("Empty response from server");
+
+        const data = JSON.parse(text);
+        if (data.success) {
+          allResults.push(...data.data);
+        } else {
+          throw new Error(data.error || "Failed to load data");
+        }
+      }
+
+      setMsvData(allResults);
     } catch (err) {
       setError(String(err));
     } finally {
@@ -79,10 +94,30 @@ export default function CommunicationView({
     loadMSV();
   }, [communicationEventsWithTimeFilter]);
 
+  // ⏳ Apply filter if checkbox is checked
+  const filteredData = onlyFiltered
+    ? msvData.filter(
+        (item) =>
+          (filterSender && item.source === filterSender) ||
+          (filterReceiver && item.target === filterReceiver)
+      )
+    : msvData;
+
   return (
     <Card className="w-full max-w-7xl mt-8">
       <CardHeader>
-        <h4 className="text-lg font-semibold">{msvData.length} Messages</h4>
+        <div className="flex justify-between items-center">
+          <h4 className="text-lg font-semibold">{filteredData.length} Messages</h4>
+          <label className="text-sm">
+            <input
+              type="checkbox"
+              checked={onlyFiltered}
+              onChange={(e) => setOnlyFiltered(e.target.checked)}
+              className="mr-2"
+            />
+            Only show messages of filtered entities
+          </label>
+        </div>
         <div className="mt-1 flex flex-wrap gap-1 text-sm">
           <span className="ml-2"> for following filter setting - </span>
           {filterSender && <Badge color="blue"> Sender: {filterSender}</Badge>}
@@ -101,7 +136,7 @@ export default function CommunicationView({
           <p>Loading sequence data...</p>
         ) : error ? (
           <p className="text-red-500">{error}</p>
-        ) : msvData.length === 0 ? (
+        ) : filteredData.length === 0 ? (
           <p>No communication records found.</p>
         ) : (
           <div className="overflow-auto max-h-96 border rounded">
@@ -115,7 +150,7 @@ export default function CommunicationView({
                 </tr>
               </thead>
               <tbody>
-                {msvData.map((item) => (
+                {filteredData.map((item) => (
                   <tr key={item.event_id} className="border-b hover:bg-gray-50">
                     <td className="p-2">{item.timestamp}</td>
                     <td

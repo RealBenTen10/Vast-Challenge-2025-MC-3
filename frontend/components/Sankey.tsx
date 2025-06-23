@@ -21,6 +21,7 @@ interface SankeyProps {
   setFilterReceiver: (id: string) => void;
   timestampFilterStart: string;
   timestampFilterEnd: string;
+  setFilterModeMessages: (mode: "all" | "filtered" | "direct" | "directed") => void;
 }
 
 export default function Sankey({
@@ -30,6 +31,7 @@ export default function Sankey({
   setFilterReceiver,
   timestampFilterStart,
   timestampFilterEnd,
+  setFilterModeMessages,
 }: SankeyProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -191,6 +193,7 @@ export default function Sankey({
       .on("click", function (event, d) {
         setFilterSender(d.source.name);
         setFilterReceiver(d.target.name);
+        setFilterModeMessages("directed");
       })
       .on("mouseout", () => {
         tooltip.style("visibility", "hidden");
