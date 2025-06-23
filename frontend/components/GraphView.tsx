@@ -81,7 +81,7 @@ const GraphView: React.FC<Props> = ({
           visible.add(filterSender);
           visible.add(filterReceiver);
 
-          // ✅ Get all event nodes that connect sender and receiver
+          // Get all event nodes that connect sender and receiver
           graphData.nodes.forEach(node => {
             if (node.type === "Event") {
               let connectedToSender = false;
@@ -194,7 +194,6 @@ const GraphView: React.FC<Props> = ({
 
       // Save a copy to trigger React updates reliably
       setCommunicationEventsAfterTimeFilter([...visibleCommunicationEventsAfterTimeFilter]);
-      console.log("Visible communication events after time filter:", visibleCommunicationEventsAfterTimeFilter);
 
       return visible;
     };
@@ -265,7 +264,7 @@ const GraphView: React.FC<Props> = ({
         if (d.type === "Friends") return "#2ca02c";
         if (d.type === "Collaborate") return "#2ca02c";
         if (d.type === "Jurisdiction") return "#2ca02c";
-        if (d.type === "AccessPermission") return "#2ca02c"; // Communication links
+        if (d.type === "AccessPermission") return "#2ca02c"; 
         return "#999";
       })
       .attr("stroke-opacity", 0.6)
