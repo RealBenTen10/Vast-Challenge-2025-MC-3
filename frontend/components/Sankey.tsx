@@ -149,6 +149,7 @@ export default function Sankey({
           setFilterReceiver(d.name);
           setFilterSender("");
         }
+        setFilterModeMessages("filtered");
       })
       .on("mouseout", () => {
         tooltip.style("visibility", "hidden");

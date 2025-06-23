@@ -113,7 +113,24 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         />
       </div>
 
+      <Button
+        onPress={() => {
+          setTimestampFilterEnd(null);
+          setTimestampFilterStart(null);
+          setFilterSender("");
+          setFilterReceiver("");
+          setFilterContent("");
+          setFilterDepth(0);
+          setSelectedEventTypes([]);
+        }}
+        className="mt-4"
+        color="danger"
+      >
+        Reset Filters
+      </Button>
+
       <Alert isVisible={!!statusMsg} color="info" title="Status" description={statusMsg} className="mt-4" />
+      
     </div>
   );
 };

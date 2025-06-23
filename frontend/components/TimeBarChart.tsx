@@ -121,7 +121,9 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
       .attr("fill", d => {
         const start = timestampFilterStart ? new Date(timestampFilterStart) : null;
         const end = timestampFilterEnd ? new Date(timestampFilterEnd) : null;
-        const inRange = start && end && d.date >= start && d.date <= end;
+        if (start) start.setHours(start.getHours() + 2);
+        if (end) end.setHours(end.getHours() + 2);
+        const inRange = start && end && d.date >= start && d.date < end;
         return inRange ? "green" : "#1f77b4";
       })
       .on("mouseover", function (event, d) {
@@ -131,14 +133,17 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
           .duration(100)
           .style("opacity", 0.9)
           .style("pointer-events", "auto");
-        tooltip.html(`<strong>${d.date.toISOString()}</strong><br/>Count: ${d.count}`)
-          .style("left", `${event.pageX + 10}px`)
-          .style("top", `${event.pageY - 28}px`);
+        tooltip
+        .html(`<strong>${d.date.toISOString().slice(0, 19).replace("T", " ")}</strong><br/>Count: ${d.count}`)
+        .style("left", `${event.pageX + 10}px`)
+        .style("top", `${event.pageY - 28}px`);
       })
       .on("mouseout", function (event, d) {
         const start = timestampFilterStart ? new Date(timestampFilterStart) : null;
         const end = timestampFilterEnd ? new Date(timestampFilterEnd) : null;
-        const inRange = start && end && d.date >= start && d.date <= end;
+        if (start) start.setHours(start.getHours() + 2);
+        if (end) end.setHours(end.getHours() + 2);  
+        const inRange = start && end && d.date >= start && d.date < end;
         d3.select(this).attr("fill", inRange ? "green" : "#1f77b4");
         tooltip
         .transition()
@@ -147,7 +152,6 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
         .style("pointer-events", "none");
       })
       .on("click", function (event, d) {
-        console.log("Clicked on bar:", d);
         const start = new Date(d.date);
         const end = new Date(start);
         tooltip
