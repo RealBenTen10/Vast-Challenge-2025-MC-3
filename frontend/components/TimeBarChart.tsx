@@ -31,7 +31,6 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
 
     const visibleSet = new Set(visibleEntities);
 
-    console.warn("Communication events:", communicationEvents);
 
     const filteredTimestamps = communicationEvents
     .map(node => new Date(node.timestamp!))
@@ -70,44 +69,8 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
     .domain([0, 25]) 
     .range([innerHeight, 0]);
 
-
     const g = svg.append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
-
-    g.append("g")
-      .attr("transform", `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(x).ticks(10));
-
-    g.append("g").call(d3.axisLeft(y));
-
-    const tooltip = d3.select("body").append("div")
-      .style("position", "absolute")
-      .style("background", "#fff")
-      .style("padding", "5px")
-      .style("border", "1px solid #ccc")
-      .style("border-radius", "4px")
-      .style("opacity", 0);
-
-    g.selectAll(".bar")
-      .data(data)
-      .enter()
-      .append("rect")
-      .attr("x", d => x(d.date))
-      .attr("y", d => y(d.count))
-      .attr("width", 6)
-      .attr("height", d => innerHeight - y(d.count))
-      .attr("fill", "#1f77b4")
-      .on("mouseover", function (event, d) {
-        d3.select(this).attr("fill", "#ff7f0e");
-        tooltip.transition().duration(100).style("opacity", 0.9);
-        tooltip.html(`<strong>${d.date.toISOString()}</strong><br/>Count: ${d.count}`)
-          .style("left", `${event.pageX + 10}px`)
-          .style("top", `${event.pageY - 28}px`);
-      })
-      .on("mouseout", function () {
-        d3.select(this).attr("fill", "#1f77b4");
-        tooltip.transition().duration(200).style("opacity", 0);
-      });
 
     const brush = d3.brushX()
       .extent([[0, 0], [innerWidth, innerHeight]])
@@ -123,6 +86,80 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
 
     g.append("g").attr("class", "brush").call(brush);
 
+    g.append("g")
+      .attr("transform", `translate(0,${innerHeight})`)
+      .call(d3.axisBottom(x).ticks(10));
+
+    g.append("g").call(d3.axisLeft(y));
+
+    let tooltip = d3.select("#tooltip");
+
+    if (tooltip.empty()) {
+      tooltip = d3
+        .select("body")
+        .append("div")
+        .attr("id", "tooltip")
+        .style("position", "absolute")
+        .style("background", "#fff")
+        .style("padding", "5px")
+        .style("border", "1px solid #ccc")
+        .style("border-radius", "4px")
+        .style("opacity", 0)
+        .style("pointer-events", "none");
+    }
+    
+
+    g.selectAll(".bar")
+      .data(data)
+      .enter()
+      .append("rect")
+      .classed("bar", true)
+      .attr("x", d => x(d.date))
+      .attr("y", d => y(d.count))
+      .attr("width", 6)
+      .attr("height", d => innerHeight - y(d.count))
+      .attr("fill", d => {
+        const start = timestampFilterStart ? new Date(timestampFilterStart) : null;
+        const end = timestampFilterEnd ? new Date(timestampFilterEnd) : null;
+        const inRange = start && end && d.date >= start && d.date <= end;
+        return inRange ? "green" : "#1f77b4";
+      })
+      .on("mouseover", function (event, d) {
+        d3.select(this).attr("fill", "#ff7f0e");
+        tooltip
+          .transition()
+          .duration(100)
+          .style("opacity", 0.9)
+          .style("pointer-events", "auto");
+        tooltip.html(`<strong>${d.date.toISOString()}</strong><br/>Count: ${d.count}`)
+          .style("left", `${event.pageX + 10}px`)
+          .style("top", `${event.pageY - 28}px`);
+      })
+      .on("mouseout", function (event, d) {
+        const start = timestampFilterStart ? new Date(timestampFilterStart) : null;
+        const end = timestampFilterEnd ? new Date(timestampFilterEnd) : null;
+        const inRange = start && end && d.date >= start && d.date <= end;
+        d3.select(this).attr("fill", inRange ? "green" : "#1f77b4");
+        tooltip
+        .transition()
+        .duration(200)
+        .style("opacity", 0)
+        .style("pointer-events", "none");
+      })
+      .on("click", function (event, d) {
+        console.log("Clicked on bar:", d);
+        const start = new Date(d.date);
+        const end = new Date(start);
+        tooltip
+        .transition()
+        .duration(200)
+        .style("opacity", 0)
+        .style("pointer-events", "none");
+        end.setHours(end.getHours() + 1); // 1-hour bin
+        setTimestampFilterStart(start.toISOString().slice(0, 19));
+        setTimestampFilterEnd(end.toISOString().slice(0, 19));
+      });
+
     g.append("text")
       .attr("x", innerWidth / 2)
       .attr("y", innerHeight + 35)
@@ -135,6 +172,8 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
       .attr("y", -35)
       .attr("text-anchor", "middle")
       .text("Event Count");
+
+    
   }, [
     graphData,
     visibleEntities,

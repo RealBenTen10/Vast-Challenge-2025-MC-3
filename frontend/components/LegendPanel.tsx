@@ -6,9 +6,9 @@ const LegendPanel: React.FC = () => {
       <div className="border rounded-lg p-4">
         <h5 className="text-md font-semibold mb-2">Node Legend</h5>
         <ul className="text-sm space-y-1">
-          <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#1f77b4" }}></span>Entity</li>
+          <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#999" }}></span>Entity</li>
           <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#2ca02c" }}></span>Event</li>
-          <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#d62728" }}></span>Communication</li>
+          <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#1f77b4" }}></span>Communication</li>
         </ul>
       </div>
       <div className="border rounded-lg p-4">
@@ -22,6 +22,8 @@ const LegendPanel: React.FC = () => {
           <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>Friends</li>
           <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>Collaborate</li>
           <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>Jurisdiction</li>
+          <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>AccessPermission</li>
+          <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#999" }}></span>Other</li>
         </ul>
       </div>
     </div>

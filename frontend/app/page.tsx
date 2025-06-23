@@ -42,6 +42,7 @@ export default function Home() {
   const [timestampFilterStart, setTimestampFilterStart] = useState<string | null>(null);
   const [timestampFilterEnd, setTimestampFilterEnd] = useState<string | null>(null);
   const [communicationEvents, setCommunicationEvents] = useState<Node[]>([]);
+  const [communicationEventsAfterTimeFilter, setCommunicationEventsAfterTimeFilter] = useState<Node[]>([]);
 
 
   // Don't change this function
@@ -113,6 +114,7 @@ export default function Home() {
       setEdgeCount={setEdgeCount}
       setSelectedInfo={setSelectedInfo}
       setCommunicationEvents={setCommunicationEvents}
+      setCommunicationEventsAfterTimeFilter={setCommunicationEventsAfterTimeFilter}
       callApi={callApi}
     />
 
@@ -143,6 +145,8 @@ export default function Home() {
       filterContent={filterContent}
       timestampFilterStart={timestampFilterStart}
       timestampFilterEnd={timestampFilterEnd}
+      visibleEntities={visibleEntities}
+      communicationEventsWithTimeFilter={communicationEventsAfterTimeFilter}
     />
 
     

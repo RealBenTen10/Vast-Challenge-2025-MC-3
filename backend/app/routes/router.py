@@ -539,82 +539,44 @@ async def filter_by_content(query: str = Query(..., description="Search string f
 
     return {"success": True, "nodes": nodes, "links": edges}
 
-@router.get("/massive-sequence-view")
+@router.get("/massive-sequence-view", response_class=JSONResponse)
 async def massive_sequence_view(
-    start_date: Optional[str] = Query(None, description="Start date in YYYY-MM-DD"),
-    end_date: Optional[str] = Query(None, description="End date in YYYY-MM-DD"),
-    sender: Optional[str] = Query(None, description="Sender Entity ID"),
-    receiver: Optional[str] = Query(None, description="Receiver Entity ID"),
-    keyword: Optional[str] = Query(None, description="Search keyword in content fields")
+    event_ids: List[str] = Query(..., description="List of communication event node IDs")
 ):
-    print(f"Fetching data for parameters: start_date={start_date}, end_date={end_date}, sender={sender}, receiver={receiver}, keyword={keyword}")
-    
+    """
+    Given a list of communication Event node IDs, return their sender and receiver entity IDs.
+    """
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     results = []
-    start_date = start_date.replace("T", " ") if start_date else None
-    end_date = end_date.replace("T", " ") if end_date else None
+    print(f"Fetching massive sequence view for {len(event_ids)} events: {event_ids[:5]}...")  
 
     try:
         with driver.session() as session:
-            # Base MATCH pattern
-            cypher_parts = [
-                "MATCH (sender:Entity)-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity)"
-            ]
-
-            # WHERE clause parts
-            where_clauses = []
-            if sender != receiver:
-                if sender:
-                    where_clauses.append("sender.id = $sender")
-                if receiver:
-                    where_clauses.append("receiver.id = $receiver")
-
-            if start_date:
-                where_clauses.append(f"substring(comm.timestamp, 0, {len(start_date)}) >= $start_date")
-
-            if end_date:
-                where_clauses.append(f"substring(comm.timestamp, 0, {len(end_date)}) <= $end_date")
-
-            if keyword:
-                where_clauses.append("""
-                    any(field IN [comm.content, comm.findings, comm.results, comm.destination, comm.outcome, comm.reference] 
-                    WHERE toLower(field) CONTAINS toLower($keyword))
-                """)
-
-            if where_clauses:
-                cypher_parts.append("WHERE " + " AND ".join(where_clauses))
-
-            # Final RETURN clause
-            cypher_parts.append("RETURN comm, sender.id AS source, receiver.id AS target ORDER BY comm.timestamp")
-
-            # Join all parts
-            cypher_query = "\n".join(cypher_parts)
-
-            params = {
-                "start_date": start_date,
-                "end_date": end_date,
-                "sender": sender,
-                "receiver": receiver,
-                "keyword": keyword,
-            }
-
-            records = session.run(cypher_query, **params)
+            query = """
+                UNWIND $event_ids AS eid
+                MATCH (sender:Entity)-[:sent]->(comm:Event {id: eid, sub_type: 'Communication'})-[:received]->(receiver:Entity)
+                RETURN comm, sender.id AS source, receiver.id AS target
+                ORDER BY comm.timestamp
+            """
+            records = session.run(query, event_ids=event_ids)
 
             for record in records:
-                event = record["comm"]
+                comm = record["comm"]
                 results.append({
-                    "event_id": event.id,
-                    "timestamp": event["timestamp"],
-                    "source": record.get("source") or "–",
-                    "target": record.get("target") or "–",
-                    "content": event.get("content", ""),
-                    "sub_type": event.get("sub_type", ""),
+                    "event_id": comm.id,
+                    "timestamp": comm.get("timestamp", ""),
+                    "source": record.get("source", "–"),
+                    "target": record.get("target", "–"),
+                    "content": comm.get("content", ""),
+                    "sub_type": comm.get("sub_type", "")
                 })
 
     except Exception as e:
+        print(f"Error fetching massive sequence view: {str(e)}")    
         return {"success": False, "error": str(e)}
     finally:
         driver.close()
+    print(f"Massive sequence view results: {len(results)} records found: {results[:5]}...")  # Print first 5 results for debugging
     return {"success": True, "data": results}
 
 

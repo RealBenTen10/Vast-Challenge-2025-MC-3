@@ -99,9 +99,12 @@ export default function Sankey({
       .attr("viewBox", `0 0 ${width} ${height}`)
       .append("g");
 
-    const tooltip = d3
+    let tooltip = d3.select("#tooltip");
+    if (tooltip.empty()) {
+      tooltip = d3
       .select("body")
       .append("div")
+      .attr("id", "tooltip")
       .style("position", "absolute")
       .style("z-index", "10")
       .style("visibility", "hidden")
@@ -109,8 +112,10 @@ export default function Sankey({
       .style("border", "1px solid #ccc")
       .style("padding", "8px")
       .style("border-radius", "4px")
-      .style("font-size", "0.85rem");
-
+      .style("font-size", "0.85rem")
+      .style("opacity", 0)
+      .style("pointer-events", "none");
+    }
     g.append("g")
       .selectAll("rect")
       .data(sankeyGraph.nodes)
@@ -122,7 +127,12 @@ export default function Sankey({
       .attr("height", (d) => Math.max(1, d.y1! - d.y0!))
       .attr("fill", (d) => color(d.name))
       .on("mouseover", function (event, d) {
-        tooltip.html(`<strong>${d.name}</strong><br/>Total: ${d.value}`).style("visibility", "visible");
+    tooltip.html(`<strong>${d.name}</strong><br/>Total: ${d.value}`).style("visibility", "visible");
+    tooltip
+      .transition()
+      .duration(100)
+      .style("opacity", 0.9)
+      .style("pointer-events", "auto");
       })
       .on("mousemove", (event) => {
         tooltip

@@ -49,6 +49,7 @@ export default function CommunicationView({
   const loadMSV = async () => {
     setLoading(true);
     setError(null);
+
     try {
       const eventIds = communicationEventsWithTimeFilter.map((e) => e.id);
       if (eventIds.length === 0) {
@@ -56,36 +57,17 @@ export default function CommunicationView({
         return;
       }
 
-      const BATCH_SIZE = 300;
-      const batches = [];
+      const params = new URLSearchParams();
+      eventIds.forEach((id) => params.append("event_ids", id));
 
-      for (let i = 0; i < eventIds.length; i += BATCH_SIZE) {
-        batches.push(eventIds.slice(i, i + BATCH_SIZE));
+      const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
+      const data = await res.json();
+
+      if (data.success) {
+        setMsvData(data.data);
+      } else {
+        setError(data.error || "Failed to load data");
       }
-
-      const allResults: MSVItem[] = [];
-
-      for (const batch of batches) {
-        const params = new URLSearchParams();
-        batch.forEach((id) => params.append("event_ids", id));
-
-        const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
-
-        // Check for valid response
-        const text = await res.text();
-        if (!text) {
-          throw new Error("Empty response from server");
-        }
-
-        const data = JSON.parse(text);
-        if (data.success) {
-          allResults.push(...data.data);
-        } else {
-          throw new Error(data.error || "Failed to load data");
-        }
-      }
-
-      setMsvData(allResults);
     } catch (err) {
       setError(String(err));
     } finally {

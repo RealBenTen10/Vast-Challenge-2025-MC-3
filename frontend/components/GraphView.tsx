@@ -23,6 +23,7 @@ interface Props {
   setEdgeCount: (count: number) => void;
   setSelectedInfo: (info: any) => void;
   setCommunicationEvents: (nodes: Node[]) => void;
+  setCommunicationEventsAfterTimeFilter: (nodes: Node[]) => void;
   callApi: (endpoint: string) => void;
 }
 
@@ -45,6 +46,7 @@ const GraphView: React.FC<Props> = ({
   setEdgeCount,
   setSelectedInfo,
   setCommunicationEvents,
+  setCommunicationEventsAfterTimeFilter,
   callApi
 }) => {
   useEffect(() => {
@@ -181,6 +183,19 @@ const GraphView: React.FC<Props> = ({
         );
       }
 
+      // Capture visible communication events BEFORE time filter
+      const visibleSetAfterTimeFilter = new Set(visible);
+      const visibleCommunicationEventsAfterTimeFilter = graphData.nodes
+        .filter(n =>
+          n.type === "Event" &&
+          n.sub_type === "Communication" &&
+          visibleSetAfterTimeFilter.has(n.id)
+        );
+
+      // Save a copy to trigger React updates reliably
+      setCommunicationEventsAfterTimeFilter([...visibleCommunicationEventsAfterTimeFilter]);
+      console.log("Visible communication events after time filter:", visibleCommunicationEventsAfterTimeFilter);
+
       return visible;
     };
 
@@ -250,6 +265,7 @@ const GraphView: React.FC<Props> = ({
         if (d.type === "Friends") return "#2ca02c";
         if (d.type === "Collaborate") return "#2ca02c";
         if (d.type === "Jurisdiction") return "#2ca02c";
+        if (d.type === "AccessPermission") return "#2ca02c"; // Communication links
         return "#999";
       })
       .attr("stroke-opacity", 0.6)
@@ -275,7 +291,7 @@ const GraphView: React.FC<Props> = ({
 
     node.append("circle")
       .attr("r", 20)
-      .attr("fill", d => d.type === "Entity" ? "#1f77b4" : d.type === "Event" ? "#2ca02c" : d.type === "Relationship" ? "#d62728" : "#999");
+      .attr("fill", d => d.type === "Entity" ? "#999" : d.sub_type === "Communication" ? "#1f77b4" : d.type === "Event" ? "#2ca02c" : "#999");
 
     node.append("text")
       .attr("text-anchor", "middle")
