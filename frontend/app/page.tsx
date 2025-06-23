@@ -23,11 +23,11 @@ export default function Home() {
   const [useAggregated, setUseAggregated] = useState<boolean>(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const graphContainerRef = useRef<HTMLDivElement | null>(null);
-  const timeSeriesRef = useRef<SVGSVGElement | null>(null);  // Add timeSeriesRef
+  const timeSeriesRef = useRef<SVGSVGElement | null>(null);  
 
   const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([]);
   const [subtypeCounts, setSubtypeCounts] = useState<Record<string, number>>({});
-  const [edgeTypeCounts, setEdgeTypeCounts] = useState<Record<string, number>>({});  // Track edge types
+  const [edgeTypeCounts, setEdgeTypeCounts] = useState<Record<string, number>>({});  
   const [edgeCount, setEdgeCount] = useState<number>(0);
   const [filterMode, setFilterMode] = useState<"all" | "event" | "relationship">("all");
   const [filterEntityId, setFilterEntityId] = useState<string>("");
