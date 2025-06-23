@@ -140,7 +140,7 @@ export default function CommunicationView({
               }`}
               onClick={() => setFilterModeMessages("all")}
             >
-              Show all Messages
+              Show filtered Messages
             </button>
             <button
               className={`px-3 py-1 text-sm border rounded ${
@@ -148,7 +148,7 @@ export default function CommunicationView({
               }`}
               onClick={() => setFilterModeMessages("filtered")}
             >
-              Show filtered Messages
+              Show Messages with Sender or Receiver
             </button>
             <button
               className={`px-3 py-1 text-sm border rounded ${
@@ -156,7 +156,7 @@ export default function CommunicationView({
               }`}
               onClick={() => setFilterModeMessages("direct")}
             >
-              Show direct Messages
+              Show Messages between Sender and Receiver
             </button>
             <button
               className={`px-3 py-1 text-sm border rounded ${
@@ -164,7 +164,7 @@ export default function CommunicationView({
               }`}
               onClick={() => setFilterModeMessages("directed")}
             >
-              Show directed Messages
+              Show Messages from Sender to Receiver
             </button>
           </div>
         </div>
