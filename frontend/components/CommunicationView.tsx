@@ -18,6 +18,7 @@ interface CommunicationViewProps {
   filterContent: string;
   timestampFilterStart: string;
   timestampFilterEnd: string;
+  visibleEntities: { id: string; sub_type?: string }[];
 }
 
 export default function CommunicationView({
@@ -28,6 +29,7 @@ export default function CommunicationView({
   filterContent,
   timestampFilterStart,
   timestampFilterEnd,
+  visibleEntities,
 }: CommunicationViewProps) {
   const [msvData, setMsvData] = useState<MSVItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -67,8 +69,9 @@ export default function CommunicationView({
   return (
     <Card className="w-full max-w-7xl mt-8">
       <CardHeader>
-        <h4 className="text-lg font-semibold">Messages</h4>
-        <div className="mt-1 flex flex-wrap gap-2 text-sm">
+        <h4 className="text-lg font-semibold">{msvData.length} Messages</h4>
+        <div className="mt-1 flex flex-wrap gap-1 text-sm">
+          <span className="ml-2"> for following filter setting - </span>
           {filterSender && <Badge color="blue"> Sender: {filterSender}</Badge>}
           {filterReceiver && <Badge color="green"> Receiver: {filterReceiver}</Badge>}
           {filterContent && <Badge color="purple"> Keyword: {filterContent}</Badge>}

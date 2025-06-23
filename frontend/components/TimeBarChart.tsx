@@ -6,7 +6,7 @@ import { Node, Link, GraphData } from "./types";
 
 interface TimeBarChartProps {
   graphData: GraphData;
-  visibleEntities: string[]; 
+  visibleEntities: { id: string; sub_type?: string }[]; 
   timestampFilterStart: string;
   timestampFilterEnd: string;
   setTimestampFilterStart: (start: string) => void;
@@ -59,13 +59,17 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
     const innerHeight = height - margin.top - margin.bottom;
 
     const x = d3.scaleTime()
-      .domain(d3.extent(data, d => d.date) as [Date, Date])
+      .domain([
+        new Date("2040-10-01T00:00:00"),
+        new Date("2040-10-15T00:00:00")
+      ])
       .range([0, innerWidth]);
 
+
     const y = d3.scaleLinear()
-      .domain([0, d3.max(data, d => d.count) || 1])
-      .nice()
-      .range([innerHeight, 0]);
+    .domain([0, 25]) 
+    .range([innerHeight, 0]);
+
 
     const g = svg.append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);

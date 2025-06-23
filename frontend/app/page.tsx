@@ -116,6 +116,9 @@ export default function Home() {
       callApi={callApi}
     />
 
+    {/* Legends */}
+    <LegendPanel />
+    
     {/* Time Bar Chart */}
     <TimeBarChart
       graphData={graphData}
@@ -130,9 +133,6 @@ export default function Home() {
       setFilterReceiver={setFilterReceiver}
       communicationEvents={communicationEvents}
     />
-
-    {/* Legends */}
-    <LegendPanel />
 
     {/* Massive Sequence View */}
     <CommunicationView

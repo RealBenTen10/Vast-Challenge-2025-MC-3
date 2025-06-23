@@ -338,7 +338,7 @@ async def read_db_graph():
             edge_data["target"] = record["target"]
             edge_data["type"] = r.type if hasattr(r, "type") else r.get("type", "")
             edges.append(edge_data)
-
+    
     return {"success": True, "nodes": nodes, "links": edges}
 
 @router.get("/get-events-by-date", response_class=JSONResponse)
@@ -617,42 +617,46 @@ async def massive_sequence_view(
         driver.close()
     return {"success": True, "data": results}
 
-'''
+
 from fastapi import APIRouter, Query
 from neo4j import GraphDatabase
 from langchain.chains import RetrievalQA
-from langchain.vectorstores import Neo4jVector
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.llms import GPT4All  # or Ollama, LLaMA, etc.
-
-router = APIRouter()
-# Credentials
-NEO4J_URI = "bolt://" + os.environ.get('DB_HOST') + ":7687"
-NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = os.environ.get('DB_PASSWORD')
+from langchain_community.vectorstores import Neo4jVector
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.llms import Ollama
 
 @router.get("/ask")
 def ask_question(question: str):
     print(f"Received question: {question}")
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+
     try:
-        # You can also chunk documents & embed externally, but here's LangChain Neo4j example
+        # Embedding model
+        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
+        # Neo4j vector retriever
         vectorstore = Neo4jVector(
             driver=driver,
-            embedding=HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2"),
-            index_name="graph-index",  # ensure this exists
+            embedding=embeddings,
+            index_name="graph-index",
         )
 
+        # LLM via Ollama
+        llm = Ollama(model="mistral")  # Make sure `ollama run mistral` has been started
+
+        # Retrieval QA chain
         qa = RetrievalQA.from_chain_type(
-            llm=GPT4All(model="mistral-7b-instruct-v0.1.Q4_0.gguf", backend="llama.cpp"),
+            llm=llm,
             retriever=vectorstore.as_retriever()
         )
 
+        print("Running question-answering chain...")
         answer = qa.run(question)
+
         return {"success": True, "answer": answer}
 
     except Exception as e:
         return {"success": False, "error": str(e)}
+
     finally:
         driver.close()
-'''

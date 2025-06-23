@@ -242,8 +242,14 @@ const GraphView: React.FC<Props> = ({
       .data(links)
       .enter().append("line")
       .attr("stroke", d => {
-        if (d.type === "COMMUNICATION") return "#2ca02c";
-        if (d.type === "EVIDENCE_FOR") return "#800080";
+        if (d.type === "Suspicious") return "#d62728";
+        if (d.type === "Colleagues") return "#2ca02c";
+        if (d.type === "Operates") return "#2ca02c";
+        if (d.type === "Reports") return "#d62728";
+        if (d.type === "Unfriendly") return "#d62728";
+        if (d.type === "Friends") return "#2ca02c";
+        if (d.type === "Collaborate") return "#2ca02c";
+        if (d.type === "Jurisdiction") return "#2ca02c";
         return "#999";
       })
       .attr("stroke-opacity", 0.6)
