@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { Card, CardHeader, CardBody, Badge, Button } from "@heroui/react";
 import * as d3 from "d3";
 import {
   SankeyGraph,
@@ -21,6 +22,7 @@ interface SankeyProps {
   setFilterReceiver: (id: string) => void;
   timestampFilterStart: string;
   timestampFilterEnd: string;
+  filterContent: string;
   setFilterModeMessages: (mode: "all" | "filtered" | "direct" | "directed") => void;
 }
 
@@ -31,6 +33,7 @@ export default function Sankey({
   setFilterReceiver,
   timestampFilterStart,
   timestampFilterEnd,
+  filterContent,
   setFilterModeMessages,
 }: SankeyProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -61,7 +64,7 @@ export default function Sankey({
     };
 
     fetchDataAndDraw();
-  }, [filterSender, filterReceiver, timestampFilterStart, timestampFilterEnd]);
+  }, [filterSender, filterReceiver, timestampFilterStart, timestampFilterEnd, filterContent]);
 
   const drawSankeyDiagram = (data: SankeyDataItem[]) => {
     const svg = d3.select(svgRef.current);
@@ -202,9 +205,33 @@ export default function Sankey({
   };
 
   return (
-    <div className="w-full max-w-7xl mt-6">
-      <h4 className="text-md font-semibold mb-2">Sankey Diagram: Communication Flow</h4>
-      <svg ref={svgRef} className="w-full h-96 border rounded-lg bg-white" />
+    <Card className="w-full max-w-7xl mt-8">
+    <CardHeader>
+      <div className="mt-2 flex flex-wrap gap-1 text-sm">
+        <h4 className="text-md font-semibold mb-2">
+          Sankey Diagram: Communication Flow
+          {filterSender && ` from ${filterSender}`}
+          {filterReceiver && ` to ${filterReceiver}`}
+        </h4>
+      </div>
+    </CardHeader>
+      <div className="flex gap-2">
+        <button
+          className={`px-3 py-1 text-sm border rounded`}
+          onClick={() => setFilterModeMessages("all")}
+        >
+          Show incoming messages as well
+        </button>
+      </div>
+    <div className="mt-2 flex flex-wrap gap-1 text-sm">
+      <span className="ml-4">  </span>
+      {!filterSender && !filterReceiver && <Badge color="green"> Please select a Sender or Receiver to display Sankey Flow </Badge>}
+      {filterSender && <Badge color="blue"> Following Flow is visualized: {filterSender} </Badge>}
     </div>
+    <CardBody>
+      <svg ref={svgRef} className="w-full h-96 border rounded-lg bg-white" />
+    </CardBody>
+      
+    </Card>
   );
 }

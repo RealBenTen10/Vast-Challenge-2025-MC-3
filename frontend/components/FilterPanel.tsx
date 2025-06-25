@@ -128,7 +128,8 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
       >
         Reset Filters
       </Button>
-
+      
+      
       <Alert isVisible={!!statusMsg} color="info" title="Status" description={statusMsg} className="mt-4" />
       
     </div>

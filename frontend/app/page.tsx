@@ -162,6 +162,7 @@ export default function Home() {
     setFilterReceiver={setFilterReceiver}
     timestampFilterStart={timestampFilterStart}
     timestampFilterEnd={timestampFilterEnd}
+    filterContent={filterContent}
     setFilterModeMessages={setFilterModeMessages}
     />
     
