@@ -117,6 +117,7 @@ export default function Home() {
       setSelectedInfo={setSelectedInfo}
       setCommunicationEvents={setCommunicationEvents}
       setCommunicationEventsAfterTimeFilter={setCommunicationEventsAfterTimeFilter}
+      communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
       callApi={callApi}
     />
 

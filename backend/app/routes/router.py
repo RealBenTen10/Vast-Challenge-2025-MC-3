@@ -548,7 +548,6 @@ async def massive_sequence_view(
     """
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     results = []
-    print(f"Fetching massive sequence view for {len(event_ids)} events: {event_ids[:5]}...")  
 
     try:
         with driver.session() as session:
@@ -576,7 +575,6 @@ async def massive_sequence_view(
         return {"success": False, "error": str(e)}
     finally:
         driver.close()
-    print(f"Massive sequence view results: {len(results)} records found: {results[:5]}...")  # Print first 5 results for debugging
     return {"success": True, "data": results}
 
 

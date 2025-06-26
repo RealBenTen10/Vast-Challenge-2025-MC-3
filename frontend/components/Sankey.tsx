@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, CardBody, Badge, Button } from "@heroui/react";
 import * as d3 from "d3";
 import {
@@ -8,6 +8,7 @@ import {
   sankey as d3Sankey,
   sankeyLinkHorizontal,
 } from "d3-sankey";
+
 
 interface SankeyDataItem {
   source: string;
@@ -37,6 +38,8 @@ export default function Sankey({
   setFilterModeMessages,
 }: SankeyProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const [showAdditionalMessages, setShowAdditionalMessages] = useState<"none" | "preceding" | "succeeding" | "both">("none");
+  const [sankeyData, setSankeyData] = useState<SankeyDataItem[]>([]);
 
   useEffect(() => {
     if (!filterSender && !filterReceiver) return;
@@ -53,9 +56,13 @@ export default function Sankey({
         const json = await res.json();
 
         if (json.success && Array.isArray(json.links) && json.links.length > 0) {
+          setSankeyData(json.links);
+          console.log("Sankey data loaded:", sankeyData);
           drawSankeyDiagram(json.links);
         } else {
           d3.select(svgRef.current).selectAll("*").remove();
+          setSankeyData(json.links);
+          console.log("Sankey data loaded:", sankeyData);
         }
       } catch (err) {
         console.error("Error loading Sankey data:", err);
@@ -215,21 +222,18 @@ export default function Sankey({
         </h4>
       </div>
     </CardHeader>
-      <div className="flex gap-2">
-        <button
-          className={`px-3 py-1 text-sm border rounded`}
-          onClick={() => setFilterModeMessages("all")}
-        >
-          Show incoming messages as well
-        </button>
-      </div>
+      
     <div className="mt-2 flex flex-wrap gap-1 text-sm">
       <span className="ml-4">  </span>
-      {!filterSender && !filterReceiver && <Badge color="green"> Please select a Sender or Receiver to display Sankey Flow </Badge>}
-      {filterSender && <Badge color="blue"> Following Flow is visualized: {filterSender} </Badge>}
+
+      {(filterSender || filterReceiver) && sankeyData && <Badge color="green"> Following Flow is visualized: {filterSender} -{">"} {filterReceiver} </Badge>}
+      {(filterSender || filterReceiver) && !sankeyData && <Badge color="green"> No Communication visualized for this Filter setting </Badge>}
+      
+      {(!filterSender && !filterReceiver) && <Badge color="blue"> Please select a Sender or Receiver to display Flow using Sankey Diagram </Badge>}
+      
     </div>
     <CardBody>
-      <svg ref={svgRef} className="w-full h-96 border rounded-lg bg-white" />
+      {(filterSender || filterReceiver) && <svg ref={svgRef} className="w-full h-96 border rounded-lg bg-white" />}
     </CardBody>
       
     </Card>

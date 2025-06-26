@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import { GraphData } from "@/components/types";
 
@@ -24,6 +24,7 @@ interface Props {
   setSelectedInfo: (info: any) => void;
   setCommunicationEvents: (nodes: Node[]) => void;
   setCommunicationEventsAfterTimeFilter: (nodes: Node[]) => void;
+  communicationEventsAfterTimeFilter: Node[];
   callApi: (endpoint: string) => void;
 }
 
@@ -47,8 +48,29 @@ const GraphView: React.FC<Props> = ({
   setSelectedInfo,
   setCommunicationEvents,
   setCommunicationEventsAfterTimeFilter,
+  communicationEventsAfterTimeFilter,
   callApi
 }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [stepMS, setStepMS] = useState(60 * 60 * 1000); // 1h default
+  const intervalRef = useRef<number | null>(null);
+
+  const controls = (
+    <div style={{ position: "absolute", top: 10, left: 10, zIndex: 10 }}>
+      <button onClick={() => setIsPlaying(true)}>▶ Play</button>
+      <button onClick={() => setIsPlaying(false)}>⏸ Pause</button>
+      <button onClick={() => { setIsPlaying(false); setCurrentIndex(0); }}>⏹ Stop</button>
+      <button onClick={() => setCurrentIndex(i => Math.max(i - 1, 0))}>◀ Step Back</button>
+      <button onClick={() => setCurrentIndex(i => i + 1)}>Step ▶</button>
+      <select value={stepMS / 60000} onChange={e => setStepMS(+e.target.value * 60000)}>
+        <option value={1}>1 min</option>
+        <option value={10}>10 min</option>
+        <option value={60}>1 h</option>
+      </select>
+    </div>
+  );
+
   useEffect(() => {
     callApi("/read-db-graph"); // Load full graph once
   }, []);
@@ -158,12 +180,14 @@ const GraphView: React.FC<Props> = ({
       }
       // Capture visible communication events BEFORE time filter
       const visibleSetBeforeTimeFilter = new Set(visible);
+      console.log("Visible nodes before time filter:", visibleSetBeforeTimeFilter);
       const visibleCommunicationEvents = graphData.nodes
         .filter(n =>
           n.type === "Event" &&
           n.sub_type === "Communication" &&
           visibleSetBeforeTimeFilter.has(n.id)
         );
+        console.log("Visible communication events before time filter:", visibleCommunicationEvents);
 
       // Save a copy to trigger React updates reliably
       setCommunicationEvents([...visibleCommunicationEvents]);
@@ -319,7 +343,36 @@ const GraphView: React.FC<Props> = ({
     filterMode,
   ]);
 
-  return null;
+
+  useEffect(() => {
+    if (!isPlaying) {
+      intervalRef.current && clearInterval(intervalRef.current);
+      return;
+    }
+    const events = [...communicationEventsAfterTimeFilter]
+      .sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const doStep = () => {
+      if (currentIndex >= events.length) { setIsPlaying(false); return; }
+      const ev = events[currentIndex];
+      const related = d3.select(svgRef.current).selectAll("line")
+        .filter((d: any) => d.timestamp === ev.timestamp);
+      related
+        .transition().duration(stepMS/2)
+        .attr("stroke", "#ff7f0e").attr("stroke-width", 4)
+        .transition().delay(stepMS/2).duration(stepMS/2)
+        .attr("stroke", d => d.type === "COMMUNICATION" ? "#2ca02c" : "#999")
+        .attr("stroke-width", 1);
+      setCurrentIndex(i => i + 1);
+    };
+    intervalRef.current = setInterval(doStep, stepMS);
+    return () => intervalRef.current && clearInterval(intervalRef.current);
+  }, [isPlaying, currentIndex, stepMS]);
+
+  return (
+    <>
+      {controls}
+    </>
+  );
 };
 
 export default GraphView;

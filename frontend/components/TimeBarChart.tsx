@@ -32,10 +32,14 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
     const visibleSet = new Set(visibleEntities);
 
 
-    const filteredTimestamps = communicationEvents
-    .map(node => new Date(node.timestamp!))
-    .filter(date => !isNaN(date.getTime()));
+    const parseAsUTC = (timestamp: string) =>
+  new Date(timestamp.replace(" ", "T") + "Z");
 
+  const filteredTimestamps = communicationEvents
+  .map(node => parseAsUTC(node.timestamp!))
+  .filter(date => !isNaN(date.getTime()));
+
+    console.log(filteredTimestamps)
 
     if (filteredTimestamps.length === 0) return;
 
@@ -114,7 +118,7 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
       .enter()
       .append("rect")
       .classed("bar", true)
-      .attr("x", d => x(d.date))
+      .attr("x", d => x(d.date) - 6 / 2)
       .attr("y", d => y(d.count))
       .attr("width", 6)
       .attr("height", d => innerHeight - y(d.count))
@@ -134,7 +138,7 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
           .style("opacity", 0.9)
           .style("pointer-events", "auto");
         tooltip
-        .html(`<strong>${d.date.toISOString().slice(0, 19).replace("T", " ")}</strong><br/>Count: ${d.count}`)
+        .html(`<strong>${d.date.toLocaleString("sv-SE", { timeZone: "UTC" })}</strong><br/>Count: ${d.count}`)
         .style("left", `${event.pageX + 10}px`)
         .style("top", `${event.pageY - 28}px`);
       })
