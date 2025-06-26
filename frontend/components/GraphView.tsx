@@ -16,6 +16,7 @@ interface Props {
   setEdgeTypeCounts: (counts: Record<string, number>) => void;
   setEdgeCount: (count: number) => void;
   setSelectedInfo: (info: any) => void;
+  highlightedMessageId?: string | null;
 }
 
 const GraphView: React.FC<Props> = ({
@@ -31,8 +32,13 @@ const GraphView: React.FC<Props> = ({
   setSubtypeCounts,
   setEdgeTypeCounts,
   setEdgeCount,
-  setSelectedInfo
+  setSelectedInfo,
+  highlightedMessageId       
 }) => {
+  const DEFAULT_RADIUS = 20
+  const HIGHLIGHT_RADIUS = 30;
+
+
   useEffect(() => {
     if (!svgRef.current || !graphContainerRef.current || graphData.nodes.length === 0) return;
 
@@ -125,6 +131,22 @@ const GraphView: React.FC<Props> = ({
 
     const visibleIds = getVisibleNodeIds();
 
+    const communicationCounts: Record<string, number> = {};
+    graphData.links.forEach(link => {
+      if (link.type === "COMMUNICATION") {
+        const src = typeof link.source === "string" ? link.source : link.source.id;
+        // Prüfen, ob src eine Entity ist
+        const srcNode = graphData.nodes.find(n => n.id === src && n.type === "Entity");
+        if (srcNode) {
+          communicationCounts[src] = (communicationCounts[src] || 0) + 1;
+        }
+      }
+    });
+
+    const getEntityRadius = (id: string) => {
+      return DEFAULT_RADIUS + 10 * (communicationCounts[id] || 0);
+    };
+
     const nodes = graphData.nodes.filter(d =>
       visibleIds.has(d.id) &&
       (d.type === "Entity" || filterMode === "all" || (filterMode === "event" && d.type === "Event") || (filterMode === "relationship" && d.type === "Relationship"))
@@ -185,8 +207,8 @@ const GraphView: React.FC<Props> = ({
       .on("click", (event, d) => setSelectedInfo({ type: "node", data: d }));
 
     node.append("circle")
-      .attr("r", 20)
-      .attr("fill", d => d.type === "Entity" ? "#1f77b4" : d.type === "Event" ? "#2ca02c" : d.type === "Relationship" ? "#d62728" : "#999");
+      .attr("r", d => d.type === "Entity" ? getEntityRadius(d.id) : DEFAULT_RADIUS)
+      .attr("fill", d => d.type === "Entity" ? "#1f77b4" : d.type === "Event" ? "#2ca02c" : d.type === "Relationship" ? "#d62728" : d.id === highlightedMessageId ? "#ff00ff" :"#999");
 
     node.append("text")
       .attr("text-anchor", "middle")
@@ -204,6 +226,37 @@ const GraphView: React.FC<Props> = ({
       node.attr("transform", d => `translate(${d.x},${d.y})`);
     });
   }, [graphData, filterEntityId, filterDepth, filterContent, selectedTimestamp, filterMode]);
+  
+
+  useEffect(() => {
+  if (!svgRef.current || !highlightedMessageId) return;
+
+  const svg = d3.select(svgRef.current);
+
+  // Zurücksetzen aller Node-Radien
+  svg.selectAll("circle")
+    .attr("r", function () {
+      const parentData = d3.select(this.parentNode!).datum() as Node;
+      return DEFAULT_RADIUS;
+    })
+    .attr("fill", function () {
+      const d = d3.select(this.parentNode!).datum() as Node;
+      if (d.type === "Entity") return "#1f77b4";
+      if (d.type === "Event") return "#2ca02c";
+      if (d.type === "Relationship") return "#d62728";
+      return "#999";
+    });
+
+  svg.selectAll("circle")
+    .filter(function () {
+      const d = d3.select(this.parentNode!).datum() as Node;
+      return d.id === highlightedMessageId && d.type === "Event" && d.sub_type === "Communication";
+    })
+    .attr("r", HIGHLIGHT_RADIUS)
+    .attr("fill", "#ff00ff");
+
+}, [highlightedMessageId]);
+
 
   return null;
 };

@@ -27,11 +27,12 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   statusMsg,
 }) => {
   return (
-    <div className="w-[400px] flex-shrink-0 border rounded-lg p-4">
-      <h3 className="text-lg font-semibold mb-2">Neo4j Graph Actions</h3>
-      <Button onPress={() => callApi("/load-graph-json")} className="mt-2" color="primary">
-        Load JSON Graph
-      </Button>
+    <div className="w-[320px] flex-shrink-0 border rounded-lg p-4">
+      <div className="flex justify-end">
+        <Button onPress={() => callApi("/load-graph-json")} className="mt-2" color="primary">
+          Load JSON Graph
+        </Button>
+      </div>
       
       <div className="mt-4">
         <label className="text-sm font-medium">Filter by Entity ID:</label>

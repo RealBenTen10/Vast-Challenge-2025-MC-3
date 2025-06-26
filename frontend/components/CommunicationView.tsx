@@ -10,12 +10,16 @@ interface MSVItem {
   sub_type: string;
 }
 
-export default function CommunicationView() {
+interface CommunicationViewProps {
+  className?: string;
+  onMessageClick?: (id: string) => void;
+}
+
+export default function CommunicationView({ className, onMessageClick }: CommunicationViewProps) {
   const [msvData, setMsvData] = useState<MSVItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [entityFilter, setEntityFilter] = useState<string>("");
@@ -50,15 +54,14 @@ export default function CommunicationView() {
   }, []);
 
   return (
-    <Card className="w-full max-w-7xl mt-8">
+    <Card className={`w-full max-w-7xl mt-8 ${className || ""}`}>
       <CardHeader>
         <h4 className="text-lg font-semibold">Messages</h4>
       </CardHeader>
       <CardBody>
-        {/* Filters */}
         <div className="flex flex-wrap gap-4 mb-4">
           <Input label="Start Date (YYYY-MM-DD)" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          <Input label="End Date (YYYY-MM-DD)" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <Input label="End Date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
           <Input label="Entity ID" value={entityFilter} onChange={(e) => setEntityFilter(e.target.value)} />
           <Input label="Keyword" value={keyword} onChange={(e) => setKeyword(e.target.value)} />
           <Button color="primary" onClick={loadMSV}>Apply Filters</Button>
@@ -83,7 +86,11 @@ export default function CommunicationView() {
               </thead>
               <tbody>
                 {msvData.map((item) => (
-                  <tr key={item.event_id} className="border-b hover:bg-gray-50">
+                  <tr
+                    key={item.event_id}
+                    className="border-b hover:bg-gray-50 cursor-pointer"
+                    onClick={() => onMessageClick?.(item.event_id)}
+                  >
                     <td className="p-2">{item.timestamp}</td>
                     <td className="p-2">{item.source}</td>
                     <td className="p-2">{item.target}</td>

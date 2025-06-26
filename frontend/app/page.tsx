@@ -38,6 +38,11 @@ export default function Home() {
   const [filterDate, setFilterDate] = useState<string | null>(null);
   const [sankeyData, setSankeyData] = useState<{ source: string, target: string, value: number }[]>([]);
   const [filterContent, setFilterContent] = useState<string>("");
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const [showInfoPanel, setShowInfoPanel] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+
+
 
 
   // Don't change this function
@@ -56,26 +61,38 @@ export default function Home() {
 
   return (
   <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
+    
+    {/* Selected Info with Toggle Button and Sidepanel Wrapper */}
+    <div className="fixed right-0 top-20 z-50">
+      <button 
+        onClick={() => setShowInfoPanel(!showInfoPanel)} 
+        className="bg-blue-500 text-white px-4 py-2 rounded-l"
+      >
+        {showInfoPanel ? "Close Info" : "Show Info"}
+      </button>
+    </div>
 
-    {/* Top Row: Filters + Graph Summary + Selected Info */}
+    {/* Filters with Toggle Button and Sidepanel Wrapper */}
+    <div className="fixed left-0 top-20 z-50">
+      <button 
+        onClick={() => setShowFilterPanel(!showFilterPanel)} 
+        className="bg-blue-500 text-white px-4 py-2 rounded-r"
+      >
+        {showFilterPanel ? "Close Filters" : "Show Filters"}
+      </button>
+    </div>
+
+    {showInfoPanel && (
+      <div className="fixed top-20 right-0 w-[300px] h-[calc(100vh-5rem)] bg-white shadow-lg border-l z-40 overflow-y-auto">
+        <SelectedInfoPanel selectedInfo={selectedInfo} />
+      </div>
+    )}
+
+
+    {/* Top Row: Graph Summary + Selected Info (ohne FilterPanel) */}
     <div className="flex w-full max-w-7xl gap-4">
-      {/* Filters and Actions */}
-      <FilterPanel selectedEventTypes={selectedEventTypes}
-        setSelectedEventTypes={setSelectedEventTypes}
-        filterEntityId={filterEntityId}
-        setFilterEntityId={setFilterEntityId}
-        filterContent={filterContent}
-        setFilterContent={setFilterContent}
-        filterDepth={filterDepth}
-        setFilterDepth={setFilterDepth}
-        callApi={callApi}
-        statusMsg={statusMsg} />
-      
       {/* Graph Summary */}
       <GraphSummary edgeCount={edgeCount} edgeTypeCounts={edgeTypeCounts} subtypeCounts={subtypeCounts} />
-
-      {/* Selected Info */}
-      <SelectedInfoPanel selectedInfo={selectedInfo} />
     </div>
 
     {/* Graph Container */}
@@ -96,6 +113,7 @@ export default function Home() {
       setEdgeTypeCounts={setEdgeTypeCounts}
       setEdgeCount={setEdgeCount}
       setSelectedInfo={setSelectedInfo}
+      highlightedMessageId={highlightedMessageId}
     />
 
     {/* Time Bar Chart */}
@@ -109,7 +127,11 @@ export default function Home() {
     <LegendPanel />
 
     {/* Massive Sequence View */}
-    <CommunicationView className="mt-6" />
+    <CommunicationView
+      className="mt-6"
+      onMessageClick={(id: string) => setHighlightedMessageId(`Event_Communication_${id}`)}
+    />
+
     
     {/* Sankey  */}
     <Sankey entityId={filterEntityId} selectedDate={selectedTimestamp} />
