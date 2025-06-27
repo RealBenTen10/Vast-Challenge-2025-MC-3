@@ -17,6 +17,7 @@ interface Props {
   setEdgeCount: (count: number) => void;
   setSelectedInfo: (info: any) => void;
   highlightedMessageId?: string | null;
+  graphHeight: number; 
 }
 
 const GraphView: React.FC<Props> = ({
@@ -33,19 +34,21 @@ const GraphView: React.FC<Props> = ({
   setEdgeTypeCounts,
   setEdgeCount,
   setSelectedInfo,
-  highlightedMessageId       
+  highlightedMessageId,
+  graphHeight
 }) => {
-  const DEFAULT_RADIUS = 20
+  const DEFAULT_RADIUS = 20;
   const HIGHLIGHT_RADIUS = 30;
 
 
+  // 1. Nur Daten/Filter triggern kompletten Neuaufbau
   useEffect(() => {
     if (!svgRef.current || !graphContainerRef.current || graphData.nodes.length === 0) return;
 
     d3.select(svgRef.current).selectAll("*").remove();
 
     const width = graphContainerRef.current.clientWidth;
-    const height = 500;
+    const height = graphHeight || 500;
     const svg = d3.select(svgRef.current)
       .attr("width", width)
       .attr("height", height)
@@ -226,7 +229,17 @@ const GraphView: React.FC<Props> = ({
       node.attr("transform", d => `translate(${d.x},${d.y})`);
     });
   }, [graphData, filterEntityId, filterDepth, filterContent, selectedTimestamp, filterMode]);
-  
+
+  // 2. Nur SVG-Größe anpassen, ohne Neuaufbau
+  useEffect(() => {
+    if (!svgRef.current || !graphContainerRef.current) return;
+    const width = graphContainerRef.current.clientWidth;
+    const height = graphHeight || 500;
+    d3.select(svgRef.current)
+      .attr("width", width)
+      .attr("height", height)
+      .attr("viewBox", `0 0 ${width} ${height}`);
+  }, [graphHeight, graphContainerRef]);
 
   useEffect(() => {
   if (!svgRef.current || !highlightedMessageId) return;
@@ -257,7 +270,18 @@ const GraphView: React.FC<Props> = ({
 
 }, [highlightedMessageId]);
 
-
+  useEffect(() => {
+    console.log("GraphView props:", {
+      highlightedMessageId,
+      graphData,
+      filterEntityId,
+      filterDepth,
+      filterContent,
+      filterMode,
+      selectedTimestamp
+    });
+  }, [highlightedMessageId, graphData, filterEntityId, filterDepth, filterContent, filterMode, selectedTimestamp]);
+  
   return null;
 };
 

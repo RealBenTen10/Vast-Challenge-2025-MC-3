@@ -40,10 +40,34 @@ export default function Home() {
   const [filterContent, setFilterContent] = useState<string>("");
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
-  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(true);
+  const [graphHeight, setGraphHeight] = useState<number>(600);
+  const dragRef = useRef<HTMLDivElement | null>(null);
+  const [allEntities, setAllEntities] = useState<{ id: string; sub_type?: string }[]>([]);
+  const [showGraph, setShowGraph] = useState<boolean>(true);
+  const [showTimeBar, setShowTimeBar] = useState<boolean>(true);
+  const [showSankey, setShowSankey] = useState<boolean>(true);
 
-
-
+  // Resizing logic
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (dragRef.current && dragRef.current.dataset.dragging === 'true') {
+        const containerTop = graphContainerRef.current?.getBoundingClientRect().top || 0;
+        let newHeight = e.clientY - containerTop;
+        newHeight = Math.max(200, Math.min(newHeight, window.innerHeight - 200));
+        setGraphHeight(newHeight);
+      }
+    };
+    const handleMouseUp = () => {
+      if (dragRef.current) dragRef.current.dataset.dragging = 'false';
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
 
   // Don't change this function
   const callApi = async (endpoint: string) => {
@@ -58,10 +82,52 @@ export default function Home() {
     }
   };
 
+  // Extrahiere alle Entities beim Laden des Graphen
+  useEffect(() => {
+    if (graphData && graphData.nodes) {
+      const entities = graphData.nodes
+        .filter((n: any) => n.type === "Entity")
+        .map((n: any) => ({ id: n.id, sub_type: n.sub_type || n.label }));
+      setAllEntities(entities);
+    }
+  }, [graphData]);
 
   return (
   <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-    
+    {/* Toggle Node-Link Diagram, Time Bar Chart & Sankey Checkbox */}
+    <div className="w-full max-w-7xl flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="toggle-graph"
+          checked={showGraph}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowGraph(e.target.checked)}
+          className="mr-2"
+        />
+        <label htmlFor="toggle-graph" className="select-none">Node-Link Diagram anzeigen</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="toggle-timebar"
+          checked={showTimeBar}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowTimeBar(e.target.checked)}
+          className="mr-2"
+        />
+        <label htmlFor="toggle-timebar" className="select-none">Communication Time Bar Chart anzeigen</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="toggle-sankey"
+          checked={showSankey}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowSankey(e.target.checked)}
+          className="mr-2"
+        />
+        <label htmlFor="toggle-sankey" className="select-none">Sankey Diagramm anzeigen</label>
+      </div>
+    </div>
+
     {/* Selected Info with Toggle Button and Sidepanel Wrapper */}
     <div className="fixed right-0 top-20 z-50">
       <button 
@@ -83,48 +149,104 @@ export default function Home() {
     </div>
 
     {showInfoPanel && (
-      <div className="fixed top-20 right-0 w-[300px] h-[calc(100vh-5rem)] bg-white shadow-lg border-l z-40 overflow-y-auto">
+      <div className="fixed top-20 right-0 w-[300px] h-[calc(100vh-5rem)] bg-white shadow-lg border-l z-40 overflow-y-auto flex flex-col gap-4">
         <SelectedInfoPanel selectedInfo={selectedInfo} />
+        <GraphSummary edgeCount={edgeCount} edgeTypeCounts={edgeTypeCounts} subtypeCounts={subtypeCounts} entities={allEntities} />
       </div>
     )}
 
+    {showFilterPanel && (
+      <div className="fixed top-20 left-0 w-[320px] h-[calc(100vh-5rem)] bg-white shadow-lg border-r z-40 overflow-y-auto">
+        <FilterPanel 
+          graphData={graphData}
+          setGraphData={setGraphData}
+          callApi={callApi}
+          setSelectedEventTypes={setSelectedEventTypes}
+          setSubtypeCounts={setSubtypeCounts}
+          setEdgeTypeCounts={setEdgeTypeCounts}
+          setEdgeCount={setEdgeCount}
+          setSelectedInfo={setSelectedInfo}
+          setHighlightedMessageId={setHighlightedMessageId}
+          setShowInfoPanel={setShowInfoPanel}
+          setShowFilterPanel={setShowFilterPanel}
+          filterEntityId={filterEntityId}
+          setFilterEntityId={setFilterEntityId}
+          filterDepth={filterDepth}
+          setFilterDepth={setFilterDepth}
+          filterMode={filterMode}
+          setFilterMode={setFilterMode}
+          selectedTimestamp={selectedTimestamp}
+          setSelectedTimestamp={setSelectedTimestamp}
+          filterDate={filterDate}
+          setFilterDate={setFilterDate}
+          filterContent={filterContent}
+          setFilterContent={setFilterContent}
+          highlightedMessageId={highlightedMessageId}
+        />
+      </div>
+    )}
 
     {/* Top Row: Graph Summary + Selected Info (ohne FilterPanel) */}
     <div className="flex w-full max-w-7xl gap-4">
-      {/* Graph Summary */}
-      <GraphSummary edgeCount={edgeCount} edgeTypeCounts={edgeTypeCounts} subtypeCounts={subtypeCounts} />
+      {/* Graph Summary entfernt, da jetzt im InfoPanel */}
     </div>
 
-    {/* Graph Container */}
-    <div ref={graphContainerRef} className="flex-1 border rounded-lg mt-6" style={{ height: "600px", width: "100%" }}>
-      <svg ref={svgRef} className="w-full h-full"></svg>
-    </div>
-    <GraphView
-      graphData={graphData}
-      svgRef={svgRef}
-      graphContainerRef={graphContainerRef}
-      filterEntityId={filterEntityId}
-      filterDepth={filterDepth}
-      filterContent={filterContent}
-      filterMode={filterMode}
-      selectedTimestamp={selectedTimestamp}
-      setVisibleEntities={setVisibleEntities}
-      setSubtypeCounts={setSubtypeCounts}
-      setEdgeTypeCounts={setEdgeTypeCounts}
-      setEdgeCount={setEdgeCount}
-      setSelectedInfo={setSelectedInfo}
-      highlightedMessageId={highlightedMessageId}
-    />
+    {/* Graph + Sankey nebeneinander */}
+    {(showGraph || showSankey) && (
+      <div className="w-full flex flex-row gap-4 items-start">
+        {showGraph && (
+          <div className="flex-1 min-w-0 flex flex-col items-center">
+            <div ref={graphContainerRef} className="flex-1 border rounded-lg mt-6" style={{ height: `${graphHeight}px`, width: "100%" }}>
+              <svg ref={svgRef} className="w-full h-full"></svg>
+            </div>
+            {/* Resizable Drag Handle */}
+            <div
+              ref={dragRef}
+              style={{ cursor: 'row-resize', height: '10px', width: '100%', background: '#e5e7eb' }}
+              onMouseDown={() => { if (dragRef.current) dragRef.current.dataset.dragging = 'true'; }}
+              className="mb-2"
+            />
+            <GraphView
+              graphData={graphData}
+              svgRef={svgRef}
+              graphContainerRef={graphContainerRef}
+              filterEntityId={filterEntityId}
+              filterDepth={filterDepth}
+              filterContent={filterContent}
+              filterMode={filterMode}
+              selectedTimestamp={selectedTimestamp}
+              setVisibleEntities={setVisibleEntities}
+              setSubtypeCounts={setSubtypeCounts}
+              setEdgeTypeCounts={setEdgeTypeCounts}
+              setEdgeCount={setEdgeCount}
+              setSelectedInfo={setSelectedInfo}
+              highlightedMessageId={highlightedMessageId}
+              graphHeight={graphHeight}
+            />
+            {/* Legende mittig unter GraphView */}
+            <div className="w-full flex justify-center mt-2">
+              <div className="max-w-xl w-full flex justify-center">
+                <LegendPanel />
+              </div>
+            </div>
+          </div>
+        )}
+        {showSankey && (
+          <div className="flex-1 min-w-0 mt-6">
+            <Sankey entityId={filterEntityId} selectedDate={selectedTimestamp} />
+          </div>
+        )}
+      </div>
+    )}
 
     {/* Time Bar Chart */}
-    <TimeBarChart
-      graphData={graphData}
-      selectedTimestamp={selectedTimestamp}
-      setSelectedTimestamp={setSelectedTimestamp}
-    />
-
-    {/* Legends */}
-    <LegendPanel />
+    {showTimeBar && (
+      <TimeBarChart
+        graphData={graphData}
+        selectedTimestamp={selectedTimestamp}
+        setSelectedTimestamp={setSelectedTimestamp}
+      />
+    )}
 
     {/* Massive Sequence View */}
     <CommunicationView
@@ -132,9 +254,6 @@ export default function Home() {
       onMessageClick={(id: string) => setHighlightedMessageId(`Event_Communication_${id}`)}
     />
 
-    
-    {/* Sankey  */}
-    <Sankey entityId={filterEntityId} selectedDate={selectedTimestamp} />
     
     { /* GraphRAG LLM Component */}
     
