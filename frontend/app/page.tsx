@@ -48,6 +48,15 @@ export default function Home() {
   const [showTimeBar, setShowTimeBar] = useState<boolean>(true);
   const [showSankey, setShowSankey] = useState<boolean>(true);
 
+  // State für CommunicationView-Filter
+  const [msvStartDate, setMsvStartDate] = useState<string>("");
+  const [msvEndDate, setMsvEndDate] = useState<string>("");
+  const [msvEntityFilter, setMsvEntityFilter] = useState<string>("");
+  const [msvKeyword, setMsvKeyword] = useState<string>("");
+  const [msvData, setMsvData] = useState<any[]>([]);
+  const [msvLoading, setMsvLoading] = useState(false);
+  const [msvError, setMsvError] = useState<string | null>(null);
+
   // Resizing logic
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -91,6 +100,30 @@ export default function Home() {
       setAllEntities(entities);
     }
   }, [graphData]);
+
+  // Funktion zum Laden der CommunicationView-Daten
+  const loadMSV = async () => {
+    setMsvLoading(true);
+    setMsvError(null);
+    try {
+      const params = new URLSearchParams();
+      if (msvStartDate) params.append("start_date", msvStartDate);
+      if (msvEndDate) params.append("end_date", msvEndDate);
+      if (msvEntityFilter) params.append("entity_ids", msvEntityFilter);
+      if (msvKeyword) params.append("keyword", msvKeyword);
+      const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
+      const data = await res.json();
+      if (data.success) {
+        setMsvData(data.data);
+      } else {
+        setMsvError(data.error || "Failed to load data");
+      }
+    } catch (err) {
+      setMsvError(String(err));
+    } finally {
+      setMsvLoading(false);
+    }
+  };
 
   return (
   <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
@@ -182,6 +215,16 @@ export default function Home() {
           filterContent={filterContent}
           setFilterContent={setFilterContent}
           highlightedMessageId={highlightedMessageId}
+          // CommunicationView Filter
+          msvStartDate={msvStartDate}
+          setMsvStartDate={setMsvStartDate}
+          msvEndDate={msvEndDate}
+          setMsvEndDate={setMsvEndDate}
+          msvEntityFilter={msvEntityFilter}
+          setMsvEntityFilter={setMsvEntityFilter}
+          msvKeyword={msvKeyword}
+          setMsvKeyword={setMsvKeyword}
+          loadMSV={loadMSV}
         />
       </div>
     )}
@@ -197,15 +240,7 @@ export default function Home() {
         {showGraph && (
           <div className="flex-1 min-w-0 flex flex-col items-center">
             <div ref={graphContainerRef} className="flex-1 border rounded-lg mt-6" style={{ height: `${graphHeight}px`, width: "100%" }}>
-              <svg ref={svgRef} className="w-full h-full"></svg>
             </div>
-            {/* Resizable Drag Handle */}
-            <div
-              ref={dragRef}
-              style={{ cursor: 'row-resize', height: '10px', width: '100%', background: '#e5e7eb' }}
-              onMouseDown={() => { if (dragRef.current) dragRef.current.dataset.dragging = 'true'; }}
-              className="mb-2"
-            />
             <GraphView
               graphData={graphData}
               svgRef={svgRef}
@@ -223,12 +258,13 @@ export default function Home() {
               highlightedMessageId={highlightedMessageId}
               graphHeight={graphHeight}
             />
-            {/* Legende mittig unter GraphView */}
-            <div className="w-full flex justify-center mt-2">
-              <div className="max-w-xl w-full flex justify-center">
-                <LegendPanel />
-              </div>
-            </div>
+            {/* Resizable Drag Handle */}
+            <div
+              ref={dragRef}
+              style={{ cursor: 'row-resize', height: '10px', width: '100%', background: '#e5e7eb' }}
+              onMouseDown={() => { if (dragRef.current) dragRef.current.dataset.dragging = 'true'; }}
+              className="mb-2"
+            />
           </div>
         )}
         {showSankey && (
@@ -239,23 +275,31 @@ export default function Home() {
       </div>
     )}
 
-    {/* Time Bar Chart */}
-    {showTimeBar && (
-      <TimeBarChart
-        graphData={graphData}
-        selectedTimestamp={selectedTimestamp}
-        setSelectedTimestamp={setSelectedTimestamp}
-      />
+    {/* Time Bar Chart und CommunicationView nebeneinander */}
+    {(showTimeBar || true) && (
+      <div className="w-full max-w-7xl flex flex-row gap-4 items-start mt-4">
+        {showTimeBar && (
+          <div className="flex-1 min-w-0">
+            <TimeBarChart
+              graphData={graphData}
+              selectedTimestamp={selectedTimestamp}
+              setSelectedTimestamp={setSelectedTimestamp}
+            />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <CommunicationView
+            className="mt-0"
+            onMessageClick={(id: string) => setHighlightedMessageId(`Event_Communication_${id}`)}
+            msvData={msvData}
+            msvLoading={msvLoading}
+            msvError={msvError}
+          />
+        </div>
+      </div>
     )}
 
     {/* Massive Sequence View */}
-    <CommunicationView
-      className="mt-6"
-      onMessageClick={(id: string) => setHighlightedMessageId(`Event_Communication_${id}`)}
-    />
-
-    
-    { /* GraphRAG LLM Component */}
     
   </section>
 );

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Card, CardHeader, CardBody, Button, Input } from "@heroui/react";
+import React from "react";
+import { Card, CardHeader, CardBody } from "@heroui/react";
 
 interface MSVItem {
   event_id: string;
@@ -10,67 +10,25 @@ interface MSVItem {
   sub_type: string;
 }
 
-interface CommunicationViewProps {
+interface CommunicationViewPropsyy {
   className?: string;
   onMessageClick?: (id: string) => void;
+  msvData: MSVItem[];
+  msvLoading: boolean;
+  msvError: string | null;
 }
 
-export default function CommunicationView({ className, onMessageClick }: CommunicationViewProps) {
-  const [msvData, setMsvData] = useState<MSVItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
-  const [entityFilter, setEntityFilter] = useState<string>("");
-  const [keyword, setKeyword] = useState<string>("");
-
-  const loadMSV = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (startDate) params.append("start_date", startDate);
-      if (endDate) params.append("end_date", endDate);
-      if (entityFilter) params.append("entity_ids", entityFilter);
-      if (keyword) params.append("keyword", keyword);
-
-      const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
-      const data = await res.json();
-      if (data.success) {
-        setMsvData(data.data);
-      } else {
-        setError(data.error || "Failed to load data");
-      }
-    } catch (err) {
-      setError(String(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadMSV();
-  }, []);
-
+export default function CommunicationView({ className, onMessageClick, msvData, msvLoading, msvError }: CommunicationViewProps) {
   return (
     <Card className={`w-full max-w-7xl mt-8 ${className || ""}`}>
       <CardHeader>
         <h4 className="text-lg font-semibold">Messages</h4>
       </CardHeader>
       <CardBody>
-        <div className="flex flex-wrap gap-4 mb-4">
-          <Input label="Start Date (YYYY-MM-DD)" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          <Input label="End Date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          <Input label="Entity ID" value={entityFilter} onChange={(e) => setEntityFilter(e.target.value)} />
-          <Input label="Keyword" value={keyword} onChange={(e) => setKeyword(e.target.value)} />
-          <Button color="primary" onClick={loadMSV}>Apply Filters</Button>
-        </div>
-
-        {loading ? (
+        {msvLoading ? (
           <p>Loading sequence data...</p>
-        ) : error ? (
-          <p className="text-red-500">{error}</p>
+        ) : msvError ? (
+          <p className="text-red-500">{msvError}</p>
         ) : msvData.length === 0 ? (
           <p>No sequence data found.</p>
         ) : (

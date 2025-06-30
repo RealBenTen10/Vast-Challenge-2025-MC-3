@@ -36,14 +36,17 @@ const GraphSummary: React.FC<GraphSummaryProps> = ({ edgeCount, edgeTypeCounts, 
           <li key={type}><span className="font-medium">{type}</span>: {count}</li>
         ))}
       </ul>
-      <h5 className="text-sm font-semibold mt-4 mb-2">Node Summary</h5>
+      {/* Trennstrich über Node Summary */}
+      <div className="border-t border-gray-300 my-4" />
+      <h5 className="text-sm font-semibold mb-2">Node Summary</h5>
       <ul className="list-disc list-inside text-sm space-y-1">
         {Object.entries(subtypeCounts).sort((a, b) => b[1] - a[1]).map(([subtype, count]) => (
           <li key={subtype}><span className="font-medium">{subtype}</span>: {count}</li>
         ))}
       </ul>
-      {/* Neue Liste: Entities */}
-      <h5 className="text-sm font-semibold mt-4 mb-2">Entities</h5>
+      {/* Trennstrich über Entities */}
+      <div className="border-t border-gray-300 my-4" />
+      <h5 className="text-sm font-semibold mb-2">Entities</h5>
       <ul className="list-disc list-inside text-sm space-y-1">
         {entities && entities.length > 0 ? (
           entities.map((entity) => (

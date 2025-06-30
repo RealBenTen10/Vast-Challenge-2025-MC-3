@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import * as d3 from "d3";
 import { GraphData, Node, Link } from "@/components/types";
+import LegendPanel from "./LegendPanel"; // Importiere das LegendPanel
 
 interface Props {
   graphData: GraphData;
@@ -53,6 +54,20 @@ const GraphView: React.FC<Props> = ({
       .attr("width", width)
       .attr("height", height)
       .attr("viewBox", `0 0 ${width} ${height}`);
+
+      svg.append("defs").append("marker")
+  .attr("id", "arrow")
+  .attr("viewBox", "0 -5 10 10")
+  .attr("refX", 25) // → Wird gleich dynamisch angepasst
+  .attr("refY", 0)
+  .attr("markerWidth", 10)
+  .attr("markerHeight", 10)
+  .attr("markerUnits", "userSpaceOnUse") // ← wichtig für absolute Koordinaten
+  .attr("orient", "auto")
+  .append("path")
+  .attr("d", "M0,-5L10,0L0,5")
+  .attr("fill", "#999");
+
 
     const g = svg.append("g");
 
@@ -195,39 +210,74 @@ const GraphView: React.FC<Props> = ({
       .attr("stroke", d => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
       .attr("stroke-opacity", 0.6)
       .attr("stroke-width", 1)
-      .on("click", (event, d) => setSelectedInfo({ type: "link", data: d }));
+      //.attr("marker-end", "url(#arrow)") // Uncomment if you want to use arrow markers
+      .on("click", (event: any, d: any) => setSelectedInfo({ type: "link", data: d })); 
+
+    // Add animated triangles for flow visualization
+    const linkFlow = g.append("g")
+      .selectAll("polygon")
+      .data(links)
+      .enter().append("polygon")
+      .attr("points", "-7,-5 8,0 -7,5") // triangle shape, pointing right
+      .attr("fill", (d: any) => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
+      .attr("opacity", 0.9);
 
     const node = g.append("g")
       .selectAll("g")
       .data(nodes)
       .enter().append("g")
       .call(d3.drag()
-        .on("start", (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
-        .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
-        .on("end", (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }))
-      .on("mouseover", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4))
-      .on("mouseout", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "none"))
-      .on("click", (event, d) => setSelectedInfo({ type: "node", data: d }));
+        .on("start", (event: any, d: any) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+        .on("drag", (event: any, d: any) => { d.fx = event.x; d.fy = event.y; })
+        .on("end", (event: any, d: any) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }))
+      .on("mouseover", (event: any, d: any) => d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4))
+      .on("mouseout", (event: any, d: any) => d3.select(event.currentTarget).select("circle").attr("stroke", "none"))
+      .on("click", (event: any, d: any) => setSelectedInfo({ type: "node", data: d }));
 
     node.append("circle")
-      .attr("r", d => d.type === "Entity" ? getEntityRadius(d.id) : DEFAULT_RADIUS)
-      .attr("fill", d => d.type === "Entity" ? "#1f77b4" : d.type === "Event" ? "#2ca02c" : d.type === "Relationship" ? "#d62728" : d.id === highlightedMessageId ? "#ff00ff" :"#999");
+      .attr("r", (d: any) => d.type === "Entity" ? getEntityRadius(d.id) : DEFAULT_RADIUS)
+      .attr("fill", (d: any) => d.type === "Entity" ? "#1f77b4" : d.type === "Event" ? "#2ca02c" : d.type === "Relationship" ? "#d62728" : d.id === highlightedMessageId ? "#ff00ff" :"#999");
 
     node.append("text")
       .attr("text-anchor", "middle")
       .attr("dy", ".35em")
       .attr("fill", "black")
-      .text(d => d.type === "Entity" ? d.id : d.label)
-      .style("font-size", d => `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.label)?.length - 10))}px`);
+      .text((d: any) => d.type === "Entity" ? d.id : d.label)
+      .style("font-size", (d: any) => `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.label)?.length - 10))}px`);
+
+    // --- Animation unabhängig von der Simulation ---
+    let animationFrameId: number;
+    function animateFlowDots() {
+      linkFlow.each(function(d: any, i: number) {
+        const source = d.source as any;
+        const target = d.target as any;
+        if (!source || !target) return;
+        const t = ((Date.now() / 3000 + i * 0.2) % 1);
+        const x = source.x + (target.x - source.x) * t;
+        const y = source.y + (target.y - source.y) * t;
+        // Calculate angle for rotation
+        const dx = target.x - source.x;
+        const dy = target.y - source.y;
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        d3.select(this)
+          .attr("transform", `translate(${x},${y}) rotate(${angle})`);
+      });
+      animationFrameId = requestAnimationFrame(animateFlowDots);
+    }
+    animateFlowDots();
 
     simulation.on("tick", () => {
-      link.attr("x1", d => (d.source as any).x)
-          .attr("y1", d => (d.source as any).y)
-          .attr("x2", d => (d.target as any).x)
-          .attr("y2", d => (d.target as any).y);
-
-      node.attr("transform", d => `translate(${d.x},${d.y})`);
+      link.attr("x1", (d: any) => (d.source as any).x)
+          .attr("y1", (d: any) => (d.source as any).y)
+          .attr("x2", (d: any) => (d.target as any).x)
+          .attr("y2", (d: any) => (d.target as any).y);
+      node.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
     });
+
+    // Clean up animation on unmount
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    };
   }, [graphData, filterEntityId, filterDepth, filterContent, selectedTimestamp, filterMode]);
 
   // 2. Nur SVG-Größe anpassen, ohne Neuaufbau
@@ -282,7 +332,16 @@ const GraphView: React.FC<Props> = ({
     });
   }, [highlightedMessageId, graphData, filterEntityId, filterDepth, filterContent, filterMode, selectedTimestamp]);
   
-  return null;
+  // Render SVG and LegendPanel in a relative container
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <svg ref={svgRef} className="w-full h-full"></svg>
+      <div style={{ position: "absolute", right: 16, bottom: 16, zIndex: 10, background: "white", borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+        {/* LegendPanel unten rechts im GraphView-Panel */}
+        <LegendPanel />
+      </div>
+    </div>
+  );
 };
 
 export default GraphView;

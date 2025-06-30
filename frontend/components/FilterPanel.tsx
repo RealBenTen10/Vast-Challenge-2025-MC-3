@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Alert } from "@heroui/react";
+import { Button, Alert, Input } from "@heroui/react";
 
 interface FilterPanelProps {
   selectedEventTypes: string[];
@@ -12,6 +12,16 @@ interface FilterPanelProps {
   setFilterDepth: (n: number) => void;
   callApi: (endpoint: string) => void;
   statusMsg: string;
+  // CommunicationView Filter
+  msvStartDate: string;
+  setMsvStartDate: (v: string) => void;
+  msvEndDate: string;
+  setMsvEndDate: (v: string) => void;
+  msvEntityFilter: string;
+  setMsvEntityFilter: (v: string) => void;
+  msvKeyword: string;
+  setMsvKeyword: (v: string) => void;
+  loadMSV: () => void;
 }
 
 const FilterPanel: React.FC<FilterPanelProps> = ({
@@ -25,6 +35,16 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   setFilterDepth,
   callApi,
   statusMsg,
+  msvStartDate,
+  setMsvStartDate,
+  msvEndDate,
+  setMsvEndDate,
+  msvEntityFilter,
+  setMsvEntityFilter,
+  msvKeyword,
+  setMsvKeyword,
+  loadMSV,
+  ...props
 }) => {
   return (
     <div className="w-[320px] flex-shrink-0 border rounded-lg p-4">
@@ -73,6 +93,16 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
       </Button>
 
       <Alert isVisible={!!statusMsg} color="info" title="Status" description={statusMsg} className="mt-4" />
+
+      {/* CommunicationView Filter */}
+      <div className="mt-6 border-t pt-4">
+        <div className="font-semibold mb-2">Message Filter</div>
+        <Input label="Start Date (YYYY-MM-DD)" value={msvStartDate} onChange={e => setMsvStartDate(e.target.value)} className="mb-2" />
+        <Input label="End Date" value={msvEndDate} onChange={e => setMsvEndDate(e.target.value)} className="mb-2" />
+        <Input label="Entity ID" value={msvEntityFilter} onChange={e => setMsvEntityFilter(e.target.value)} className="mb-2" />
+        <Input label="Keyword" value={msvKeyword} onChange={e => setMsvKeyword(e.target.value)} className="mb-2" />
+        <Button color="primary" onPress={loadMSV} className="mt-2">Apply Message Filter</Button>
+      </div>
     </div>
   );
 };
