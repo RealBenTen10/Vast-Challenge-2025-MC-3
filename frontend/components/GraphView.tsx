@@ -23,7 +23,9 @@ interface Props {
   setEdgeCount: (count: number) => void;
   setSelectedInfo: (info: any) => void;
   setCommunicationEvents: (nodes: Node[]) => void;
+  communicationEvents: Node[];
   setCommunicationEventsAfterTimeFilter: (nodes: Node[]) => void;
+  setEventsAfterTimeFilter: (nodes: Node[]) => void;
   communicationEventsAfterTimeFilter: Node[];
   callApi: (endpoint: string) => void;
 }
@@ -47,13 +49,15 @@ const GraphView: React.FC<Props> = ({
   setEdgeCount,
   setSelectedInfo,
   setCommunicationEvents,
+  communicationEvents,
   setCommunicationEventsAfterTimeFilter,
+  setEventsAfterTimeFilter,
   communicationEventsAfterTimeFilter,
   callApi
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [stepMS, setStepMS] = useState(60 * 60 * 1000); // 1h default
+  const [stepMS, setStepMS] = useState(60 * 60 * 1000);
   const intervalRef = useRef<number | null>(null);
 
   const controls = (
@@ -72,8 +76,11 @@ const GraphView: React.FC<Props> = ({
   );
 
   useEffect(() => {
-    callApi("/read-db-graph"); // Load full graph once
+    callApi("/read-db-graph");
   }, []);
+
+
+
 
   useEffect(() => {
     if (!svgRef.current || !graphContainerRef.current || graphData.nodes.length === 0) return;
@@ -114,7 +121,7 @@ const GraphView: React.FC<Props> = ({
                 const tgt = typeof link.target === "string" ? link.target : link.target.id;
 
                 if (tgt === node.id && src === filterSender) connectedToSender = true;
-
+                
                 if (src === node.id && tgt === filterReceiver) connectedToReceiver = true;
 
                 if (connectedToSender && connectedToReceiver) {
@@ -219,14 +226,26 @@ const GraphView: React.FC<Props> = ({
       // Save a copy to trigger React updates reliably
       setCommunicationEventsAfterTimeFilter([...visibleCommunicationEventsAfterTimeFilter]);
 
+      // Capture visible communication events BEFORE time filter
+      const visibleSetAfterTimeFilter2 = new Set(visible);
+      const visibleEventsAfterTimeFilter = graphData.nodes
+        .filter(n =>
+          n.type === "Event" &&
+          n.sub_type != "Communication" &&
+          visibleSetAfterTimeFilter2.has(n.id)
+        );
+
+      // Save a copy to trigger React updates reliably
+      setEventsAfterTimeFilter([...visibleEventsAfterTimeFilter]);
+
       return visible;
     };
 
+   
     const visibleIds = getVisibleNodeIds();
 
     const nodes = graphData.nodes.filter(d =>
-      visibleIds.has(d.id) &&
-      (d.type === "Entity" || filterMode === "all" || (filterMode === "event" && d.type === "Event") || (filterMode === "relationship" && d.type === "Relationship"))
+      visibleIds.has(d.id)
     );
 
     setVisibleEntities(nodes.filter(d => d.type === "Entity").map(d => ({ id: d.id, sub_type: d.label })));
@@ -244,7 +263,6 @@ const GraphView: React.FC<Props> = ({
         const end = timestampFilterEnd ? new Date(timestampFilterEnd) : null;
         return (!start || ts >= start) && (!end || ts <= end);
       }
-
       return true;
     }).map(link => ({
       source: typeof link.source === "string" ? link.source : link.source.id,
@@ -332,6 +350,14 @@ const GraphView: React.FC<Props> = ({
 
       node.attr("transform", d => `translate(${d.x},${d.y})`);
     });
+    simulation.on("end", () => { 
+      // Ensure nodes are not dragged out of view
+      console.log("Simulation ended, adjusting node positions");
+      g.selectAll("circle").each(function(d: any) {
+        d.x = Math.max(20, Math.min(width - 20, d.x));
+        d.y = Math.max(20, Math.min(height - 20, d.y));
+      });
+    });
   }, [
     graphData,
     filterSender,
@@ -342,31 +368,19 @@ const GraphView: React.FC<Props> = ({
     timestampFilterEnd,
     filterMode,
   ]);
-
-
   useEffect(() => {
-    if (!isPlaying) {
-      intervalRef.current && clearInterval(intervalRef.current);
-      return;
-    }
-    const events = [...communicationEventsAfterTimeFilter]
-      .sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-    const doStep = () => {
-      if (currentIndex >= events.length) { setIsPlaying(false); return; }
-      const ev = events[currentIndex];
-      const related = d3.select(svgRef.current).selectAll("line")
-        .filter((d: any) => d.timestamp === ev.timestamp);
-      related
-        .transition().duration(stepMS/2)
-        .attr("stroke", "#ff7f0e").attr("stroke-width", 4)
-        .transition().delay(stepMS/2).duration(stepMS/2)
-        .attr("stroke", d => d.type === "COMMUNICATION" ? "#2ca02c" : "#999")
-        .attr("stroke-width", 1);
-      setCurrentIndex(i => i + 1);
-    };
-    intervalRef.current = setInterval(doStep, stepMS);
-    return () => intervalRef.current && clearInterval(intervalRef.current);
-  }, [isPlaying, currentIndex, stepMS]);
+    if (!svgRef.current || !graphContainerRef.current) return;
+
+    const width = graphContainerRef.current.clientWidth;
+    const height = 500;
+    d3.select(svgRef.current)
+      .attr("width", width)
+      .attr("height", height)
+      .attr("viewBox", `0 0 ${width} ${height}`);
+  }, [svgRef, graphContainerRef]);
+
+
+  
 
   return (
     <>
