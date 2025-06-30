@@ -73,6 +73,24 @@ export default function Sankey({
     fetchDataAndDraw();
   }, [filterSender, filterReceiver, timestampFilterStart, timestampFilterEnd, filterContent]);
 
+  const colorPalette = d3.schemeTableau10; 
+
+  function fnv1aHash(str: string): number {
+    let hash = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      hash ^= str.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+  }
+
+  const getColorForEntity = (name: string) => {
+    const hash = fnv1aHash(name);
+    const hue = hash % 360;
+    return `hsl(${hue}, 65%, 50%)`;
+  }
+
+
   const drawSankeyDiagram = (data: SankeyDataItem[]) => {
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
@@ -137,7 +155,7 @@ export default function Sankey({
       .attr("y", (d) => d.y0!)
       .attr("width", (d) => d.x1! - d.x0!)
       .attr("height", (d) => Math.max(1, d.y1! - d.y0!))
-      .attr("fill", (d) => color(d.name))
+      .attr("fill", (d) => getColorForEntity(d.name))
       .on("mouseover", function (event, d) {
     tooltip.html(`<strong>${d.name}</strong><br/>Total: ${d.value}`).style("visibility", "visible");
     tooltip
@@ -153,12 +171,24 @@ export default function Sankey({
       })
       .on("click", function (event, d) {
         if (d.x0! < width / 2) {
+          if (filterSender === d.name) {
+            setFilterSender("");
+            setFilterReceiver(d.name);
+          }
+          else {
           setFilterSender(d.name);
           setFilterReceiver("");
+          }
         } else {
+          if (filterReceiver === d.name) {
+            setFilterReceiver("");
+            setFilterSender(d.name);
+          }
+          else {
           setFilterReceiver(d.name);
           setFilterSender("");
         }
+      }
         setFilterModeMessages("filtered");
       })
       .on("mouseout", () => {
@@ -184,7 +214,7 @@ export default function Sankey({
       .append("path")
       .attr("d", sankeyLinkHorizontal())
       .attr("fill", "none")
-      .attr("stroke", (d) => color(d.source.name))
+      .attr("stroke", (d) => getColorForEntity(d.source.name))
       .attr("stroke-width", (d) => Math.max(1, d.width!))
       .attr("stroke-opacity", 0.6)
       .on("mouseover", function (event, d) {
