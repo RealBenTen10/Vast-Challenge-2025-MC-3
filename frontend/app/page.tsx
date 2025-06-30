@@ -4,6 +4,7 @@ import { title, subtitle } from "@/components/primitives";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Node, Link, GraphData } from "@/components/types";
 import Sankey from "@/components/Sankey"; 
+import EventsView from "@/components/EventsView";
 import { Card, CardHeader, CardBody, Divider, Button, Alert, Switch } from "@heroui/react";
 import React, { ReactElement, useEffect, useState, useRef } from "react";
 import * as d3 from "d3";
@@ -43,6 +44,7 @@ export default function Home() {
   const [timestampFilterEnd, setTimestampFilterEnd] = useState<string | null>(null);
   const [communicationEvents, setCommunicationEvents] = useState<Node[]>([]);
   const [communicationEventsAfterTimeFilter, setCommunicationEventsAfterTimeFilter] = useState<Node[]>([]);
+  const [EventsAfterTimeFilter, setEventsAfterTimeFilter] = useState<Node[]>([]);
   const [filterModeMessages, setFilterModeMessages] = useState<"all" | "filtered" | "direct" | "directed">("all");
 
 
@@ -116,7 +118,9 @@ export default function Home() {
       setEdgeCount={setEdgeCount}
       setSelectedInfo={setSelectedInfo}
       setCommunicationEvents={setCommunicationEvents}
+      communicationEvents={communicationEvents}
       setCommunicationEventsAfterTimeFilter={setCommunicationEventsAfterTimeFilter}
+      setEventsAfterTimeFilter={setEventsAfterTimeFilter}
       communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
       callApi={callApi}
     />
@@ -139,7 +143,7 @@ export default function Home() {
       communicationEvents={communicationEvents}
     />
 
-    {/* Massive Sequence View */}
+    {/* Communication View */}
     <CommunicationView
       filterSender={filterSender}
       setFilterSender={setFilterSender}
@@ -154,6 +158,10 @@ export default function Home() {
       setFilterModeMessages={setFilterModeMessages}
     />
 
+    {/* Event View */}
+    <EventsView
+      eventsAfterTimeFilter={EventsAfterTimeFilter}
+      />
     
     {/* Sankey  */}
     <Sankey 
