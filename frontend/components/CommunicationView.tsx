@@ -31,6 +31,7 @@ interface CommunicationViewProps {
   communicationEventsWithTimeFilter: Node[];
   filterModeMessages: "all" | "filtered" | "direct" | "directed";
   setFilterModeMessages: (mode: "all" | "filtered" | "direct" | "directed") => void;
+  selectedEventId: string | null;
 }
 
 export default function CommunicationView({
@@ -45,6 +46,7 @@ export default function CommunicationView({
   communicationEventsWithTimeFilter,
   filterModeMessages,
   setFilterModeMessages,
+  selectedEventId,
 }: CommunicationViewProps) {
   const [msvData, setMsvData] = useState<MSVItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -165,6 +167,22 @@ export default function CommunicationView({
               onClick={() => setFilterModeMessages("directed")}
             >
               Sender to Receiver
+            </button>
+            <button
+              className={`px-3 py-1 text-sm border rounded ${
+                filterModeMessages === "evidence" ? "bg-blue-500 text-white" : "bg-gray-100"
+              }`}
+              onClick={() => setFilterModeMessages("evidence")}
+            >
+              Evidence for Events
+            </button>
+            <button
+              className={`px-3 py-1 text-sm border rounded ${
+                filterModeMessages === "similarity" ? "bg-blue-500 text-white" : "bg-gray-100"
+              }`}
+              onClick={() => setFilterModeMessages("similarity")}
+            >
+              Similar Message Search
             </button>
           </div>
         </div>

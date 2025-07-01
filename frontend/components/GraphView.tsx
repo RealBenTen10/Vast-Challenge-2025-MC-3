@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as d3 from "d3";
 import { GraphData } from "@/components/types";
 
@@ -10,7 +10,7 @@ interface GraphNode extends d3.SimulationNodeDatum {
   type: string;
   label?: string;
   sub_type?: string;
-  timestamp?: string;
+  timestamp?: string; // Events have timestamps
   content?: string;
   findings?: string;
   results?: string;
@@ -23,7 +23,7 @@ interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
   source: string | GraphNode;
   target: string | GraphNode;
   type: string;
-  timestamp?: string;
+  timestamp?: string; // Links can also have timestamps, especially 'COMMUNICATION'
   value?: number;
 }
 
@@ -69,8 +69,8 @@ const GraphView: React.FC<Props> = ({
   filterDepth,
   filterContent,
   filterMode,
-  timestampFilterStart,
-  timestampFilterEnd,
+  timestampFilterStart: propTimestampFilterStart,
+  timestampFilterEnd: propTimestampFilterEnd,
   setVisibleEntities,
   setSubtypeCounts,
   setEdgeTypeCounts,
@@ -84,26 +84,94 @@ const GraphView: React.FC<Props> = ({
   callApi
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [stepMS, setStepMS] = useState(60 * 60 * 1000);
+  const [stepMS, setStepMS] = useState(60 * 60 * 1000); // Default to 1 hour
   const intervalRef = useRef<number | null>(null);
 
   const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }> | null>(null);
   const simulationRef = useRef<d3.Simulation<GraphNode, GraphLink> | null>(null);
   const zoomTransformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity); // Store current zoom transform
 
+  // Animation state
+  const defaultStartDate = new Date("2040-10-01T00:00:00").getTime();
+  const defaultEndDate = new Date("2040-10-15T00:00:00").getTime();
+  
+  const [animationStartTime, setAnimationStartTime] = useState<number>(defaultStartDate);
+  const [animationEndTime, setAnimationEndTime] = useState<number>(defaultEndDate);
+  const [currentAnimationTime, setCurrentAnimationTime] = useState<number>(defaultStartDate);
+
+  // Parse prop timestamps for initial animation range
+  useEffect(() => {
+    const start = propTimestampFilterStart ? new Date(propTimestampFilterStart).getTime() : defaultStartDate;
+    const end = propTimestampFilterEnd ? new Date(propTimestampFilterEnd).getTime() : defaultEndDate;
+    setAnimationStartTime(start);
+    setAnimationEndTime(end);
+    setCurrentAnimationTime(start); // Reset animation to start when time filter props change
+  }, [propTimestampFilterStart, propTimestampFilterEnd]);
+
+
+  // Effect for animation loop
+  useEffect(() => {
+    if (isPlaying) {
+      intervalRef.current = window.setInterval(() => {
+        setCurrentAnimationTime(prevTime => {
+          const nextTime = prevTime + stepMS;
+          if (nextTime > animationEndTime) {
+            setIsPlaying(false); // Stop when end is reached
+            return animationStartTime; // Loop back to start
+          }
+          return nextTime;
+        });
+      }, 500); // Animation update rate (adjust as needed)
+    } else {
+      if (intervalRef.current) {
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (intervalRef.current) {
+        window.clearInterval(intervalRef.current);
+      }
+    };
+  }, [isPlaying, stepMS, animationStartTime, animationEndTime]);
+
+
+  const handleStep = useCallback((direction: 'forward' | 'backward') => {
+    setIsPlaying(false); // Pause animation on manual step
+    setCurrentAnimationTime(prevTime => {
+      let newTime = prevTime;
+      if (direction === 'forward') {
+        newTime = prevTime + stepMS;
+        if (newTime > animationEndTime) {
+          return animationStartTime; // Loop if past end
+        }
+      } else {
+        newTime = prevTime - stepMS;
+        if (newTime < animationStartTime) {
+          return animationEndTime; // Loop if before start
+        }
+      }
+      return newTime;
+    });
+  }, [stepMS, animationStartTime, animationEndTime]);
+
   const controls = (
     <div style={{ position: "absolute", top: 10, left: 10, zIndex: 10 }}>
       <button onClick={() => setIsPlaying(true)}>▶ Play</button>
       <button onClick={() => setIsPlaying(false)}>⏸ Pause</button>
-      <button onClick={() => { setIsPlaying(false); setCurrentIndex(0); }}>⏹ Stop</button>
-      <button onClick={() => setCurrentIndex(i => Math.max(i - 1, 0))}>◀ Step Back</button>
-      <button onClick={() => setCurrentIndex(i => i + 1)}>Step ▶</button>
+      <button onClick={() => { setIsPlaying(false); setCurrentAnimationTime(animationStartTime); }}>⏹ Stop</button>
+      <button onClick={() => handleStep('backward')}>◀ Step Back</button>
+      <button onClick={() => handleStep('forward')}>Step ▶</button>
       <select value={stepMS / 60000} onChange={e => setStepMS(+e.target.value * 60000)}>
         <option value={1}>1 min</option>
         <option value={10}>10 min</option>
         <option value={60}>1 h</option>
+        <option value={24 * 60}>1 day</option>
       </select>
+      <div style={{marginTop: '10px', color: 'white'}}>
+        Current Time: {new Date(currentAnimationTime).toLocaleString()}
+      </div>
     </div>
   );
 
@@ -152,9 +220,6 @@ const GraphView: React.FC<Props> = ({
     const svg = d3.select(svgRef.current);
     const g = svg.select<SVGGElement>("g.graph-content"); // Select the existing group
 
-    // Clear existing elements for redraw within the group
-    g.selectAll("*").remove();
-
 
     const getVisibleNodeIds = (): Set<string> => {
       let visible = new Set<string>();
@@ -169,25 +234,31 @@ const GraphView: React.FC<Props> = ({
           visible.add(filterSender);
           visible.add(filterReceiver);
 
-          graphData.nodes.forEach(node => {
-            if (node.type === "Event") {
-              let connectedToSender = false;
-              let connectedToReceiver = false;
+          // Iterate through all links to find communication events between sender and receiver (bidirectional)
+          graphData.links.forEach(link => {
+            const srcId = typeof link.source === "string" ? link.source : link.source.id;
+            const tgtId = typeof link.target === "string" ? link.target : link.target.id;
 
-              for (const link of graphData.links) {
-                const src = typeof link.source === "string" ? link.source : link.source.id;
-                const tgt = typeof link.target === "string" ? link.target : link.target.id;
+            // Find the event node connected to this link, if any
+            const eventNode = graphData.nodes.find(n => n.id === srcId && n.type === "Event") ||
+                              graphData.nodes.find(n => n.id === tgtId && n.type === "Event");
+            
+            // Check if this is a "Communication" event and it links sender/receiver
+            if (eventNode && eventNode.sub_type === "Communication") {
+                // Scenario 1: Sender -> Event -> Receiver
+                const linkFromSender = graphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === filterSender && (typeof l.target === 'string' ? l.target : l.target.id) === eventNode.id);
+                const linkToReceiver = graphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === eventNode.id && (typeof l.target === 'string' ? l.target : l.target.id) === filterReceiver);
 
-                if (tgt === node.id && src === filterSender) connectedToSender = true;
-                if (src === node.id && tgt === filterReceiver) connectedToReceiver = true;
+                // Scenario 2: Receiver -> Event -> Sender
+                const linkFromReceiver = graphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === filterReceiver && (typeof l.target === 'string' ? l.target : l.target.id) === eventNode.id);
+                const linkToSender = graphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === eventNode.id && (typeof l.target === 'string' ? l.target : l.target.id) === filterSender);
 
-                if (connectedToSender && connectedToReceiver) {
-                  visible.add(node.id);
-                  break;
+                if ((linkFromSender && linkToReceiver) || (linkFromReceiver && linkToSender)) {
+                    visible.add(eventNode.id);
                 }
-              }
             }
           });
+
         } else {
           while (queue.length > 0 && level <= filterDepth) {
             const nextQueue: string[] = [];
@@ -211,6 +282,8 @@ const GraphView: React.FC<Props> = ({
       }
 
       if (filterContent.trim()) {
+        const res = await fetch(`/api${endpoint}`);
+        const data = await res.json();
         const lowerContent = filterContent.toLowerCase();
         const relevantEvents = new Set<string>();
         graphData.nodes.forEach(node => {
@@ -250,18 +323,22 @@ const GraphView: React.FC<Props> = ({
         )
       );
 
-      if (timestampFilterStart || timestampFilterEnd) {
-        visible = new Set(
-          Array.from(visible).filter(id => {
+      // Apply the static timestamp filter from props *before* considering animation
+      let filteredByStaticTime = new Set(visible);
+      if (propTimestampFilterStart || propTimestampFilterEnd) {
+        filteredByStaticTime = new Set(
+          Array.from(filteredByStaticTime).filter(id => {
             const node = graphData.nodes.find(n => n.id === id);
             if (!node || node.type !== "Event" || !node.timestamp) return true;
-            const ts = new Date(node.timestamp);
-            const start = timestampFilterStart ? new Date(timestampFilterStart) : null;
-            const end = timestampFilterEnd ? new Date(timestampFilterEnd) : null;
-            return (!start || ts >= start) && (!end || ts <= end);
+            const ts = new Date(node.timestamp).getTime();
+            const start = propTimestampFilterStart ? new Date(propTimestampFilterStart).getTime() : -Infinity;
+            const end = propTimestampFilterEnd ? new Date(propTimestampFilterEnd).getTime() : Infinity;
+            return (ts >= start) && (ts <= end);
           })
         );
       }
+      visible = filteredByStaticTime;
+
 
       const visibleSetAfterTimeFilter = new Set(visible);
       setCommunicationEventsAfterTimeFilter(
@@ -297,11 +374,14 @@ const GraphView: React.FC<Props> = ({
 
       if (!isVisible) return false;
 
-      if (link.type === "COMMUNICATION" && link.timestamp) {
-        const ts = new Date(link.timestamp);
-        const start = timestampFilterStart ? new Date(timestampFilterStart) : null;
-        const end = timestampFilterEnd ? new Date(timestampFilterEnd) : null;
-        return (!start || ts >= start) && (!end || ts <= end);
+      // Link visibility also depends on the static time filter
+      if (link.timestamp) {
+        const ts = new Date(link.timestamp).getTime();
+        const start = propTimestampFilterStart ? new Date(propTimestampFilterStart).getTime() : -Infinity;
+        const end = propTimestampFilterEnd ? new Date(propTimestampFilterEnd).getTime() : Infinity;
+        if (!(ts >= start && ts <= end)) {
+          return false;
+        }
       }
       return true;
     }).map(link => ({
@@ -365,17 +445,12 @@ const GraphView: React.FC<Props> = ({
           node.x = nodePositions[node.id].x;
           node.y = nodePositions[node.id].y;
         } else {
-            // If a node is newly introduced by a filter (unlikely in this scenario if all nodes are initially simulated)
-            // or if it was filtered out and now brought back, give it a default position or re-run simulation if needed.
-            // For this specific requirement, we assume all relevant nodes were part of the initial simulation.
-            // For simplicity, we can default to center if a position is not found (though this shouldn't happen with current logic)
             node.x = width / 2;
             node.y = height / 2;
         }
       });
       // Update links to use the fixed positions of visible nodes
       linksToRender.forEach(link => {
-        // Ensure source and target are node objects for position access
         const sourceNode = nodesToRender.find(n => n.id === (typeof link.source === 'string' ? link.source : link.source.id));
         const targetNode = nodesToRender.find(n => n.id === (typeof link.target === 'string' ? link.target : link.target.id));
 
@@ -383,10 +458,8 @@ const GraphView: React.FC<Props> = ({
           link.source = sourceNode;
           link.target = targetNode;
         } else {
-            // If source or target node is not found in visible nodes, this link should ideally not be rendered.
-            // This case should be handled by the initial linksToRender filter, but as a safeguard.
-            link.source = { x: 0, y: 0 } as GraphNode; // Placeholder for rendering if node missing
-            link.target = { x: 0, y: 0 } as GraphNode; // Placeholder
+            link.source = { x: 0, y: 0 } as GraphNode;
+            link.target = { x: 0, y: 0 } as GraphNode;
         }
       });
 
@@ -428,28 +501,6 @@ const GraphView: React.FC<Props> = ({
         enter => {
           const group = enter.append("g")
             .attr("class", "node-group")
-            .call(d3.drag<SVGGElement, GraphNode>()
-              .on("start", (event, d) => {
-                if (!event.active && simulationRef.current) simulationRef.current.alphaTarget(0.3).restart();
-                d.fx = d.x;
-                d.fy = d.y;
-              })
-              .on("drag", (event, d) => {
-                d.fx = event.x;
-                d.fy = event.y;
-              })
-              .on("end", (event, d) => {
-                if (!event.active && simulationRef.current) simulationRef.current.alphaTarget(0);
-                d.fx = null;
-                d.fy = null;
-                // Update stored positions if dragged
-                if (nodePositions) {
-                  setNodePositions(prev => ({
-                    ...prev,
-                    [d.id]: { x: d.x!, y: d.y! }
-                  }));
-                }
-              }))
             .on("mouseover", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4))
             .on("mouseout", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "none"))
             .on("click", (event, d) => {
@@ -471,7 +522,49 @@ const GraphView: React.FC<Props> = ({
             .style("font-size", d => `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.label)?.length || 0 - 10))}px`);
           return group;
         },
-        update => update,
+        update => {
+          
+          update
+            .on("mouseover", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4))
+            .on("mouseout", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "none"))
+            .on("click", (event, d) => {
+              setSelectedInfo({ type: "node", data: d });
+              if (d.type === "Entity") {
+                setFilterSender(d.id);
+              }
+            });
+
+          // Update attributes for the circle and text within the node group
+          // Animation highlight logic
+          update.select("circle")
+            .attr("fill", d => d.type === "Entity" ? "#999" : d.sub_type === "Communication" ? "#1f77b4" : d.type === "Event" ? "#2ca02c" : "#999")
+            .attr("stroke", (d) => { // Highlight active event nodes
+                if (d.type === "Event" && d.timestamp) {
+                    const eventTime = new Date(d.timestamp).getTime();
+                    const animationWindowEnd = currentAnimationTime + stepMS; // End of current step window
+                    if (eventTime >= currentAnimationTime && eventTime < animationWindowEnd) {
+                        return "red"; // Highlight color
+                    }
+                }
+                return "none";
+            })
+            .attr("stroke-width", (d) => {
+                if (d.type === "Event" && d.timestamp) {
+                    const eventTime = new Date(d.timestamp).getTime();
+                    const animationWindowEnd = currentAnimationTime + stepMS;
+                    if (eventTime >= currentAnimationTime && eventTime < animationWindowEnd) {
+                        return 3; // Highlight thickness
+                    }
+                }
+                return 0;
+            });
+
+          update.select("text")
+            .text(d => d.type === "Entity" ? d.id : d.label)
+            .style("font-size", d => `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.label)?.length || 0 - 10))}px`);
+
+          return update;
+        },
         exit => exit.remove()
       );
 
@@ -495,12 +588,14 @@ const GraphView: React.FC<Props> = ({
     filterReceiver,
     filterDepth,
     filterContent,
-    timestampFilterStart,
-    timestampFilterEnd,
+    propTimestampFilterStart,
+    propTimestampFilterEnd,
     filterMode,
-    nodePositions, // Depend on nodePositions to re-render when they are set
-    // No need to include setVisibleEntities, setSubtypeCounts, etc., as they are setters
-    // and do not directly influence the D3 rendering logic in this effect.
+    nodePositions,
+    currentAnimationTime,
+    stepMS,
+    setSelectedInfo,
+    setFilterSender,
   ]);
 
   return (

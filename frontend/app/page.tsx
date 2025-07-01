@@ -46,7 +46,7 @@ export default function Home() {
   const [communicationEventsAfterTimeFilter, setCommunicationEventsAfterTimeFilter] = useState<Node[]>([]);
   const [EventsAfterTimeFilter, setEventsAfterTimeFilter] = useState<Node[]>([]);
   const [filterModeMessages, setFilterModeMessages] = useState<"all" | "filtered" | "direct" | "directed">("all");
-
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
 
   // Don't change this function
@@ -156,11 +156,14 @@ export default function Home() {
       communicationEventsWithTimeFilter={communicationEventsAfterTimeFilter}
       filterModeMessages={filterModeMessages}
       setFilterModeMessages={setFilterModeMessages}
+      selectedEventId={selectedEventId}
     />
 
     {/* Event View */}
     <EventsView
       eventsAfterTimeFilter={EventsAfterTimeFilter}
+      setSelectedEventId={setSelectedEventId}
+      selectedEventId={selectedEventId}
       />
     
     {/* Sankey  */}
