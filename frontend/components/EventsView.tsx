@@ -18,12 +18,16 @@ interface Node {
 
 interface EventsViewProps {
   eventsAfterTimeFilter: Node[];
+  setSelectedEventId: (id: string) => void;
+  selectedEventId: string | null;
 }
 
 export default function EventsView({
   eventsAfterTimeFilter,
+  setSelectedEventId,
+  selectedEventId,
 }: EventsViewProps) {
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  
 
   const handleRowClick = (id: string) => {
     setSelectedEventId(id);
