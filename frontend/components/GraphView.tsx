@@ -99,6 +99,8 @@ const GraphView: React.FC<Props> = ({
   const [animationEndTime, setAnimationEndTime] = useState<number>(defaultEndDate);
   const [currentAnimationTime, setCurrentAnimationTime] = useState<number>(defaultStartDate);
 
+  const [relevantEvents, setrelevantEvents] = useState<Set<string>>(new Set());
+
   // Parse prop timestamps for initial animation range
   useEffect(() => {
     const start = propTimestampFilterStart ? new Date(propTimestampFilterStart).getTime() : defaultStartDate;
@@ -178,6 +180,31 @@ const GraphView: React.FC<Props> = ({
   useEffect(() => {
     callApi("/read-db-graph");
   }, []);
+
+  
+
+  const fetchSimilarEvents = async (query: string) => {
+    try {
+      const res = await fetch(`/api/similarity-search-events?query=${encodeURIComponent(query)}&score_threshold=0.5`);
+      const data = await res.json();
+      if (data.success) {
+        const ids = new Set<string>(data.event_ids);
+        setrelevantEvents(ids);
+      } else {
+        console.error("Similarity search failed:", data.error);
+      }
+    } catch (err) {
+      console.error("Similarity event search failed:", err);
+    }
+  };
+
+  useEffect(() => {
+  if (filterContent.trim()) {
+    fetchSimilarEvents(filterContent.trim());
+  } else {
+    setrelevantEvents(new Set()); // Reset if empty
+  }
+}, [filterContent]);
 
   // Effect for initializing D3 SVG and zoom, runs only once
   useEffect(() => {
@@ -282,36 +309,22 @@ const GraphView: React.FC<Props> = ({
       }
 
       if (filterContent.trim()) {
-        
-        const lowerContent = filterContent.toLowerCase();
-        const relevantEvents = new Set<string>();
-        graphData.nodes.forEach(node => {
-          if (node.type === "Event") {
-            const fields = ["content", "findings", "results", "destination", "outcome", "reference"];
-            if (fields.some(field => (node as any)[field]?.toLowerCase().includes(lowerContent))) {
-              relevantEvents.add(node.id);
-            }
-          }
-        });
-
-        const connectedEntities = new Set<string>();
-        graphData.links.forEach(link => {
-          const src = typeof link.source === "string" ? link.source : link.source.id;
-          const tgt = typeof link.target === "string" ? link.target : link.target.id;
-          if (relevantEvents.has(src) && graphData.nodes.find(n => n.id === tgt)?.type === "Entity") connectedEntities.add(tgt);
-          if (relevantEvents.has(tgt) && graphData.nodes.find(n => n.id === src)?.type === "Entity") connectedEntities.add(src);
-        });
-
         visible = new Set(
           Array.from(visible).filter(id => {
             const node = graphData.nodes.find(n => n.id === id);
             if (!node) return false;
-            if (node.type === "Entity") return connectedEntities.has(id);
-            if (node.type === "Event") return relevantEvents.has(id);
-            return true;
+            if (node.type === "Event") return relevantEvents.has(node.id);
+
+            // Check if connected to relevant event
+            return graphData.links.some(link => {
+              const src = typeof link.source === "string" ? link.source : link.source.id;
+              const tgt = typeof link.target === "string" ? link.target : link.target.id;
+              return (relevantEvents.has(src) && tgt === id) || (relevantEvents.has(tgt) && src === id);
+            });
           })
         );
       }
+
 
       const visibleSetBeforeTimeFilter = new Set(visible);
       setCommunicationEvents(

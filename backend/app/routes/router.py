@@ -632,16 +632,19 @@ import pandas as pd
 import torch
 from sentence_transformers import SentenceTransformer, util
 
+# Load the embedding model
+embed_model = SentenceTransformer("BAAI/bge-small-en-v1.5", device="cpu")
+
+# Load the graph data from the JSON file to dataframe
 with open("MC3_graph.json", "r", encoding="utf-8") as f:
         data = json.load(f)
 nodes_df = pd.DataFrame(data['nodes'])
+
+# Filter for communication events
 communication_events = nodes_df[nodes_df['sub_type'] == 'Communication'].copy()
 communication_events['content'] = communication_events['content'].fillna("")
 
-# === Load embedding model once ===
-embed_model = SentenceTransformer("BAAI/bge-small-en-v1.5", device="cpu")
-
-# === Precompute embeddings ===
+# Encode the communication events to get their embeddings
 print("Encoding communication event content...")
 message_texts = [
     "Represent this passage for retrieval: " + msg
@@ -649,6 +652,7 @@ message_texts = [
 ]
 message_embs = embed_model.encode(message_texts, convert_to_tensor=True)
 print("Embeddings loaded.")
+
 
 # Similarity matrix - could be used for adjacency matrix
 def calculate_similarity_between_all_messages():
@@ -717,4 +721,32 @@ async def similarity_search(
 
     except Exception as e:
         print("Error in similarity search:", str(e))
+        return {"success": False, "error": str(e)}
+
+###  
+# Load all events for similarity search using contentFilter
+Events = nodes_df[nodes_df['type'] == 'Event'].copy()
+Events["full_text"] = Events[["content", "findings", "results", "destination", "outcome", "reference"]].fillna("").agg(" ".join, axis=1)
+# Embed the full text of events for similarity search
+event_texts = ["Represent this passage for retrieval: " + text for text in Events["full_text"]]
+event_embeddings = embed_model.encode(event_texts, convert_to_tensor=True)
+
+@router.get("/similarity-search-events", response_class=JSONResponse)
+async def similarity_search_events(
+    query: str = Query(...),
+    score_threshold: float = Query(0.5, description="Minimum similarity score to consider a match")
+    ):
+    print(f"Starting similarity search for events with query: {query} and threshold: {score_threshold}")
+    try:
+        encoded_query = embed_model.encode(
+            "Represent this question for retrieving supporting passages: " + query,
+            convert_to_tensor=True
+        )
+
+        scores = util.cos_sim(encoded_query, event_embeddings)[0]
+        top_indices = (scores > score_threshold).nonzero().flatten().cpu().numpy()
+
+        matched_ids = Events.iloc[top_indices]["id"].tolist()
+        return {"success": True, "event_ids": matched_ids}
+    except Exception as e:
         return {"success": False, "error": str(e)}
