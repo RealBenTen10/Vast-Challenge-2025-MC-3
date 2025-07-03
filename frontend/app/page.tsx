@@ -45,7 +45,7 @@ export default function Home() {
   const [communicationEvents, setCommunicationEvents] = useState<Node[]>([]);
   const [communicationEventsAfterTimeFilter, setCommunicationEventsAfterTimeFilter] = useState<Node[]>([]);
   const [EventsAfterTimeFilter, setEventsAfterTimeFilter] = useState<Node[]>([]);
-  const [filterModeMessages, setFilterModeMessages] = useState<"all" | "filtered" | "direct" | "directed">("all");
+  const [filterModeMessages, setFilterModeMessages] = useState<"all" | "filtered" | "direct" | "directed" |"evidence" | "similarity">("all");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
 

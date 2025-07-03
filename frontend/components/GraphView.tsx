@@ -282,8 +282,7 @@ const GraphView: React.FC<Props> = ({
       }
 
       if (filterContent.trim()) {
-        const res = await fetch(`/api${endpoint}`);
-        const data = await res.json();
+        
         const lowerContent = filterContent.toLowerCase();
         const relevantEvents = new Set<string>();
         graphData.nodes.forEach(node => {
