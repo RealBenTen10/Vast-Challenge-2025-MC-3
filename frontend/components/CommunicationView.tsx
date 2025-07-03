@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Card, CardHeader, CardBody, Badge, Button } from "@heroui/react";
+import { Card, CardHeader, CardBody, Badge } from "@heroui/react";
 
 interface MSVItem {
   event_id: string;
@@ -29,8 +29,8 @@ interface CommunicationViewProps {
   timestampFilterEnd: string;
   visibleEntities: { id: string; sub_type?: string }[];
   communicationEventsWithTimeFilter: Node[];
-  filterModeMessages: "all" | "filtered" | "direct" | "directed";
-  setFilterModeMessages: (mode: "all" | "filtered" | "direct" | "directed") => void;
+  filterModeMessages: "all" | "filtered" | "direct" | "directed" | "evidence" | "similarity";
+  setFilterModeMessages: (mode: CommunicationViewProps["filterModeMessages"]) => void;
   selectedEventId: string | null;
 }
 
@@ -51,43 +51,43 @@ export default function CommunicationView({
   const [msvData, setMsvData] = useState<MSVItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [similarityQuery, setSimilarityQuery] = useState("");
+  const [similarityResults, setSimilarityResults] = useState<MSVItem[]>([]);
+  const [evidenceResults, setEvidenceResults] = useState<MSVItem[]>([]);
 
-  const loadMSV = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const eventIds = communicationEventsWithTimeFilter.map((e) => e.id);
-      if (eventIds.length === 0) {
-        setMsvData([]);
-        return;
-      }
-
-      const BATCH_SIZE = 300;
-      const batches = [];
-
-      for (let i = 0; i < eventIds.length; i += BATCH_SIZE) {
-        batches.push(eventIds.slice(i, i + BATCH_SIZE));
-      }
-
-      const allResults: MSVItem[] = [];
-
-      for (const batch of batches) {
-        const params = new URLSearchParams();
-        batch.forEach((id) => params.append("event_ids", id));
-
-        const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
-        const text = await res.text();
-        if (!text) throw new Error("Empty response from server");
-
-        const data = JSON.parse(text);
+  useEffect(() => {
+    const fetchEvidence = async () => {
+      if (filterModeMessages !== "evidence" || !selectedEventId) return;
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/evidence-for-event?event_id=${selectedEventId}`);
+        const data = await res.json();
         if (data.success) {
-          allResults.push(...data.data);
+          setEvidenceResults(data.data);
         } else {
-          throw new Error(data.error || "Failed to load data");
+          setError("Failed to fetch evidence messages.");
         }
+      } catch (err) {
+        setError(String(err));
+      } finally {
+        setLoading(false);
       }
+    };
 
-      setMsvData(allResults);
+    fetchEvidence();
+  }, [filterModeMessages, selectedEventId]);
+
+  const handleSimilaritySearch = async () => {
+    if (!similarityQuery.trim()) return;
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/similarity-search?query=${encodeURIComponent(similarityQuery)}&top_k=50`);
+      const data = await res.json();
+      if (data.success) {
+        setSimilarityResults(data.data);
+      } else {
+        setError("Failed to fetch similar messages.");
+      }
     } catch (err) {
       setError(String(err));
     } finally {
@@ -96,111 +96,147 @@ export default function CommunicationView({
   };
 
   useEffect(() => {
-    loadMSV();
-  }, [communicationEventsWithTimeFilter]);
+    const loadMSV = async () => {
+      if (filterModeMessages === "evidence" || filterModeMessages === "similarity") return;
 
-  const filteredData = msvData.filter((item) => {
-    if (filterModeMessages === "all") return true;
-    if (filterModeMessages === "filtered") {
-      return (
-        (filterSender && item.source === filterSender) ||
-        (filterReceiver && item.target === filterReceiver)
-      );
-    }
-    if (filterModeMessages === "direct") {
-      return (
-        (filterSender &&
-        filterReceiver &&
-        item.source === filterSender &&
-        item.target === filterReceiver) ||
-        (filterSender &&
-        filterReceiver &&
-        item.source === filterReceiver &&
-        item.target === filterSender)
-      );
-    }
-    if (filterModeMessages === "directed") {
-      return (
-        (filterSender &&
-        filterReceiver &&
-        item.source === filterSender &&
-        item.target === filterReceiver)
-      );
-    }
-    return true;
-  });
+      setLoading(true);
+      setError(null);
+      try {
+        const eventIds = communicationEventsWithTimeFilter.map((e) => e.id);
+        if (eventIds.length === 0) {
+          setMsvData([]);
+          return;
+        }
+
+        const BATCH_SIZE = 300;
+        const batches = [];
+
+        for (let i = 0; i < eventIds.length; i += BATCH_SIZE) {
+          batches.push(eventIds.slice(i, i + BATCH_SIZE));
+        }
+
+        const allResults: MSVItem[] = [];
+
+        for (const batch of batches) {
+          const params = new URLSearchParams();
+          batch.forEach((id) => params.append("event_ids", id));
+
+          const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
+          const text = await res.text();
+          if (!text) throw new Error("Empty response from server");
+
+          const data = JSON.parse(text);
+          if (data.success) {
+            allResults.push(...data.data);
+          } else {
+            throw new Error(data.error || "Failed to load data");
+          }
+        }
+
+        setMsvData(allResults);
+      } catch (err) {
+        setError(String(err));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMSV();
+  }, [communicationEventsWithTimeFilter, filterModeMessages]);
+
+  const filteredData = (() => {
+    if (filterModeMessages === "evidence") return evidenceResults;
+    if (filterModeMessages === "similarity") return similarityResults;
+
+    return msvData.filter((item) => {
+      if (filterModeMessages === "all") return true;
+      if (filterModeMessages === "filtered") {
+        return (
+          (filterSender && item.source === filterSender) ||
+          (filterReceiver && item.target === filterReceiver)
+        );
+      }
+      if (filterModeMessages === "direct") {
+        return (
+          (filterSender &&
+            filterReceiver &&
+            item.source === filterSender &&
+            item.target === filterReceiver) ||
+          (filterSender &&
+            filterReceiver &&
+            item.source === filterReceiver &&
+            item.target === filterSender)
+        );
+      }
+      if (filterModeMessages === "directed") {
+        return (
+          filterSender &&
+          filterReceiver &&
+          item.source === filterSender &&
+          item.target === filterReceiver
+        );
+      }
+      return true;
+    });
+  })();
 
   return (
     <Card className="w-full max-w-7xl mt-8">
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <h4 className="text-lg font-semibold">{filteredData.length} Messages</h4>
-          <div className="flex gap-2">
-            <button
-              className={`px-3 py-1 text-sm border rounded ${
-                filterModeMessages === "all" ? "bg-blue-500 text-white" : "bg-gray-100"
-              }`}
-              onClick={() => setFilterModeMessages("all")}
-            >
-              All filtered Messages
-            </button>
-            <button
-              className={`px-3 py-1 text-sm border rounded ${
-                filterModeMessages === "filtered" ? "bg-blue-500 text-white" : "bg-gray-100"
-              }`}
-              onClick={() => setFilterModeMessages("filtered")}
-            >
-              Sender or Receiver
-            </button>
-            <button
-              className={`px-3 py-1 text-sm border rounded ${
-                filterModeMessages === "direct" ? "bg-blue-500 text-white" : "bg-gray-100"
-              }`}
-              onClick={() => setFilterModeMessages("direct")}
-            >
-              Sender and Receiver
-            </button>
-            <button
-              className={`px-3 py-1 text-sm border rounded ${
-                filterModeMessages === "directed" ? "bg-blue-500 text-white" : "bg-gray-100"
-              }`}
-              onClick={() => setFilterModeMessages("directed")}
-            >
-              Sender to Receiver
-            </button>
-            <button
-              className={`px-3 py-1 text-sm border rounded ${
-                filterModeMessages === "evidence" ? "bg-blue-500 text-white" : "bg-gray-100"
-              }`}
-              onClick={() => setFilterModeMessages("evidence")}
-            >
-              Evidence for Events
-            </button>
-            <button
-              className={`px-3 py-1 text-sm border rounded ${
-                filterModeMessages === "similarity" ? "bg-blue-500 text-white" : "bg-gray-100"
-              }`}
-              onClick={() => setFilterModeMessages("similarity")}
-            >
-              Similar Message Search
-            </button>
+          <div className="flex gap-2 flex-wrap">
+            {["all", "filtered", "direct", "directed", "evidence", "similarity"].map((mode) => (
+              <button
+                key={mode}
+                className={`px-3 py-1 text-sm border rounded ${
+                  filterModeMessages === mode ? "bg-blue-500 text-white" : "bg-gray-100"
+                }`}
+                onClick={() => setFilterModeMessages(mode as CommunicationViewProps["filterModeMessages"])}
+              >
+                {mode === "all" && "All"}
+                {mode === "filtered" && "Sender or Receiver"}
+                {mode === "direct" && "Sender and Receiver"}
+                {mode === "directed" && "Sender to Receiver"}
+                {mode === "evidence" && "Evidence for Events"}
+                {mode === "similarity" && "Similar Message Search"}
+              </button>
+            ))}
           </div>
         </div>
 
-        
+        {filterModeMessages === "similarity" && (
+          <div className="mt-4 flex gap-2 items-center">
+            <input
+              type="text"
+              value={similarityQuery}
+              onChange={(e) => setSimilarityQuery(e.target.value)}
+              placeholder="Enter message text (e.g., 'dolphins at Nemo Reef')"
+              className="border px-3 py-1 rounded w-full"
+            />
+            <button
+              onClick={handleSimilaritySearch}
+              className="px-3 py-1 bg-blue-600 text-white rounded"
+            >
+              Search
+            </button>
+          </div>
+        )}
       </CardHeader>
+
       <div className="mt-2 flex flex-wrap gap-1 text-sm">
-          <span className="ml-4"> Following Filters are active: </span>
-          {filterSender && <Badge color="blue"> - Sender: {filterSender}</Badge>}
-          {filterReceiver && <Badge color="green"> - Receiver: {filterReceiver}</Badge>}
-          {filterContent && <Badge color="purple"> - Keyword: {filterContent}</Badge>}
-          {timestampFilterStart && timestampFilterEnd && (
-            <Badge color="gray">
-              - {new Date(timestampFilterStart).toLocaleString()} –{" "}
-              {new Date(timestampFilterEnd).toLocaleString()}
-            </Badge>
-          )}
-        </div>
+        <span className="ml-4">Filters:</span>
+        {filterSender && <Badge color="blue">Sender: {filterSender}</Badge>}
+        {filterReceiver && <Badge color="green">Receiver: {filterReceiver}</Badge>}
+        {filterContent && <Badge color="purple">Keyword: {filterContent}</Badge>}
+        {timestampFilterStart && timestampFilterEnd && (
+          <Badge color="gray">
+            {new Date(timestampFilterStart).toLocaleString()} –{" "}
+            {new Date(timestampFilterEnd).toLocaleString()}
+          </Badge>
+        )}
+      </div>
+
       <CardBody>
         {loading ? (
           <p>Loading sequence data...</p>

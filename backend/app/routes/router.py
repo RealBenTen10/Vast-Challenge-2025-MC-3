@@ -341,6 +341,51 @@ async def read_db_graph():
     
     return {"success": True, "nodes": nodes, "links": edges}
 
+@router.get("/evidence-for-event", response_class=JSONResponse)
+async def evidence_for_event(event_id: str = Query(..., description="ID of the selected event")):
+    """
+    Given a selected event (e.g., 'Event_Monitoring_0'), return detailed information for each
+    communication event that points to it via [:evidence_for] edges.
+    """
+    print("Getting evidence for event:", event_id)
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    results = []
+
+    try:
+        with driver.session() as session:
+            print("Fetching evidence communication events...")
+            query = """
+                MATCH (sender:Entity)-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity),
+                      (comm)-[:evidence_for]->(e:Event {id: $event_id})
+                RETURN comm, sender.id AS source, receiver.id AS target
+                ORDER BY comm.timestamp
+            """
+            records = session.run(query, event_id=event_id)
+
+            print("Processing results...")
+            for record in records:
+                comm = record["comm"]
+                results.append({
+                    "event_id": comm.id,
+                    "timestamp": comm.get("timestamp", ""),
+                    "source": record.get("source", "–"),
+                    "target": record.get("target", "–"),
+                    "content": comm.get("content", ""),
+                    "sub_type": comm.get("sub_type", "")
+                })
+
+            print(f"Found {len(results)} evidence communication events for event {event_id}.")
+
+    except Exception as e:
+        print(f"Error in evidence_for_event: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+    finally:
+        driver.close()
+
+    return {"success": True, "data": results}
+
+
 @router.get("/get-events-by-date", response_class=JSONResponse)
 async def get_events_by_date(date: str):
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
@@ -578,45 +623,98 @@ async def massive_sequence_view(
     return {"success": True, "data": results}
 
 
-from fastapi import APIRouter, Query
-from neo4j import GraphDatabase
-from langchain.chains import RetrievalQA
-from langchain_community.vectorstores import Neo4jVector
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.llms import Ollama
+###
+# Here the Similarity Search starts
+# First we need to embed the messages
 
-@router.get("/ask")
-def ask_question(question: str):
-    print(f"Received question: {question}")
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+import json
+import pandas as pd
+import torch
+from sentence_transformers import SentenceTransformer, util
 
+with open("MC3_graph.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
+nodes_df = pd.DataFrame(data['nodes'])
+communication_events = nodes_df[nodes_df['sub_type'] == 'Communication'].copy()
+communication_events['content'] = communication_events['content'].fillna("")
+
+# === Load embedding model once ===
+embed_model = SentenceTransformer("BAAI/bge-small-en-v1.5", device="cpu")
+
+# === Precompute embeddings ===
+print("Encoding communication event content...")
+message_texts = [
+    "Represent this passage for retrieval: " + msg
+    for msg in communication_events["content"]
+]
+message_embs = embed_model.encode(message_texts, convert_to_tensor=True)
+print("Embeddings loaded.")
+
+# Similarity matrix - could be used for adjacency matrix
+def calculate_similarity_between_all_messages():
+    similarity_matrix = util.cos_sim(message_embs, message_embs)
+    similarity_matrix = similarity_matrix.numpy().tolist()
+
+@router.get("/similarity-search", response_class=JSONResponse)
+async def similarity_search(
+    query: str = Query(..., description="Text query for semantic message similarity"),
+    top_k: int = Query(50, description="Number of top similar messages to return")
+    ):
     try:
-        # Embedding model
-        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        
+        if not query.strip():
+            return {"success": False, "error": "Empty query"}
 
-        # Neo4j vector retriever
-        vectorstore = Neo4jVector(
-            driver=driver,
-            embedding=embeddings,
-            index_name="graph-index",
+        # Encode the query
+        encoded_query = embed_model.encode(
+            "Represent this question for retrieving supporting passages: " + query,
+            convert_to_tensor=True
         )
 
-        # LLM via Ollama
-        llm = Ollama(model="mistral")  # Make sure `ollama run mistral` has been started
+        # Compute cosine similarity
+        scores = util.cos_sim(encoded_query, message_embs)[0]
+        top_indices = torch.topk(scores, k=top_k).indices.cpu().numpy()
 
-        # Retrieval QA chain
-        qa = RetrievalQA.from_chain_type(
-            llm=llm,
-            retriever=vectorstore.as_retriever()
-        )
+        # Extract matching rows
+        results_df = communication_events.iloc[top_indices].copy()
+        results_df["similarity"] = scores[top_indices].cpu().numpy()
+        results_df.sort_values(by="similarity", ascending=False, inplace=True)
 
-        print("Running question-answering chain...")
-        answer = qa.run(question)
+        event_ids = results_df["id"].tolist()
 
-        return {"success": True, "answer": answer}
+        # Query Neo4j to get sender and receiver info
+        driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+        result = []
+
+        try:
+            with driver.session() as session:
+                cypher_query = """
+                UNWIND $ids AS eid
+                MATCH (source:Entity)-[:sent]->(comm:Event {id: eid})-[:received]->(target:Entity)
+                RETURN comm.id AS event_id, comm.timestamp AS timestamp, comm.content AS content,
+                       source.id AS source, target.id AS target
+                """
+                records = session.run(cypher_query, ids=event_ids)
+                result_map = {record["event_id"]: record for record in records}
+
+            for _, row in results_df.iterrows():
+                event_id = row["id"]
+                record = result_map.get(event_id, {})
+                result.append({
+                    "event_id": event_id,
+                    "timestamp": record.get("timestamp", ""),
+                    "source": record.get("source", ""),
+                    "target": record.get("target", ""),
+                    "content": record.get("content", ""),
+                    "sub_type": row.get("sub_type", "Communication"),
+                    "similarity": float(row.get("similarity", 0))
+                })
+
+        finally:
+            driver.close()
+
+        return {"success": True, "data": result}
 
     except Exception as e:
+        print("Error in similarity search:", str(e))
         return {"success": False, "error": str(e)}
-
-    finally:
-        driver.close()
