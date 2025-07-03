@@ -622,6 +622,45 @@ async def massive_sequence_view(
         driver.close()
     return {"success": True, "data": results}
 
+@router.post("/event-entities", response_class=JSONResponse)
+async def event_entities(event_ids: List[str]):
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    result_map = {}
+
+    try:
+        print("Fetching event entities for IDs:", event_ids)
+        with driver.session() as session:
+            query = """
+            UNWIND $event_ids AS eid
+            MATCH (ev:Event {id: eid})--(entity:Entity)
+            RETURN eid AS event_id, COLLECT(DISTINCT entity.id) AS connected_entities
+            """
+            records = session.run(query, event_ids=event_ids)
+            print("For event IDs: ", event_ids, " found records: ", records)
+            for record in records:
+                event_id = record["event_id"]
+                entities = record["connected_entities"] or []
+
+                
+                sorted_entities = sorted(entities)
+                source = sorted_entities[0]
+                target = sorted_entities[1]
+                
+                result_map[event_id] = {
+                    "source": source,
+                    "target": target
+                }
+
+    except Exception as e:
+        print("Error in /event-entities:", str(e))
+        return {"success": False, "error": str(e)}
+    finally:
+        driver.close()
+
+    print("Event entities fetched successfully: ", result_map)
+    return {"success": True, "data": result_map}
+
+
 
 ###
 # Here the Similarity Search starts

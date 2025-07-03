@@ -170,6 +170,7 @@ export default function Home() {
       eventsAfterTimeFilter={EventsAfterTimeFilter}
       setSelectedEventId={setSelectedEventId}
       selectedEventId={selectedEventId}
+      setFilterModeMessages={setFilterModeMessages}
       />
     
     {/* Sankey  */}

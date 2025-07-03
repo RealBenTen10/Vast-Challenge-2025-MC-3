@@ -57,7 +57,7 @@ export default function CommunicationView({
 
   useEffect(() => {
     const fetchEvidence = async () => {
-      if (filterModeMessages !== "evidence" || !selectedEventId) return;
+      if (filterModeMessages !== "evidence") return;
       try {
         setLoading(true);
         const res = await fetch(`/api/evidence-for-event?event_id=${selectedEventId}`);
@@ -224,18 +224,21 @@ export default function CommunicationView({
         )}
       </CardHeader>
 
-      <div className="mt-2 flex flex-wrap gap-1 text-sm">
-        <span className="ml-4">Filters:</span>
-        {filterSender && <Badge color="blue">Sender: {filterSender}</Badge>}
-        {filterReceiver && <Badge color="green">Receiver: {filterReceiver}</Badge>}
-        {filterContent && <Badge color="purple">Keyword: {filterContent}</Badge>}
-        {timestampFilterStart && timestampFilterEnd && (
-          <Badge color="gray">
-            {new Date(timestampFilterStart).toLocaleString()} –{" "}
-            {new Date(timestampFilterEnd).toLocaleString()}
-          </Badge>
-        )}
-      </div>
+      {filterModeMessages !== "evidence" && filterModeMessages !== "similarity" && (
+        <div className="mt-2 flex flex-wrap gap-1 text-sm">
+          <span className="ml-4">Filters:</span>
+          {filterSender && <Badge color="blue">Sender: {filterSender}</Badge>}
+          {filterReceiver && <Badge color="green">Receiver: {filterReceiver}</Badge>}
+          {filterContent && <Badge color="purple">Keyword: {filterContent}</Badge>}
+          {timestampFilterStart && timestampFilterEnd && (
+            <Badge color="gray">
+              {new Date(timestampFilterStart).toLocaleString()} –{" "}
+              {new Date(timestampFilterEnd).toLocaleString()}
+            </Badge>
+          )}
+        </div>
+      )}
+
 
       <CardBody>
         {loading ? (
