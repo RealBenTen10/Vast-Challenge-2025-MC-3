@@ -747,6 +747,8 @@ async def similarity_search_events(
         top_indices = (scores > score_threshold).nonzero().flatten().cpu().numpy()
 
         matched_ids = Events.iloc[top_indices]["id"].tolist()
+        print(f"Found {len(matched_ids)} matching event IDs with scores above {score_threshold}: {matched_ids}")
         return {"success": True, "event_ids": matched_ids}
     except Exception as e:
+        print("Error in similarity search for events:", str(e))
         return {"success": False, "error": str(e)}

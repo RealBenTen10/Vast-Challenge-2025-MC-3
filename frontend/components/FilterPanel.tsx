@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Button, Alert } from "@heroui/react";
 
 interface FilterPanelProps {
@@ -19,6 +19,8 @@ interface FilterPanelProps {
   callApi: (endpoint: string) => void;
   statusMsg: string;
   setGraphData: (data: any) => void;
+  relevantEvents: Set<string>;
+  setrelevantEvents: (events: Set<string>) => void;
 }
 
 const FilterPanel: React.FC<FilterPanelProps> = ({
@@ -39,7 +41,40 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   callApi,
   statusMsg,
   setGraphData,
+  relevantEvents,
+  setrelevantEvents,
 }) => {
+  const [contentInput, setContentInput] = useState(filterContent);
+
+  const handleContentKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      applyContentFilter();
+    }
+  };
+
+  const applyContentFilter = async () => {
+    const trimmed = contentInput.trim();
+    setFilterContent(trimmed);
+
+    if (!trimmed) {
+      setrelevantEvents(new Set());
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/similarity-search-events?query=${encodeURIComponent(trimmed)}&score_threshold=0.7`);
+      const data = await res.json();
+      if (data.success) {
+        const ids = new Set<string>(data.event_ids);
+        setrelevantEvents(ids);
+        console.log("Similar events found:", ids);
+      } else {
+        console.error("Similarity search failed:", data.error);
+      }
+    } catch (err) {
+      console.error("Similarity search failed:", err);
+    }
+  };
 
   return (
     <div className="w-[400px] flex-shrink-0 border rounded-lg p-4">
@@ -71,14 +106,24 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
       </div>
 
       <div className="mt-4">
-        <label className="text-sm font-medium">Filter by Message Content:</label>
+        <label className="text-sm font-medium">Filter by Keywords:</label>
         <input
           className="mt-1 block w-full border rounded px-2 py-1 text-sm"
           type="text"
-          value={filterContent}
-          onChange={(e) => setFilterContent(e.target.value)}
+          value={contentInput}
+          onChange={(e) => setContentInput(e.target.value)}
+          onKeyDown={handleContentKeyPress}
           placeholder="e.g., permit approval"
         />
+        <div className="mt-2 flex justify-end">
+          <Button
+            color="primary"
+            size="sm"
+            onPress={applyContentFilter}
+          >
+            Apply Content Filter
+          </Button>
+        </div>
       </div>
 
       <div className="mt-4">
@@ -122,6 +167,8 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           setFilterContent("");
           setFilterDepth(0);
           setSelectedEventTypes([]);
+          setContentInput("");
+          setrelevantEvents(new Set());
         }}
         className="mt-4"
         color="danger"

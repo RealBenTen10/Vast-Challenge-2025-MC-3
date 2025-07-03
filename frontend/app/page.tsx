@@ -47,6 +47,7 @@ export default function Home() {
   const [EventsAfterTimeFilter, setEventsAfterTimeFilter] = useState<Node[]>([]);
   const [filterModeMessages, setFilterModeMessages] = useState<"all" | "filtered" | "direct" | "directed" |"evidence" | "similarity">("all");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [relevantEvents, setrelevantEvents] = useState<Set<string>>(new Set());
 
 
   // Don't change this function
@@ -86,7 +87,10 @@ export default function Home() {
         setTimestampFilterEnd={setTimestampFilterEnd}
         callApi={callApi}
         statusMsg={statusMsg}
-        setGraphData={setGraphData} />
+        setGraphData={setGraphData}
+        relevantEvents={relevantEvents}
+        setrelevantEvents={setrelevantEvents} 
+        />
       
       {/* Graph Summary */}
       <GraphSummary edgeCount={edgeCount} edgeTypeCounts={edgeTypeCounts} subtypeCounts={subtypeCounts} />
@@ -123,6 +127,8 @@ export default function Home() {
       setEventsAfterTimeFilter={setEventsAfterTimeFilter}
       communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
       callApi={callApi}
+      relevantEvents={relevantEvents}
+      setrelevantEvents={setrelevantEvents}
     />
 
     {/* Legends */}

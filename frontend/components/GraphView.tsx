@@ -56,6 +56,8 @@ interface Props {
   setEventsAfterTimeFilter: (nodes: GraphNode[]) => void;
   communicationEventsAfterTimeFilter: GraphNode[];
   callApi: (endpoint: string) => void;
+  relevantEvents: Set<string>;
+  setrelevantEvents: (events: Set<string>) => void;
 }
 
 const GraphView: React.FC<Props> = ({
@@ -81,7 +83,9 @@ const GraphView: React.FC<Props> = ({
   setCommunicationEventsAfterTimeFilter,
   setEventsAfterTimeFilter,
   communicationEventsAfterTimeFilter,
-  callApi
+  callApi,
+  relevantEvents,
+  setrelevantEvents
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [stepMS, setStepMS] = useState(60 * 60 * 1000); // Default to 1 hour
@@ -99,7 +103,7 @@ const GraphView: React.FC<Props> = ({
   const [animationEndTime, setAnimationEndTime] = useState<number>(defaultEndDate);
   const [currentAnimationTime, setCurrentAnimationTime] = useState<number>(defaultStartDate);
 
-  const [relevantEvents, setrelevantEvents] = useState<Set<string>>(new Set());
+ 
 
   // Parse prop timestamps for initial animation range
   useEffect(() => {
@@ -182,29 +186,8 @@ const GraphView: React.FC<Props> = ({
   }, []);
 
   
+  
 
-  const fetchSimilarEvents = async (query: string) => {
-    try {
-      const res = await fetch(`/api/similarity-search-events?query=${encodeURIComponent(query)}&score_threshold=0.5`);
-      const data = await res.json();
-      if (data.success) {
-        const ids = new Set<string>(data.event_ids);
-        setrelevantEvents(ids);
-      } else {
-        console.error("Similarity search failed:", data.error);
-      }
-    } catch (err) {
-      console.error("Similarity event search failed:", err);
-    }
-  };
-
-  useEffect(() => {
-  if (filterContent.trim()) {
-    fetchSimilarEvents(filterContent.trim());
-  } else {
-    setrelevantEvents(new Set()); // Reset if empty
-  }
-}, [filterContent]);
 
   // Effect for initializing D3 SVG and zoom, runs only once
   useEffect(() => {
@@ -309,6 +292,7 @@ const GraphView: React.FC<Props> = ({
       }
 
       if (filterContent.trim()) {
+        console.log("Applying filter:", relevantEvents);
         visible = new Set(
           Array.from(visible).filter(id => {
             const node = graphData.nodes.find(n => n.id === id);
@@ -599,7 +583,7 @@ const GraphView: React.FC<Props> = ({
     filterSender,
     filterReceiver,
     filterDepth,
-    filterContent,
+    relevantEvents,
     propTimestampFilterStart,
     propTimestampFilterEnd,
     filterMode,
