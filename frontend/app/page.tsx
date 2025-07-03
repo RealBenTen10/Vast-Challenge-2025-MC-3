@@ -137,7 +137,7 @@ export default function Home() {
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowGraph(e.target.checked)}
           className="mr-2"
         />
-        <label htmlFor="toggle-graph" className="select-none">Node-Link Diagram anzeigen</label>
+        <label htmlFor="toggle-graph" className="select-none">Node-Link Diagram</label>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -147,7 +147,7 @@ export default function Home() {
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowTimeBar(e.target.checked)}
           className="mr-2"
         />
-        <label htmlFor="toggle-timebar" className="select-none">Communication Time Bar Chart anzeigen</label>
+        <label htmlFor="toggle-timebar" className="select-none">Communication Time Bar Chart</label>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -157,7 +157,7 @@ export default function Home() {
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowSankey(e.target.checked)}
           className="mr-2"
         />
-        <label htmlFor="toggle-sankey" className="select-none">Sankey Diagramm anzeigen</label>
+        <label htmlFor="toggle-sankey" className="select-none">Sankey Diagramm</label>
       </div>
     </div>
 
