@@ -353,7 +353,6 @@ async def evidence_for_event(event_id: str = Query(..., description="ID of the s
 
     try:
         with driver.session() as session:
-            print("Fetching evidence communication events...")
             query = """
                 MATCH (sender:Entity)-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity),
                       (comm)-[:evidence_for]->(e:Event {id: $event_id})
@@ -425,7 +424,6 @@ async def filter_by_date(date: str = Query(..., description="YYYY-MM-DD format")
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     nodes = []
     edges = []
-    print(f"Filtering graph by date: {date}")
 
     try:
         with driver.session() as session:
@@ -481,7 +479,6 @@ async def sankey_communication_flows(
     Returns Sankey data showing how many communications were sent from one entity to another,
     optionally filtered by sender, receiver, and timestamp range.
     """
-    print(f"Fetching communication flows for Sankey with parameters: sender={sender}, receiver={receiver}, start_date={start_date}, end_date={end_date}")
     start_date = start_date.replace("T", " ") if start_date else None
     end_date = end_date.replace("T", " ") if end_date else None
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
@@ -628,7 +625,7 @@ async def event_entities(event_ids: List[str]):
     result_map = {}
 
     try:
-        print("Fetching event entities for IDs:", event_ids)
+        print("Fetching event entities for IDs")
         with driver.session() as session:
             query = """
             UNWIND $event_ids AS eid
@@ -636,7 +633,6 @@ async def event_entities(event_ids: List[str]):
             RETURN eid AS event_id, COLLECT(DISTINCT entity.id) AS connected_entities
             """
             records = session.run(query, event_ids=event_ids)
-            print("For event IDs: ", event_ids, " found records: ", records)
             for record in records:
                 event_id = record["event_id"]
                 entities = record["connected_entities"] or []
@@ -657,7 +653,7 @@ async def event_entities(event_ids: List[str]):
     finally:
         driver.close()
 
-    print("Event entities fetched successfully: ", result_map)
+    print("Event entities fetched successfully")
     return {"success": True, "data": result_map}
 
 
