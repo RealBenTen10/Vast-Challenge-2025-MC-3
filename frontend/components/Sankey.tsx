@@ -24,7 +24,7 @@ interface SankeyProps {
   timestampFilterStart: string;
   timestampFilterEnd: string;
   filterContent: string;
-  setFilterModeMessages: (mode: "all" | "filtered" | "direct" | "directed") => void;
+  setFilterModeMessages: (mode: "all" | "filtered" | "direct" | "directed" | "evidence" | "similarity") => void;
 }
 
 export default function Sankey({
