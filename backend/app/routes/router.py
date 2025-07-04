@@ -276,29 +276,71 @@ async def read_db_graph_2():
 # Old functions removed
 @router.get("/read-db-graph", response_class=JSONResponse)
 async def read_db_graph():
-    print("Reading graph data from Neo4j...")
+    print("Reading graph data from Neo4j (aggregated communications)...")
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     nodes = []
     edges = []
+    comm_agg_nodes = []
+    comm_agg_edges = []
+    comm_node_id_map = {}  # (src, tgt) -> agg node id
+    try:
+        with driver.session() as session:
+            # 1. Alle normalen Nodes (außer Communication Events)
+            result = session.run("MATCH (n) WHERE NOT (n:Event AND n.sub_type = 'Communication') RETURN n")
+            for record in result:
+                n = record["n"]
+                node_data = dict(n.items())
+                node_data["id"] = n.get("id")
+                nodes.append(node_data)
 
-    with driver.session() as session:
-        result = session.run("MATCH (n) RETURN n")
-        for record in result:
-            n = record["n"]
-            node_data = dict(n.items())
-            node_data["id"] = n.get("id")
-            nodes.append(node_data)
+            # 2. Communication Events aggregieren
+            comm_result = session.run("""
+                MATCH (sender:Entity)-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity)
+                RETURN sender.id AS source, receiver.id AS target, collect(comm.content) AS contents, collect(comm.id) AS event_ids, count(*) AS count
+            """)
+            for rec in comm_result:
+                agg_id = f"CommAgg_{rec['source']}_{rec['target']}"
+                comm_agg_nodes.append({
+                    "id": agg_id,
+                    "type": "CommunicationAggregate",
+                    "source": rec["source"],
+                    "target": rec["target"],
+                    "count": rec["count"],
+                    "contents": rec["contents"],
+                    "event_ids": rec["event_ids"]
+                })
+                comm_node_id_map[(rec["source"], rec["target"])] = agg_id
+                # Kanten von Sender -> AggNode und AggNode -> Empfänger
+                comm_agg_edges.append({
+                    "source": rec["source"],
+                    "target": agg_id,
+                    "type": "COMMUNICATION_AGG"
+                })
+                comm_agg_edges.append({
+                    "source": agg_id,
+                    "target": rec["target"],
+                    "type": "COMMUNICATION_AGG"
+                })
 
-        result = session.run("MATCH (a)-[r]->(b) RETURN a.id AS source, b.id AS target, r")
-        for record in result:
-            r = record["r"]
-            edge_data = dict(r.items())
-            edge_data["source"] = record["source"]
-            edge_data["target"] = record["target"]
-            edge_data["type"] = r.type if hasattr(r, "type") else r.get("type", "")
-            edges.append(edge_data)
-
-    return {"success": True, "nodes": nodes, "links": edges}
+            # 3. Alle anderen Kanten (außer Communication zwischen Entities)
+            result = session.run("""
+                MATCH (a)-[r]->(b)
+                WHERE NOT (type(r) = 'COMMUNICATION' AND a:Entity AND b:Entity)
+                RETURN a.id AS source, b.id AS target, r
+            """)
+            for record in result:
+                r = record["r"]
+                edge_data = dict(r.items())
+                edge_data["source"] = record["source"]
+                edge_data["target"] = record["target"]
+                edge_data["type"] = r.type if hasattr(r, "type") else r.get("type", "")
+                edges.append(edge_data)
+    finally:
+        driver.close()
+    # Alle Nodes und Edges zusammenführen
+    all_nodes = nodes + comm_agg_nodes
+    all_edges = edges + comm_agg_edges
+    return {"success": True, "nodes": all_nodes, "links": all_edges}
 
 @router.get("/get-events-by-date", response_class=JSONResponse)
 async def get_events_by_date(date: str):

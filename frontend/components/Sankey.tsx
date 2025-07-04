@@ -17,9 +17,10 @@ interface SankeyDataItem {
 interface SankeyProps {
   entityId: string;
   selectedDate: string | null;
+  height?: number;
 }
 
-export default function Sankey({ entityId, selectedDate }: SankeyProps) {
+export default function Sankey({ entityId, selectedDate, height = 400 }: SankeyProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
@@ -152,7 +153,7 @@ export default function Sankey({ entityId, selectedDate }: SankeyProps) {
   return (
     <div className="w-full max-w-7xl mt-6">
       <h4 className="text-md font-semibold mb-2">Sankey Diagram: Communication Flow</h4>
-      <svg ref={svgRef} className="w-full h-96 border rounded-lg bg-white" />
+      <svg ref={svgRef} className="w-full border rounded-lg bg-white" style={{ height }} />
     </div>
   );
 }

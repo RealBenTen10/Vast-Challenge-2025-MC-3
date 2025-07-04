@@ -42,7 +42,9 @@ export default function Home() {
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(true);
   const [graphHeight, setGraphHeight] = useState<number>(600);
+  const [sankeyHeight, setSankeyHeight] = useState<number>(400); // Add state for Sankey height
   const dragRef = useRef<HTMLDivElement | null>(null);
+  const sankeyDragRef = useRef<HTMLDivElement | null>(null); // Ref for Sankey drag handle
   const [allEntities, setAllEntities] = useState<{ id: string; sub_type?: string }[]>([]);
   const [showGraph, setShowGraph] = useState<boolean>(true);
   const [showTimeBar, setShowTimeBar] = useState<boolean>(true);
@@ -66,9 +68,16 @@ export default function Home() {
         newHeight = Math.max(200, Math.min(newHeight, window.innerHeight - 200));
         setGraphHeight(newHeight);
       }
+      if (sankeyDragRef.current && sankeyDragRef.current.dataset.dragging === 'true') {
+        const containerTop = sankeyDragRef.current.parentElement?.getBoundingClientRect().top || 0;
+        let newHeight = e.clientY - containerTop;
+        newHeight = Math.max(150, Math.min(newHeight, window.innerHeight - 200));
+        setSankeyHeight(newHeight);
+      }
     };
     const handleMouseUp = () => {
       if (dragRef.current) dragRef.current.dataset.dragging = 'false';
+      if (sankeyDragRef.current) sankeyDragRef.current.dataset.dragging = 'false';
     };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -91,7 +100,6 @@ export default function Home() {
     }
   };
 
-  // Extrahiere alle Entities beim Laden des Graphen
   useEffect(() => {
     if (graphData && graphData.nodes) {
       const entities = graphData.nodes
@@ -101,7 +109,6 @@ export default function Home() {
     }
   }, [graphData]);
 
-  // Funktion zum Laden der CommunicationView-Daten
   const loadMSV = async () => {
     setMsvLoading(true);
     setMsvError(null);
@@ -125,11 +132,29 @@ export default function Home() {
     }
   };
 
+  function findCommAggNodeIdForEvent(eventId: string) {
+    const commAggNode = graphData.nodes.find(
+      (n: any) => n.type === "CommunicationAggregate" && Array.isArray(n.event_ids) && n.event_ids.includes(eventId)
+    );
+    return commAggNode ? commAggNode.id : null;
+  }
+
+  function nodeIdExists(nodeId: string | null) {
+    if (!nodeId) return false;
+    return graphData.nodes.some((n: any) => n.id === nodeId);
+  }
+
+  useEffect(() => {
+    if (highlightedMessageId && !nodeIdExists(highlightedMessageId)) {
+      setHighlightedMessageId(null);
+    }
+  }, [graphData]);
+
   return (
   <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
     {/* Toggle Node-Link Diagram, Time Bar Chart & Sankey Checkbox */}
     <div className="w-full max-w-7xl flex items-center gap-4">
-      <div className="flex items-center gap-2">
+      <div className="flex it ems-center gap-2">
         <input
           type="checkbox"
           id="toggle-graph"
@@ -225,16 +250,16 @@ export default function Home() {
           msvKeyword={msvKeyword}
           setMsvKeyword={setMsvKeyword}
           loadMSV={loadMSV}
+          allEntities={allEntities}
         />
       </div>
     )}
 
-    {/* Top Row: Graph Summary + Selected Info (ohne FilterPanel) */}
+    {/* Top Row: Graph Summary + Selected Info */}
     <div className="flex w-full max-w-7xl gap-4">
-      {/* Graph Summary entfernt, da jetzt im InfoPanel */}
     </div>
 
-    {/* Graph + Sankey nebeneinander */}
+    {/* Graph + Sankey */}
     {(showGraph || showSankey) && (
       <div className="w-full flex flex-row gap-4 items-start">
         {showGraph && (
@@ -268,8 +293,15 @@ export default function Home() {
           </div>
         )}
         {showSankey && (
-          <div className="flex-1 min-w-0 mt-6">
-            <Sankey entityId={filterEntityId} selectedDate={selectedTimestamp} />
+          <div className="flex-1 min-w-0 mt-6" style={{height: sankeyHeight}}>
+            <Sankey entityId={filterEntityId} selectedDate={selectedTimestamp} height={sankeyHeight} />
+            {/* Resizable Drag Handle for Sankey */}
+            <div
+              ref={sankeyDragRef}
+              style={{ cursor: 'row-resize', height: '10px', width: '100%', background: '#e5e7eb' }}
+              onMouseDown={() => { if (sankeyDragRef.current) sankeyDragRef.current.dataset.dragging = 'true'; }}
+              className="mb-2"
+            />
           </div>
         )}
       </div>
@@ -290,7 +322,16 @@ export default function Home() {
         <div className="flex-1 min-w-0">
           <CommunicationView
             className="mt-0"
-            onMessageClick={(id: string) => setHighlightedMessageId(`Event_Communication_${id}`)}
+            onMessageClick={(id: string) => {
+              let eventId = id;
+              if (typeof id === "string" && id.startsWith("Event_Communication_")) eventId = id.replace("Event_Communication_", "");
+              const aggId = findCommAggNodeIdForEvent(eventId);
+              if (aggId && nodeIdExists(aggId)) {
+                setHighlightedMessageId(aggId);
+              } else {
+                setHighlightedMessageId(null);
+              }
+            }}
             msvData={msvData}
             msvLoading={msvLoading}
             msvError={msvError}

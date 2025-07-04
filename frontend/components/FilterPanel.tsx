@@ -22,6 +22,7 @@ interface FilterPanelProps {
   msvKeyword: string;
   setMsvKeyword: (v: string) => void;
   loadMSV: () => void;
+  allEntities?: { id: string; sub_type?: string }[]; // Add allEntities prop
 }
 
 const FilterPanel: React.FC<FilterPanelProps> = ({
@@ -44,8 +45,26 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   msvKeyword,
   setMsvKeyword,
   loadMSV,
+  allEntities = [],
   ...props
 }) => {
+  const [entitySuggestions, setEntitySuggestions] = React.useState<string[]>([]);
+
+  const handleEntityInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFilterEntityId(value);
+    if (value.length > 0) {
+      setEntitySuggestions(
+        allEntities
+          .map(e => e.id)
+          .filter(id => id.toLowerCase().includes(value.toLowerCase()))
+          .slice(0, 8)
+      );
+    } else {
+      setEntitySuggestions([]);
+    }
+  };
+
   return (
     <div className="w-[320px] flex-shrink-0 border rounded-lg p-4">
       <div className="flex justify-end">
@@ -54,15 +73,32 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         </Button>
       </div>
       
-      <div className="mt-4">
+      <div className="mt-4" style={{ position: 'relative' }}>
         <label className="text-sm font-medium">Filter by Entity ID:</label>
         <input
           className="mt-1 block w-full border rounded px-2 py-1 text-sm"
           type="text"
           value={filterEntityId}
-          onChange={(e) => setFilterEntityId(e.target.value)}
+          onChange={handleEntityInput}
           placeholder="e.g., Boss"
+          autoComplete="off"
         />
+        {entitySuggestions.length > 0 && (
+          <ul className="absolute left-0 right-0 bg-white border rounded shadow z-10 max-h-40 overflow-auto mt-1">
+            {entitySuggestions.map((suggestion) => (
+              <li
+                key={suggestion}
+                className="px-2 py-1 hover:bg-blue-100 cursor-pointer"
+                onMouseDown={() => {
+                  setFilterEntityId(suggestion);
+                  setEntitySuggestions([]);
+                }}
+              >
+                {suggestion}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="mt-4">

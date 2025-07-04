@@ -47,7 +47,7 @@ export default function CommunicationView({ className, onMessageClick, msvData, 
                   <tr
                     key={item.event_id}
                     className="border-b hover:bg-gray-50 cursor-pointer"
-                    onClick={() => onMessageClick?.(item.event_id)}
+                    onClick={() => onMessageClick?.(String(item.event_id))}
                   >
                     <td className="p-2">{item.timestamp}</td>
                     <td className="p-2">{item.source}</td>

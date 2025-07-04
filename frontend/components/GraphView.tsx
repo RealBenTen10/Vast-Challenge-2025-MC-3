@@ -161,8 +161,23 @@ const GraphView: React.FC<Props> = ({
       }
     });
 
+    // Entity-Radius (in+out)
     const getEntityRadius = (id: string) => {
-      return DEFAULT_RADIUS + 10 * (communicationCounts[id] || 0);
+      // Count connected CommunicationAggregate-Nodes
+      let commCount = 0;
+      graphData.links.forEach((link: any) => {
+        const src = typeof link.source === "string" ? link.source : link.source.id;
+        const tgt = typeof link.target === "string" ? link.target : link.target.id;
+        if (src === id) {
+          const tgtNode = graphData.nodes.find((n: any) => n.id === tgt && n.type === "CommunicationAggregate");
+          if (tgtNode) commCount++;
+        }
+        if (tgt === id) {
+          const srcNode = graphData.nodes.find((n: any) => n.id === src && n.type === "CommunicationAggregate");
+          if (srcNode) commCount++;
+        }
+      });
+      return DEFAULT_RADIUS + 2 * (Math.max(1, commCount) - 1);
     };
 
     const nodes = graphData.nodes.filter(d =>
@@ -172,10 +187,12 @@ const GraphView: React.FC<Props> = ({
 
     setVisibleEntities(nodes.filter(d => d.type === "Entity").map(d => ({ id: d.id, sub_type: d.label })));
 
-    const links = graphData.links.filter(link =>
-      visibleIds.has(typeof link.source === "string" ? link.source : link.source.id) &&
-      visibleIds.has(typeof link.target === "string" ? link.target : link.target.id)
-    ).map(link => ({
+    const nodeIds = new Set(nodes.map(n => n.id));
+    const links = graphData.links.filter(link => {
+      const src = typeof link.source === "string" ? link.source : link.source.id;
+      const tgt = typeof link.target === "string" ? link.target : link.target.id;
+      return nodeIds.has(src) && nodeIds.has(tgt);
+    }).map(link => ({
       source: typeof link.source === "string" ? link.source : link.source.id,
       target: typeof link.target === "string" ? link.target : link.target.id,
       type: link.type || '',
@@ -218,7 +235,7 @@ const GraphView: React.FC<Props> = ({
       .selectAll("polygon")
       .data(links)
       .enter().append("polygon")
-      .attr("points", "-7,-5 8,0 -7,5") // triangle shape, pointing right
+      .attr("points", "-7,-5 8,0 -7,5") // triangle shape, pointing in flow direction
       .attr("fill", (d: any) => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
       .attr("opacity", 0.9);
 
@@ -232,20 +249,55 @@ const GraphView: React.FC<Props> = ({
         .on("end", (event: any, d: any) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }))
       .on("mouseover", (event: any, d: any) => d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4))
       .on("mouseout", (event: any, d: any) => d3.select(event.currentTarget).select("circle").attr("stroke", "none"))
-      .on("click", (event: any, d: any) => setSelectedInfo({ type: "node", data: d }));
+      .on("click", (event: any, d: any) => {
+        if (d.type === "Entity") {
+          // Count CommunicationAggregates
+          let incomingComm = 0;
+          let outgoingComm = 0;
+          graphData.links.forEach((link: any) => {
+            const src = typeof link.source === "string" ? link.source : link.source.id;
+            const tgt = typeof link.target === "string" ? link.target : link.target.id;
+            if (tgt === d.id) {
+              const srcNode = graphData.nodes.find((n: any) => n.id === src && n.type === "CommunicationAggregate");
+              if (srcNode) incomingComm++;
+            }
+            if (src === d.id) {
+              const tgtNode = graphData.nodes.find((n: any) => n.id === tgt && n.type === "CommunicationAggregate");
+              if (tgtNode) outgoingComm++;
+            }
+          });
+          setSelectedInfo({ type: "node", data: { ...d, incomingCommunicationCount: incomingComm, outgoingCommunicationCount: outgoingComm } });
+        } else {
+          setSelectedInfo({ type: "node", data: d });
+        }
+      });
 
     node.append("circle")
-      .attr("r", (d: any) => d.type === "Entity" ? getEntityRadius(d.id) : DEFAULT_RADIUS)
-      .attr("fill", (d: any) => d.type === "Entity" ? "#1f77b4" : d.type === "Event" ? "#2ca02c" : d.type === "Relationship" ? "#d62728" : d.id === highlightedMessageId ? "#ff00ff" :"#999");
+      .attr("r", (d: any) => {
+        if (d.type === "Entity") return getEntityRadius(d.id);
+        if (d.type === "CommunicationAggregate") return DEFAULT_RADIUS;
+        return DEFAULT_RADIUS;
+      })
+      .attr("fill", (d: any) =>
+        d.type === "Entity" ? "#1f77b4" :
+        d.type === "Event" ? "#2ca02c" :
+        d.type === "CommunicationAggregate" ? "#2ca02c" :
+        d.type === "Relationship" ? "#d62728" :
+        d.id === highlightedMessageId ? "#ff00ff" : "#999"
+      );
 
     node.append("text")
       .attr("text-anchor", "middle")
       .attr("dy", ".35em")
       .attr("fill", "black")
-      .text((d: any) => d.type === "Entity" ? d.id : d.label)
-      .style("font-size", (d: any) => `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.label)?.length - 10))}px`);
+      .text((d: any) =>
+        d.type === "Entity" ? d.id :
+        d.type === "CommunicationAggregate" ? "Communication" :
+        d.label
+      )
+      .style("font-size", "12px");
 
-    // --- Animation unabhängig von der Simulation ---
+    // --- Animation  ---
     let animationFrameId: number;
     function animateFlowDots() {
       linkFlow.each(function(d: any, i: number) {
@@ -280,7 +332,6 @@ const GraphView: React.FC<Props> = ({
     };
   }, [graphData, filterEntityId, filterDepth, filterContent, selectedTimestamp, filterMode]);
 
-  // 2. Nur SVG-Größe anpassen, ohne Neuaufbau
   useEffect(() => {
     if (!svgRef.current || !graphContainerRef.current) return;
     const width = graphContainerRef.current.clientWidth;
@@ -291,34 +342,31 @@ const GraphView: React.FC<Props> = ({
       .attr("viewBox", `0 0 ${width} ${height}`);
   }, [graphHeight, graphContainerRef]);
 
+  const safeHighlightedMessageId = highlightedMessageId && nodes.some(n => n.id === highlightedMessageId) ? highlightedMessageId : null;
+
   useEffect(() => {
-  if (!svgRef.current || !highlightedMessageId) return;
-
-  const svg = d3.select(svgRef.current);
-
-  // Zurücksetzen aller Node-Radien
-  svg.selectAll("circle")
-    .attr("r", function () {
-      const parentData = d3.select(this.parentNode!).datum() as Node;
-      return DEFAULT_RADIUS;
-    })
-    .attr("fill", function () {
-      const d = d3.select(this.parentNode!).datum() as Node;
-      if (d.type === "Entity") return "#1f77b4";
-      if (d.type === "Event") return "#2ca02c";
-      if (d.type === "Relationship") return "#d62728";
-      return "#999";
-    });
-
-  svg.selectAll("circle")
-    .filter(function () {
-      const d = d3.select(this.parentNode!).datum() as Node;
-      return d.id === highlightedMessageId && d.type === "Event" && d.sub_type === "Communication";
-    })
-    .attr("r", HIGHLIGHT_RADIUS)
-    .attr("fill", "#ff00ff");
-
-}, [highlightedMessageId]);
+      if (!svgRef.current || !safeHighlightedMessageId) return;
+      const svg = d3.select(svgRef.current);
+      svg.selectAll("circle")
+        .attr("r", function () {
+          const parentData = d3.select(this.parentNode!).datum() as Node;
+          return DEFAULT_RADIUS;
+        })
+        .attr("fill", function () {
+          const d = d3.select(this.parentNode!).datum() as Node;
+          if (d.type === "Entity") return "#1f77b4";
+          if (d.type === "Event") return "#2ca02c";
+          if (d.type === "Relationship") return "#d62728";
+          return "#999";
+        });
+      svg.selectAll("circle")
+        .filter(function () {
+          const d = d3.select(this.parentNode!).datum() as Node;
+          return d.id === safeHighlightedMessageId;
+        })
+        .attr("r", HIGHLIGHT_RADIUS)
+        .attr("fill", "#ff00ff");
+    }, [safeHighlightedMessageId]);
 
   useEffect(() => {
     console.log("GraphView props:", {
@@ -332,12 +380,11 @@ const GraphView: React.FC<Props> = ({
     });
   }, [highlightedMessageId, graphData, filterEntityId, filterDepth, filterContent, filterMode, selectedTimestamp]);
   
-  // Render SVG and LegendPanel in a relative container
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <svg ref={svgRef} className="w-full h-full"></svg>
       <div style={{ position: "absolute", right: 16, bottom: 16, zIndex: 10, background: "white", borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-        {/* LegendPanel unten rechts im GraphView-Panel */}
+        {/* LegendPanel */}
         <LegendPanel />
       </div>
     </div>
