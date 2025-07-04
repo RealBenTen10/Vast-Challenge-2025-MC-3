@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import * as d3 from "d3";
 import { GraphData, Node, Link } from "@/components/types";
-import LegendPanel from "./LegendPanel"; // Importiere das LegendPanel
+import LegendPanel from "./LegendPanel";
 
 interface Props {
   graphData: GraphData;
@@ -42,7 +42,6 @@ const GraphView: React.FC<Props> = ({
   const HIGHLIGHT_RADIUS = 30;
 
 
-  // 1. Nur Daten/Filter triggern kompletten Neuaufbau
   useEffect(() => {
     if (!svgRef.current || !graphContainerRef.current || graphData.nodes.length === 0) return;
 
@@ -58,11 +57,11 @@ const GraphView: React.FC<Props> = ({
       svg.append("defs").append("marker")
   .attr("id", "arrow")
   .attr("viewBox", "0 -5 10 10")
-  .attr("refX", 25) // → Wird gleich dynamisch angepasst
+  .attr("refX", 25) 
   .attr("refY", 0)
   .attr("markerWidth", 10)
   .attr("markerHeight", 10)
-  .attr("markerUnits", "userSpaceOnUse") // ← wichtig für absolute Koordinaten
+  .attr("markerUnits", "userSpaceOnUse")
   .attr("orient", "auto")
   .append("path")
   .attr("d", "M0,-5L10,0L0,5")
@@ -153,7 +152,6 @@ const GraphView: React.FC<Props> = ({
     graphData.links.forEach(link => {
       if (link.type === "COMMUNICATION") {
         const src = typeof link.source === "string" ? link.source : link.source.id;
-        // Prüfen, ob src eine Entity ist
         const srcNode = graphData.nodes.find(n => n.id === src && n.type === "Entity");
         if (srcNode) {
           communicationCounts[src] = (communicationCounts[src] || 0) + 1;

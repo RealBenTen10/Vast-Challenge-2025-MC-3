@@ -285,7 +285,6 @@ async def read_db_graph():
     comm_node_id_map = {}  # (src, tgt) -> agg node id
     try:
         with driver.session() as session:
-            # 1. Alle normalen Nodes (außer Communication Events)
             result = session.run("MATCH (n) WHERE NOT (n:Event AND n.sub_type = 'Communication') RETURN n")
             for record in result:
                 n = record["n"]
@@ -293,7 +292,6 @@ async def read_db_graph():
                 node_data["id"] = n.get("id")
                 nodes.append(node_data)
 
-            # 2. Communication Events aggregieren
             comm_result = session.run("""
                 MATCH (sender:Entity)-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity)
                 RETURN sender.id AS source, receiver.id AS target, collect(comm.content) AS contents, collect(comm.id) AS event_ids, count(*) AS count
@@ -310,7 +308,6 @@ async def read_db_graph():
                     "event_ids": rec["event_ids"]
                 })
                 comm_node_id_map[(rec["source"], rec["target"])] = agg_id
-                # Kanten von Sender -> AggNode und AggNode -> Empfänger
                 comm_agg_edges.append({
                     "source": rec["source"],
                     "target": agg_id,
@@ -322,7 +319,6 @@ async def read_db_graph():
                     "type": "COMMUNICATION_AGG"
                 })
 
-            # 3. Alle anderen Kanten (außer Communication zwischen Entities)
             result = session.run("""
                 MATCH (a)-[r]->(b)
                 WHERE NOT (type(r) = 'COMMUNICATION' AND a:Entity AND b:Entity)
@@ -337,7 +333,6 @@ async def read_db_graph():
                 edges.append(edge_data)
     finally:
         driver.close()
-    # Alle Nodes und Edges zusammenführen
     all_nodes = nodes + comm_agg_nodes
     all_edges = edges + comm_agg_edges
     return {"success": True, "nodes": all_nodes, "links": all_edges}
