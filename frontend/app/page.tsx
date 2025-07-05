@@ -4,6 +4,7 @@ import { title, subtitle } from "@/components/primitives";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Node, Link, GraphData } from "@/components/types";
 import Sankey from "@/components/Sankey"; 
+import EventsView from "@/components/EventsView";
 import { Card, CardHeader, CardBody, Divider, Button, Alert, Switch } from "@heroui/react";
 import React, { ReactElement, useEffect, useState, useRef } from "react";
 import * as d3 from "d3";
@@ -23,21 +24,30 @@ export default function Home() {
   const [useAggregated, setUseAggregated] = useState<boolean>(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const graphContainerRef = useRef<HTMLDivElement | null>(null);
-  const timeSeriesRef = useRef<SVGSVGElement | null>(null);  // Add timeSeriesRef
+  const timeSeriesRef = useRef<SVGSVGElement | null>(null);  
 
   const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([]);
   const [subtypeCounts, setSubtypeCounts] = useState<Record<string, number>>({});
-  const [edgeTypeCounts, setEdgeTypeCounts] = useState<Record<string, number>>({});  // Track edge types
+  const [edgeTypeCounts, setEdgeTypeCounts] = useState<Record<string, number>>({});  
   const [edgeCount, setEdgeCount] = useState<number>(0);
   const [filterMode, setFilterMode] = useState<"all" | "event" | "relationship">("all");
   const [filterEntityId, setFilterEntityId] = useState<string>("");
   const [filterDepth, setFilterDepth] = useState<number>(1);
   const [visibleEntities, setVisibleEntities] = useState<{ id: string; sub_type?: string }[]>([]);
   const [selectedInfo, setSelectedInfo] = useState<any>(null);
-  const [selectedTimestamp, setSelectedTimestamp] = useState<string | null>(null);
   const [filterDate, setFilterDate] = useState<string | null>(null);
   const [sankeyData, setSankeyData] = useState<{ source: string, target: string, value: number }[]>([]);
   const [filterContent, setFilterContent] = useState<string>("");
+  const [filterSender, setFilterSender] = useState<string>("");
+  const [filterReceiver, setFilterReceiver] = useState<string>("");
+  const [timestampFilterStart, setTimestampFilterStart] = useState<string | null>(null);
+  const [timestampFilterEnd, setTimestampFilterEnd] = useState<string | null>(null);
+  const [communicationEvents, setCommunicationEvents] = useState<Node[]>([]);
+  const [communicationEventsAfterTimeFilter, setCommunicationEventsAfterTimeFilter] = useState<Node[]>([]);
+  const [EventsAfterTimeFilter, setEventsAfterTimeFilter] = useState<Node[]>([]);
+  const [filterModeMessages, setFilterModeMessages] = useState<"all" | "filtered" | "direct" | "directed" |"evidence" | "similarity">("all");
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [relevantEvents, setrelevantEvents] = useState<Set<string>>(new Set());
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(true);
@@ -93,8 +103,8 @@ export default function Home() {
     try {
       const res = await fetch(`/api${endpoint}`);
       const data = await res.json();
-      if (data.success && endpoint=="/read-db-graph") setGraphData({ nodes: data.nodes, links: data.links }), setStatusMsg("Graph loaded successfully.");
-      else setStatusMsg(data["error-message"]);
+      if (endpoint === "/load-graph-json") {}
+      else setGraphData({ nodes: data.nodes, links: data.links }), setStatusMsg("Graph loaded successfully.");
     } catch (err) {
       setStatusMsg(`Failed to call ${endpoint}: ${err}`);
     }
@@ -240,6 +250,18 @@ export default function Home() {
           filterContent={filterContent}
           setFilterContent={setFilterContent}
           highlightedMessageId={highlightedMessageId}
+          filterSender={filterSender}
+          setFilterSender={setFilterSender}
+          filterReceiver={filterReceiver}
+          setFilterReceiver={setFilterReceiver}
+          timestampFilterStart={timestampFilterStart}
+          timestampFilterEnd={timestampFilterEnd}
+          setTimestampFilterStart={setTimestampFilterStart}
+          setTimestampFilterEnd={setTimestampFilterEnd}
+          statusMsg={statusMsg}
+          setGraphData={setGraphData}
+          relevantEvents={relevantEvents}
+          setrelevantEvents={setrelevantEvents} 
           // CommunicationView Filter
           msvStartDate={msvStartDate}
           setMsvStartDate={setMsvStartDate}
@@ -270,10 +292,16 @@ export default function Home() {
               graphData={graphData}
               svgRef={svgRef}
               graphContainerRef={graphContainerRef}
+              filterSender={filterSender}
+              setFilterSender={setFilterSender}
+              filterReceiver={filterReceiver}
+              setFilterReceiver={setFilterReceiver}
               filterEntityId={filterEntityId}
               filterDepth={filterDepth}
               filterContent={filterContent}
               filterMode={filterMode}
+              timestampFilterStart={timestampFilterStart}
+              timestampFilterEnd={timestampFilterEnd}
               selectedTimestamp={selectedTimestamp}
               setVisibleEntities={setVisibleEntities}
               setSubtypeCounts={setSubtypeCounts}
@@ -282,6 +310,14 @@ export default function Home() {
               setSelectedInfo={setSelectedInfo}
               highlightedMessageId={highlightedMessageId}
               graphHeight={graphHeight}
+              setCommunicationEvents={setCommunicationEvents}
+              communicationEvents={communicationEvents}
+              setCommunicationEventsAfterTimeFilter={setCommunicationEventsAfterTimeFilter}
+              setEventsAfterTimeFilter={setEventsAfterTimeFilter}
+              communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
+              callApi={callApi}
+              relevantEvents={relevantEvents}
+              setrelevantEvents={setrelevantEvents}
             />
             {/* Resizable Drag Handle */}
             <div
@@ -294,7 +330,19 @@ export default function Home() {
         )}
         {showSankey && (
           <div className="flex-1 min-w-0 mt-6" style={{height: sankeyHeight}}>
-            <Sankey entityId={filterEntityId} selectedDate={selectedTimestamp} height={sankeyHeight} />
+            <Sankey 
+            entityId={filterEntityId} 
+            selectedDate={selectedTimestamp} 
+            height={sankeyHeight} 
+            filterSender={filterSender}
+            setFilterSender={setFilterSender}
+            filterReceiver={filterReceiver}
+            setFilterReceiver={setFilterReceiver}
+            timestampFilterStart={timestampFilterStart}
+            timestampFilterEnd={timestampFilterEnd}
+            filterContent={filterContent}
+            setFilterModeMessages={setFilterModeMessages}
+            />
             {/* Resizable Drag Handle for Sankey */}
             <div
               ref={sankeyDragRef}
@@ -316,6 +364,16 @@ export default function Home() {
               graphData={graphData}
               selectedTimestamp={selectedTimestamp}
               setSelectedTimestamp={setSelectedTimestamp}
+              visibleEntities={visibleEntities}
+              timestampFilterStart={timestampFilterStart}
+              timestampFilterEnd={timestampFilterEnd}
+              setTimestampFilterStart={setTimestampFilterStart}
+              setTimestampFilterEnd={setTimestampFilterEnd}
+              filterSender={filterSender}
+              setFilterSender={setFilterSender}
+              filterReceiver={filterReceiver}
+              setFilterReceiver={setFilterReceiver}
+              communicationEvents={communicationEvents}
             />
           </div>
         )}
@@ -335,10 +393,30 @@ export default function Home() {
             msvData={msvData}
             msvLoading={msvLoading}
             msvError={msvError}
+            filterSender={filterSender}
+            setFilterSender={setFilterSender}
+            filterReceiver={filterReceiver}
+            setFilterReceiver={setFilterReceiver}
+            filterContent={filterContent}
+            timestampFilterStart={timestampFilterStart}
+            timestampFilterEnd={timestampFilterEnd}
+            visibleEntities={visibleEntities}
+            communicationEventsWithTimeFilter={communicationEventsAfterTimeFilter}
+            filterModeMessages={filterModeMessages}
+            setFilterModeMessages={setFilterModeMessages}
+            selectedEventId={selectedEventId}
           />
         </div>
       </div>
     )}
+
+    {/* Event View */}
+    <EventsView
+      eventsAfterTimeFilter={EventsAfterTimeFilter}
+      setSelectedEventId={setSelectedEventId}
+      selectedEventId={selectedEventId}
+      setFilterModeMessages={setFilterModeMessages}
+      />
 
     {/* Massive Sequence View */}
     

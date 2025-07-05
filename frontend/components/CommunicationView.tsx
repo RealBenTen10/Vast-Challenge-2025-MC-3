@@ -1,5 +1,7 @@
-import React from "react";
-import { Card, CardHeader, CardBody } from "@heroui/react";
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { Card, CardHeader, CardBody, Badge } from "@heroui/react";
 
 interface MSVItem {
   event_id: string;
@@ -10,27 +12,241 @@ interface MSVItem {
   sub_type: string;
 }
 
-interface CommunicationViewPropsyy {
-  className?: string;
-  onMessageClick?: (id: string) => void;
-  msvData: MSVItem[];
-  msvLoading: boolean;
-  msvError: string | null;
+interface Node {
+  id: string;
+  timestamp: string;
+  content: string;
+  sub_type: string;
 }
 
-export default function CommunicationView({ className, onMessageClick, msvData, msvLoading, msvError }: CommunicationViewProps) {
+interface CommunicationViewProps {
+  filterSender: string;
+  setFilterSender: (id: string) => void;
+  filterReceiver: string;
+  setFilterReceiver: (id: string) => void;
+  filterContent: string;
+  timestampFilterStart: string;
+  timestampFilterEnd: string;
+  visibleEntities: { id: string; sub_type?: string }[];
+  communicationEventsWithTimeFilter: Node[];
+  filterModeMessages: "all" | "filtered" | "direct" | "directed" | "evidence" | "similarity";
+  setFilterModeMessages: (mode: CommunicationViewProps["filterModeMessages"]) => void;
+  selectedEventId: string | null;
+}
+
+export default function CommunicationView({
+  filterSender,
+  setFilterSender,
+  filterReceiver,
+  setFilterReceiver,
+  filterContent,
+  timestampFilterStart,
+  timestampFilterEnd,
+  visibleEntities,
+  communicationEventsWithTimeFilter,
+  filterModeMessages,
+  setFilterModeMessages,
+  selectedEventId,
+}: CommunicationViewProps) {
+  const [msvData, setMsvData] = useState<MSVItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [similarityQuery, setSimilarityQuery] = useState("");
+  const [similarityResults, setSimilarityResults] = useState<MSVItem[]>([]);
+  const [evidenceResults, setEvidenceResults] = useState<MSVItem[]>([]);
+
+  useEffect(() => {
+    const fetchEvidence = async () => {
+      if (filterModeMessages !== "evidence") return;
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/evidence-for-event?event_id=${selectedEventId}`);
+        const data = await res.json();
+        if (data.success) {
+          setEvidenceResults(data.data);
+        } else {
+          setError("Failed to fetch evidence messages.");
+        }
+      } catch (err) {
+        setError(String(err));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvidence();
+  }, [filterModeMessages, selectedEventId]);
+
+  const handleSimilaritySearch = async () => {
+    if (!similarityQuery.trim()) return;
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/similarity-search?query=${encodeURIComponent(similarityQuery)}&top_k=50`);
+      const data = await res.json();
+      if (data.success) {
+        setSimilarityResults(data.data);
+      } else {
+        setError("Failed to fetch similar messages.");
+      }
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const loadMSV = async () => {
+      if (filterModeMessages === "evidence" || filterModeMessages === "similarity") return;
+
+      setLoading(true);
+      setError(null);
+      try {
+        const eventIds = communicationEventsWithTimeFilter.map((e) => e.id);
+        if (eventIds.length === 0) {
+          setMsvData([]);
+          return;
+        }
+
+        const BATCH_SIZE = 300;
+        const batches = [];
+
+        for (let i = 0; i < eventIds.length; i += BATCH_SIZE) {
+          batches.push(eventIds.slice(i, i + BATCH_SIZE));
+        }
+
+        const allResults: MSVItem[] = [];
+
+        for (const batch of batches) {
+          const params = new URLSearchParams();
+          batch.forEach((id) => params.append("event_ids", id));
+
+          const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
+          const text = await res.text();
+          if (!text) throw new Error("Empty response from server");
+
+          const data = JSON.parse(text);
+          if (data.success) {
+            allResults.push(...data.data);
+          } else {
+            throw new Error(data.error || "Failed to load data");
+          }
+        }
+
+        setMsvData(allResults);
+      } catch (err) {
+        setError(String(err));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMSV();
+  }, [communicationEventsWithTimeFilter, filterModeMessages]);
+
+  const filteredData = (() => {
+    if (filterModeMessages === "evidence") return evidenceResults;
+    if (filterModeMessages === "similarity") return similarityResults;
+
+    return msvData.filter((item) => {
+      if (filterModeMessages === "all") return true;
+      if (filterModeMessages === "filtered") {
+        return (
+          (filterSender && item.source === filterSender) ||
+          (filterReceiver && item.target === filterReceiver)
+        );
+      }
+      if (filterModeMessages === "direct") {
+        return (
+          (filterSender &&
+            filterReceiver &&
+            item.source === filterSender &&
+            item.target === filterReceiver) ||
+          (filterSender &&
+            filterReceiver &&
+            item.source === filterReceiver &&
+            item.target === filterSender)
+        );
+      }
+      if (filterModeMessages === "directed") {
+        return (
+          filterSender &&
+          filterReceiver &&
+          item.source === filterSender &&
+          item.target === filterReceiver
+        );
+      }
+      return true;
+    });
+  })();
+
   return (
     <Card className={`w-full max-w-7xl mt-8 ${className || ""}`}>
       <CardHeader>
-        <h4 className="text-lg font-semibold">Messages</h4>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <h4 className="text-lg font-semibold">{filteredData.length} Messages</h4>
+          <div className="flex gap-2 flex-wrap">
+            {["all", "filtered", "direct", "directed", "evidence", "similarity"].map((mode) => (
+              <button
+                key={mode}
+                className={`px-3 py-1 text-sm border rounded ${
+                  filterModeMessages === mode ? "bg-blue-500 text-white" : "bg-gray-100"
+                }`}
+                onClick={() => setFilterModeMessages(mode as CommunicationViewProps["filterModeMessages"])}
+              >
+                {mode === "all" && "All"}
+                {mode === "filtered" && "Sender or Receiver"}
+                {mode === "direct" && "Sender and Receiver"}
+                {mode === "directed" && "Sender to Receiver"}
+                {mode === "evidence" && "Evidence for Events"}
+                {mode === "similarity" && "Similar Message Search"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {filterModeMessages === "similarity" && (
+          <div className="mt-4 flex gap-2 items-center">
+            <input
+              type="text"
+              value={similarityQuery}
+              onChange={(e) => setSimilarityQuery(e.target.value)}
+              placeholder="Enter message text (e.g., 'dolphins at Nemo Reef')"
+              className="border px-3 py-1 rounded w-full"
+            />
+            <button
+              onClick={handleSimilaritySearch}
+              className="px-3 py-1 bg-blue-600 text-white rounded"
+            >
+              Search
+            </button>
+          </div>
+        )}
       </CardHeader>
+
+      {filterModeMessages !== "evidence" && filterModeMessages !== "similarity" && (
+        <div className="mt-2 flex flex-wrap gap-1 text-sm">
+          <span className="ml-4">Filters:</span>
+          {filterSender && <Badge color="blue">Sender: {filterSender}</Badge>}
+          {filterReceiver && <Badge color="green">Receiver: {filterReceiver}</Badge>}
+          {filterContent && <Badge color="purple">Keyword: {filterContent}</Badge>}
+          {timestampFilterStart && timestampFilterEnd && (
+            <Badge color="gray">
+              {new Date(timestampFilterStart).toLocaleString()} –{" "}
+              {new Date(timestampFilterEnd).toLocaleString()}
+            </Badge>
+          )}
+        </div>
+      )}
+
+
       <CardBody>
-        {msvLoading ? (
+        {loading ? (
           <p>Loading sequence data...</p>
-        ) : msvError ? (
-          <p className="text-red-500">{msvError}</p>
-        ) : msvData.length === 0 ? (
-          <p>No sequence data found.</p>
+        ) : error ? (
+          <p className="text-red-500">{error}</p>
+        ) : filteredData.length === 0 ? (
+          <p>No communication records found.</p>
         ) : (
           <div className="overflow-auto max-h-96 border rounded">
             <table className="min-w-full text-sm text-left table-auto">
@@ -43,15 +259,25 @@ export default function CommunicationView({ className, onMessageClick, msvData, 
                 </tr>
               </thead>
               <tbody>
-                {msvData.map((item) => (
+                {filteredData.map((item) => (
                   <tr
                     key={item.event_id}
                     className="border-b hover:bg-gray-50 cursor-pointer"
                     onClick={() => onMessageClick?.(String(item.event_id))}
                   >
                     <td className="p-2">{item.timestamp}</td>
-                    <td className="p-2">{item.source}</td>
-                    <td className="p-2">{item.target}</td>
+                    <td
+                      className="p-2 text-blue-600 hover:underline cursor-pointer"
+                      onClick={() => setFilterSender(item.source)}
+                    >
+                      {item.source}
+                    </td>
+                    <td
+                      className="p-2 text-green-600 hover:underline cursor-pointer"
+                      onClick={() => setFilterReceiver(item.target)}
+                    >
+                      {item.target}
+                    </td>
                     <td className="p-2 whitespace-pre-wrap break-words">{item.content}</td>
                   </tr>
                 ))}
