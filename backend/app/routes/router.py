@@ -335,29 +335,31 @@ async def read_db_graph():
 
             comm_result = session.run("""
                 MATCH (sender:Entity)-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity)
-                RETURN sender.id AS source, receiver.id AS target, collect(comm.content) AS contents, collect(comm.id) AS event_ids, count(*) AS count
+                RETURN sender.id AS source, receiver.id AS target, collect(comm.content) AS contents, collect(comm.id) AS event_ids, count(*) AS count, collect(comm.timestamp) AS timestamps
             """)
             for rec in comm_result:
                 agg_id = f"CommAgg_{rec['source']}_{rec['target']}"
                 comm_agg_nodes.append({
                     "id": agg_id,
-                    "type": "CommunicationAggregate", # Nicht überschriben
+                    "type": "Event",
                     "source": rec["source"],
                     "target": rec["target"],
                     "count": rec["count"],
                     "contents": rec["contents"],
-                    "event_ids": rec["event_ids"]
+                    "event_ids": rec["event_ids"],
+                    "timestamps": rec["timestamps"],
+                    "sub_type": "Communication"
                 })
                 comm_node_id_map[(rec["source"], rec["target"])] = agg_id
                 comm_agg_edges.append({
                     "source": rec["source"],
                     "target": agg_id,
-                    "type": "COMMUNICATION_AGG" # Nicht überschriben
+                    "type": "Event",
+                    "sub_type": "Communication"
                 })
                 comm_agg_edges.append({
                     "source": agg_id,
-                    "target": rec["target"],
-                    "type": "COMMUNICATION_AGG" # Nicht überschriben
+                    "target": rec["target"]
                 })
 
             result = session.run("""
@@ -372,11 +374,37 @@ async def read_db_graph():
                 edge_data["target"] = record["target"]
                 edge_data["type"] = r.type if hasattr(r, "type") else r.get("type", "")
                 edges.append(edge_data)
+            
+            print(rec["timestamps"])
+            
+            all_nodes = nodes.copy() + comm_agg_nodes.copy()
+            all_edges = edges.copy() + comm_agg_edges.copy()
+
+
+            # Origin read
+            results = session.run("MATCH (n) RETURN n")
+            for record in results:
+                n = record["n"]
+                node_data = dict(n.items())
+                node_data["id"] = n.get("id")
+                nodes.append(node_data)
+
+            results = session.run("MATCH (a)-[r]->(b) RETURN a.id AS source, b.id AS target, r")
+            for record in results:
+                r = record["r"]
+                edge_data = dict(r.items())
+                edge_data["source"] = record["source"]
+                edge_data["target"] = record["target"]
+                edge_data["type"] = r.type if hasattr(r, "type") else r.get("type", "")
+                edges.append(edge_data)
+
+    except Exception as e:
+        print(f"Error reading graph data: {str(e)}")
+        return {"success": False, "error": str(e)}
     finally:
         driver.close()
-    all_nodes = nodes + comm_agg_nodes
-    all_edges = edges + comm_agg_edges
-    return {"success": True, "nodes": all_nodes, "links": all_edges}
+
+    return {"success": True, "nodes": nodes, "links": edges, "comm_nodes": all_nodes, "comm_links": all_edges}
 
 @router.get("/evidence-for-event", response_class=JSONResponse)
 async def evidence_for_event(event_id: str = Query(..., description="ID of the selected event")):

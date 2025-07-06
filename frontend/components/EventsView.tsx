@@ -66,7 +66,7 @@ export default function EventsView({
     console.log("All results fetched:", allResults);
     setEventEntitiesMap(allResults);
   };
-
+  console.log(eventsAfterTimeFilter);
   fetchEventEntities();
 }, [eventsAfterTimeFilter]);
 

@@ -185,6 +185,25 @@ const GraphView: React.FC<Props> = ({
       return DEFAULT_RADIUS + 2 * (Math.max(1, commCount) - 1);
     };
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    const getEntityRadius = (id: string) => {
+      // Zähle alle CommunicationAggregate-Nodes, die mit dieser Entity verbunden sind
+      let commCount = 0;
+      graphData.links.forEach((link: any) => {
+        const src = typeof link.source === "string" ? link.source : link.source.id;
+        const tgt = typeof link.target === "string" ? link.target : link.target.id;
+        // Prüfe, ob die Entity beteiligt ist und die andere Seite ein CommunicationAggregate ist
+        if (src === id) {
+          const tgtNode = graphData.nodes.find((n: any) => n.id === tgt && n.type === "Communication");
+          if (tgtNode) commCount++;
+        }
+        if (tgt === id) {
+          const srcNode = graphData.nodes.find((n: any) => n.id === src && n.type === "Communication");
+          if (srcNode) commCount++;
+        }
+      });
+      return DEFAULT_RADIUS + 2 * (Math.max(1, commCount) - 1);
+    };
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     const nodes = graphData.nodes.filter(d =>
       visibleIds.has(d.id) &&
       (d.type === "Entity" || filterMode === "all" || (filterMode === "event" && d.type === "Event") || (filterMode === "relationship" && d.type === "Relationship"))

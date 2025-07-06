@@ -21,6 +21,7 @@ import TimeBarChart from "@/components/TimeBarChart";
 export default function Home() {
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
+  const [commGraphData, setCommGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [useAggregated, setUseAggregated] = useState<boolean>(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const graphContainerRef = useRef<HTMLDivElement | null>(null);
@@ -59,6 +60,7 @@ export default function Home() {
   const [showGraph, setShowGraph] = useState<boolean>(true);
   const [showTimeBar, setShowTimeBar] = useState<boolean>(true);
   const [showSankey, setShowSankey] = useState<boolean>(true);
+  const [selectedTimestamp, setSelectedTimestamp] = useState<string | null>(null);
 
   // State für CommunicationView-Filter
   const [msvStartDate, setMsvStartDate] = useState<string>("");
@@ -104,7 +106,7 @@ export default function Home() {
       const res = await fetch(`/api${endpoint}`);
       const data = await res.json();
       if (endpoint === "/load-graph-json") {}
-      else setGraphData({ nodes: data.nodes, links: data.links }), setStatusMsg("Graph loaded successfully.");
+      else setGraphData({ nodes: data.nodes, links: data.links }), setStatusMsg("Graph loaded successfully."), setCommGraphData({ nodes: data.comm_nodes, links: data.comm_links });
     } catch (err) {
       setStatusMsg(`Failed to call ${endpoint}: ${err}`);
     }
@@ -318,6 +320,7 @@ export default function Home() {
               callApi={callApi}
               relevantEvents={relevantEvents}
               setrelevantEvents={setrelevantEvents}
+              commGraphData={commGraphData}
             />
             {/* Resizable Drag Handle */}
             <div

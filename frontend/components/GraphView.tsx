@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as d3 from "d3";
-import { GraphData } from "@/components/types";
+import { GraphData, Node, Link } from "@/components/types";
+import LegendPanel from "./LegendPanel"; 
 
 // Extend Node type to include optional x, y, fx, fy for D3 simulation
 interface GraphNode extends d3.SimulationNodeDatum {
@@ -58,6 +59,11 @@ interface Props {
   callApi: (endpoint: string) => void;
   relevantEvents: Set<string>;
   setrelevantEvents: (events: Set<string>) => void;
+  filterEntityId: string;
+  selectedTimestamp: string | null;
+  highlightedMessageId?: string | null;
+  graphHeight: number;
+  commGraphData: GraphDataModified;
 }
 
 const GraphView: React.FC<Props> = ({
@@ -71,16 +77,17 @@ const GraphView: React.FC<Props> = ({
   filterDepth,
   filterContent,
   filterMode,
+  filterEntityId,
   timestampFilterStart: propTimestampFilterStart,
   timestampFilterEnd: propTimestampFilterEnd,
+  selectedTimestamp,
   setVisibleEntities,
   setSubtypeCounts,
   setEdgeTypeCounts,
   setEdgeCount,
   setSelectedInfo,
   highlightedMessageId,
-  graphHeight
-  setSelectedInfo,
+  graphHeight,
   setCommunicationEvents,
   communicationEvents,
   setCommunicationEventsAfterTimeFilter,
@@ -88,7 +95,8 @@ const GraphView: React.FC<Props> = ({
   communicationEventsAfterTimeFilter,
   callApi,
   relevantEvents,
-  setrelevantEvents
+  setrelevantEvents,
+  commGraphData
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [stepMS, setStepMS] = useState(60 * 60 * 1000); // Default to 1 hour
@@ -106,7 +114,27 @@ const GraphView: React.FC<Props> = ({
   const [animationEndTime, setAnimationEndTime] = useState<number>(defaultEndDate);
   const [currentAnimationTime, setCurrentAnimationTime] = useState<number>(defaultStartDate);
 
- 
+  const DEFAULT_RADIUS = 20;
+  const HIGHLIGHT_RADIUS = 30;
+
+  const getEntityRadius = (id: string) => {
+      // Zähle alle CommunicationAggregate-Nodes, die mit dieser Entity verbunden sind
+      let commCount = 0;
+      graphData.links.forEach((link: any) => {
+        const src = typeof link.source === "string" ? link.source : link.source.id;
+        const tgt = typeof link.target === "string" ? link.target : link.target.id;
+        // Prüfe, ob die Entity beteiligt ist und die andere Seite ein CommunicationAggregate ist
+        if (src === id) {
+          const tgtNode = graphData.nodes.find((n: any) => n.id === tgt && n.type === "Communication");
+          if (tgtNode) commCount++;
+        }
+        if (tgt === id) {
+          const srcNode = graphData.nodes.find((n: any) => n.id === src && n.type === "Communication");
+          if (srcNode) commCount++;
+        }
+      });
+      return DEFAULT_RADIUS + 1.5 * (Math.max(1, commCount) - 1);
+    };
 
   // Parse prop timestamps for initial animation range
   useEffect(() => {
@@ -145,6 +173,15 @@ const GraphView: React.FC<Props> = ({
     };
   }, [isPlaying, stepMS, animationStartTime, animationEndTime]);
 
+  useEffect(() => {
+      if (!svgRef.current || !graphContainerRef.current) return;
+      const width = graphContainerRef.current.clientWidth;
+      const height = graphHeight || 500;
+      d3.select(svgRef.current)
+        .attr("width", width)
+        .attr("height", height)
+        .attr("viewBox", `0 0 ${width} ${height}`);
+    }, [graphHeight, graphContainerRef]);
 
   const handleStep = useCallback((direction: 'forward' | 'backward') => {
     setIsPlaying(false); // Pause animation on manual step
@@ -178,9 +215,9 @@ const GraphView: React.FC<Props> = ({
         <option value={60}>1 h</option>
         <option value={24 * 60}>1 day</option>
       </select>
-      <div style={{marginTop: '10px', color: 'white'}}>
+      {/* <div style={{marginTop: '10px', color: 'white'}}>
         Current Time: {new Date(currentAnimationTime).toLocaleString()}
-      </div>
+      </div> */}
     </div>
   );
 
@@ -197,11 +234,24 @@ const GraphView: React.FC<Props> = ({
     if (!svgRef.current || !graphContainerRef.current) return;
 
     const width = graphContainerRef.current.clientWidth;
-    const height = 500;
+    const height = graphHeight || 500;
     const svg = d3.select(svgRef.current)
       .attr("width", width)
       .attr("height", height)
       .attr("viewBox", `0 0 ${width} ${height}`);
+
+    svg.append("defs").append("marker") 
+      .attr("id", "arrow")
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX", 25)
+      .attr("refY", 0)
+      .attr("markerWidth", 10)
+      .attr("markerHeight", 10)
+      .attr("markerUnits", "userSpaceOnUse")
+      .attr("orient", "auto")
+      .append("path")
+      .attr("d", "M0,-5L10,0L0,5")
+      .attr("fill", "#999");
 
     let g = svg.select<SVGGElement>("g.graph-content"); // Select by class
     if (g.empty()) {
@@ -226,13 +276,12 @@ const GraphView: React.FC<Props> = ({
 
 
   useEffect(() => {
-    if (!svgRef.current || !graphContainerRef.current || graphData.nodes.length === 0) return;
+    if (!svgRef.current || !graphContainerRef.current || commGraphData.nodes.length === 0) return;
 
     const width = graphContainerRef.current.clientWidth;
     const height = 500;
     const svg = d3.select(svgRef.current);
     const g = svg.select<SVGGElement>("g.graph-content"); // Select the existing group
-
 
     const getVisibleNodeIds = (): Set<string> => {
       let visible = new Set<string>();
@@ -359,20 +408,123 @@ const GraphView: React.FC<Props> = ({
       return visible;
     };
 
-    const visibleIds = getVisibleNodeIds();
+    const notUsed = getVisibleNodeIds();
+
+    const getVisibleNodeIdsForCommunication = (): Set<string> => {
+      let visible = new Set<string>();
+
+      const filterEntities = [filterSender, filterReceiver].filter(Boolean);
+
+      if (filterEntities.length > 0) {
+        const queue = [...filterEntities];
+        let level = 0;
+
+        if (filterSender && filterReceiver && filterDepth === 0) {
+          visible.add(filterSender);
+          visible.add(filterReceiver);
+
+          // Iterate through all links to find communication events between sender and receiver (bidirectional)
+          commGraphData.links.forEach(link => {
+            const srcId = typeof link.source === "string" ? link.source : link.source.id;
+            const tgtId = typeof link.target === "string" ? link.target : link.target.id;
+
+            // Find the event node connected to this link, if any
+            const eventNode = commGraphData.nodes.find(n => n.id === srcId && n.type === "Event") ||
+                              commGraphData.nodes.find(n => n.id === tgtId && n.type === "Event");
+            
+            // Check if this is a "Communication" event and it links sender/receiver
+            if (eventNode && eventNode.sub_type === "Communication") {
+                // Scenario 1: Sender -> Event -> Receiver
+                const linkFromSender = commGraphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === filterSender && (typeof l.target === 'string' ? l.target : l.target.id) === eventNode.id);
+                const linkToReceiver = commGraphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === eventNode.id && (typeof l.target === 'string' ? l.target : l.target.id) === filterReceiver);
+
+                // Scenario 2: Receiver -> Event -> Sender
+                const linkFromReceiver = commGraphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === filterReceiver && (typeof l.target === 'string' ? l.target : l.target.id) === eventNode.id);
+                const linkToSender = commGraphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === eventNode.id && (typeof l.target === 'string' ? l.target : l.target.id) === filterSender);
+
+                if ((linkFromSender && linkToReceiver) || (linkFromReceiver && linkToSender)) {
+                    visible.add(eventNode.id);
+                }
+            }
+          });
+
+        } else {
+          while (queue.length > 0 && level <= filterDepth) {
+            const nextQueue: string[] = [];
+            for (const id of queue) {
+              if (visible.has(id)) continue;
+              visible.add(id);
+              const neighbors = commGraphData.links.flatMap(link => {
+                const src = typeof link.source === "string" ? link.source : link.source.id;
+                const tgt = typeof link.target === "string" ? link.target : link.target.id;
+                return src === id ? [tgt] : tgt === id ? [src] : [];
+              });
+              nextQueue.push(...neighbors);
+            }
+            queue.length = 0;
+            queue.push(...nextQueue);
+            level++;
+          }
+        }
+      } else {
+        commGraphData.nodes.forEach(n => visible.add(n.id));
+      }
+
+
+
+      if (filterContent.trim()) {
+        console.log("Applying filter:", relevantEvents);
+        visible = new Set(
+          Array.from(visible).filter(id => {
+            const node = commGraphData.nodes.find(n => n.id === id);
+            if (!node) return false;
+            if (node.type === "Event") return relevantEvents.has(node.id); // logik um zu gocken ob event in set - wenn, dann return aggr event id, notevent id
+//-----------------------------------------------------------------------------------------------------------------------------------------
+            // Check if connected to relevant event
+            return commGraphData.links.some(link => { // Logik um ursprüngliche event_id zu holen
+              const src = typeof link.source === "string" ? link.source : link.source.id;
+              const tgt = typeof link.target === "string" ? link.target : link.target.id;
+              return (relevantEvents.has(src) && tgt === id) || (relevantEvents.has(tgt) && src === id);
+            });
+          })
+        );
+      }
+
+      // iteriere durhc nods, itereier durch timessampt
+      // Apply the static timestamp filter from props *before* considering animation
+      let filteredByStaticTime = new Set(visible);
+      if (propTimestampFilterStart || propTimestampFilterEnd) {
+        filteredByStaticTime = new Set(
+          Array.from(filteredByStaticTime).filter(id => {
+            const node = commGraphData.nodes.find(n => n.id === id);
+            if (!node || node.type !== "Event" || !node.timestamp) return true;
+            const ts = new Date(node.timestamp).getTime();
+            const start = propTimestampFilterStart ? new Date(propTimestampFilterStart).getTime() : -Infinity;
+            const end = propTimestampFilterEnd ? new Date(propTimestampFilterEnd).getTime() : Infinity;
+            return (ts >= start) && (ts <= end);
+          })
+        );
+      }
+      visible = filteredByStaticTime;
+
+      return visible;
+    };
+    const visibleIds = getVisibleNodeIdsForCommunication();
+
 
     // Create a mutable copy of nodes to allow D3 to set x/y
-    let nodesToRender: GraphNode[] = graphData.nodes
+    let nodesToRender: GraphNode[] = commGraphData.nodes
         .filter(d => visibleIds.has(d.id))
         .map(d => ({ ...d })); // Deep copy to ensure D3 can modify x, y
 
-    let linksToRender: GraphLink[] = graphData.links.filter(link => {
+    let linksToRender: GraphLink[] = commGraphData.links.filter(link => {
       const src = typeof link.source === "string" ? link.source : link.source.id;
       const tgt = typeof link.target === "string" ? link.target : link.target.id;
       const isVisible = visibleIds.has(src) && visibleIds.has(tgt);
 
       if (!isVisible) return false;
 
+      //Kommt warhscheinlich weg - 
       // Link visibility also depends on the static time filter
       if (link.timestamp) {
         const ts = new Date(link.timestamp).getTime();
@@ -389,7 +541,8 @@ const GraphView: React.FC<Props> = ({
       type: link.type || '',
       timestamp: link.timestamp,
       value: link.value || 1
-    }));
+    }
+  ));
 
     // Update counts based on currently visible nodes and links
     const subtypeCounts: Record<string, number> = {};
@@ -414,6 +567,24 @@ const GraphView: React.FC<Props> = ({
         .force("charge", d3.forceManyBody().strength(-400))
         .force("center", d3.forceCenter(width / 2, height / 2))
         .force("collide", d3.forceCollide(50));
+
+      const link = g.append("g")
+        .selectAll("line")
+        .data(linksToRender)
+        .enter().append("line")
+        .attr("stroke", d => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
+        .attr("stroke-opacity", 0.6)
+        .attr("stroke-width", 1)
+        //.attr("marker-end", "url(#arrow)") // Uncomment if you want to use arrow markers
+        .on("click", (event: any, d: any) => setSelectedInfo({ type: "link", data: d }));
+
+      const linkFlow = g.append("g")
+        .selectAll("polygon")
+        .data(linksToRender)
+        .enter().append("polygon")
+        .attr("points", "-7,-5 8,0 -7,5") // triangle shape, pointing right
+        .attr("fill", (d: any) => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
+        .attr("opacity", 0.9);
 
       simulation.on("tick", () => {
         g.selectAll<SVGLineElement, GraphLink>(".link")
@@ -493,6 +664,14 @@ const GraphView: React.FC<Props> = ({
         exit => exit.remove()
       );
 
+      const linkFlow = g.append("g")
+        .selectAll("polygon")
+        .data(linksToRender)
+        .enter().append("polygon")
+        .attr("points", "-7,-5 8,0 -7,5") // triangle shape, pointing right
+        .attr("fill", (d: any) => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
+        .attr("opacity", 0.9);
+
     // Drawing the nodes
     const node = g.selectAll<SVGGElement, GraphNode>(".node-group")
       .data(nodesToRender, d => d.id)
@@ -502,16 +681,49 @@ const GraphView: React.FC<Props> = ({
             .attr("class", "node-group")
             .on("mouseover", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4))
             .on("mouseout", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "none"))
-            .on("click", (event, d) => {
+            .on("click", (event: any, d: any) => {
               setSelectedInfo({ type: "node", data: d });
-              if (d.type === "Entity") {
+              if (d.type === "Entity") 
+              {
                 setFilterSender(d.id);
-              }
+              // Count muss angepasst werden - sollte momentan nur 1 rauskjommen
+              let incomingComm = 0;
+              let outgoingComm = 0;
+              commGraphData.links.forEach((link: any) => {
+                const src = typeof link.source === "string" ? link.source : link.source.id;
+                const tgt = typeof link.target === "string" ? link.target : link.target.id;
+                if (tgt === d.id) 
+                {
+                  const srcNode = commGraphData.nodes.find((n: any) => n.id === src && n.type === "Event");
+                  if (srcNode) incomingComm++;
+                }
+                if (src === d.id) 
+                {
+                  const tgtNode = commGraphData.nodes.find((n: any) => n.id === tgt && n.type === "Event");
+                  if (tgtNode) outgoingComm++;
+                }
+              });
+              setSelectedInfo({ type: "node", data: { ...d, incomingCommunicationCount: incomingComm, outgoingCommunicationCount: outgoingComm } });
+            } else 
+            {
+              setSelectedInfo({ type: "node", data: d });
+            }
             });
 
           group.append("circle")
-            .attr("r", 20)
-            .attr("fill", d => d.type === "Entity" ? "#999" : d.sub_type === "Communication" ? "#1f77b4" : d.type === "Event" ? "#2ca02c" : "#999");
+                  .attr("r", (d: any) => {
+                    if (d.type === "Entity") return getEntityRadius(d.id);
+                    // CommunicationAggregate immer Standardgröße
+                    if (d.type === "CommunicationAggregate") return DEFAULT_RADIUS;
+                    return DEFAULT_RADIUS;
+                  })
+                  .attr("fill", (d: any) =>
+                    d.type === "Entity" ? "#1f77b4" :
+                      d.type === "Event" ? "#2ca02c" :
+                        d.type === "Communication" ? "#2ca02c" :
+                          d.type === "Relationship" ? "#d62728" :
+                            d.id === highlightedMessageId ? "#ff00ff" : "#999"
+                  );
 
           group.append("text")
             .attr("text-anchor", "middle")
@@ -519,6 +731,27 @@ const GraphView: React.FC<Props> = ({
             .attr("fill", "black")
             .text(d => d.type === "Entity" ? d.id : d.label)
             .style("font-size", d => `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.label)?.length || 0 - 10))}px`);
+
+          // --- Animation ---
+          let animationFrameId: number;
+              function animateFlowDots() {
+                linkFlow.each(function (d: any, i: number) {
+                  const source = d.source as any;
+                  const target = d.target as any;
+                  if (!source || !target) return;
+                  const t = ((Date.now() / 3000 + i * 0.2) % 1);
+                  const x = source.x + (target.x - source.x) * t;
+                  const y = source.y + (target.y - source.y) * t;
+                  // Calculate angle for rotation
+                  const dx = target.x - source.x;
+                  const dy = target.y - source.y;
+                  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                  d3.select(this)
+                    .attr("transform", `translate(${x},${y}) rotate(${angle})`);
+                });
+                animationFrameId = requestAnimationFrame(animateFlowDots);
+              }
+              animateFlowDots();
           return group;
         },
         update => {
@@ -542,6 +775,7 @@ const GraphView: React.FC<Props> = ({
                     const eventTime = new Date(d.timestamp).getTime();
                     const animationWindowEnd = currentAnimationTime + stepMS; // End of current step window
                     if (eventTime >= currentAnimationTime && eventTime < animationWindowEnd) {
+                      // ANimation passend zu nodes in momeentanen frame
                         return "red"; // Highlight color
                     }
                 }
@@ -568,6 +802,7 @@ const GraphView: React.FC<Props> = ({
       );
 
     // Manually update positions for both links and nodes if simulation is not running
+    g.selectAll<SVGGElement, GraphNode>(".node-group").raise();
     if (nodePositions) {
         link
             .attr("x1", d => (d.source as GraphNode).x!)
@@ -595,11 +830,19 @@ const GraphView: React.FC<Props> = ({
     stepMS,
     setSelectedInfo,
     setFilterSender,
+    commGraphData
   ]);
 
   return (
     <>
       {controls}
+      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <svg ref={svgRef} className="w-full h-full"></svg>
+      <div style={{ position: "absolute", right: 16, bottom: 16, zIndex: 10, background: "white", borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+        {/* LegendPanel unten rechts im GraphView-Panel */}
+        <LegendPanel />
+      </div>
+    </div>
     </>
   );
 };

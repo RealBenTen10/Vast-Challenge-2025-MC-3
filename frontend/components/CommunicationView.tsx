@@ -181,7 +181,7 @@ export default function CommunicationView({
   })();
 
   return (
-    <Card className={`w-full max-w-7xl mt-8 ${className || ""}`}>
+    <Card className={`w-full max-w-7xl mt-8`}>
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <h4 className="text-lg font-semibold">{filteredData.length} Messages</h4>
