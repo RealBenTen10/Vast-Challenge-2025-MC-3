@@ -397,13 +397,15 @@ const GraphView: React.FC<Props> = ({
         )
       );
 
-      setEventsAfterTimeFilter(
-        graphData.nodes.filter(n =>
-          n.type === "Event" &&
-          n.sub_type !== "Communication" &&
-          visibleSetAfterTimeFilter.has(n.id)
-        )
+      const filteredEvents = graphData.nodes.filter(n =>
+        n.type === "Event" &&
+        n.sub_type !== "Communication" &&
+        visibleSetAfterTimeFilter.has(n.id)
       );
+      const uniqueEvents = Array.from(new Map(filteredEvents.map(e => [e.id, e])).values());
+
+      setEventsAfterTimeFilter(uniqueEvents);
+
 
       return visible;
     };
@@ -510,6 +512,12 @@ const GraphView: React.FC<Props> = ({
       return visible;
     };
     const visibleIds = getVisibleNodeIdsForCommunication();
+
+    // const visibleEdges = graphData.links.filter(link => { // Tried to apply ANimation on visible Edges Only
+    //   const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
+    //   const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+    //   return visibleIds.has(sourceId) && visibleIds.has(targetId);
+    // });
 
 
     // Create a mutable copy of nodes to allow D3 to set x/y
@@ -702,7 +710,8 @@ const GraphView: React.FC<Props> = ({
                   const tgtNode = commGraphData.nodes.find((n: any) => n.id === tgt && n.type === "Event");
                   if (tgtNode) outgoingComm++;
                 }
-              });
+              }
+            );
               setSelectedInfo({ type: "node", data: { ...d, incomingCommunicationCount: incomingComm, outgoingCommunicationCount: outgoingComm } });
             } else 
             {
@@ -718,9 +727,9 @@ const GraphView: React.FC<Props> = ({
                     return DEFAULT_RADIUS;
                   })
                   .attr("fill", (d: any) =>
-                    d.type === "Entity" ? "#1f77b4" :
-                      d.type === "Event" ? "#2ca02c" :
-                        d.type === "Communication" ? "#2ca02c" :
+                    d.type === "Entity" ? "#999" :
+                      d.type === "Event" ? "#1f77b4" :
+                        d.type === "Communication" ? "#1f77b4" :
                           d.type === "Relationship" ? "#d62728" :
                             d.id === highlightedMessageId ? "#ff00ff" : "#999"
                   );
