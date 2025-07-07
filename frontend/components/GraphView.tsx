@@ -99,6 +99,7 @@ const GraphView: React.FC<Props> = ({
   commGraphData
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isInAnimation, setIsInAnimation] = useState(false);
   const [stepMS, setStepMS] = useState(60 * 60 * 1000); // Default to 1 hour
   const intervalRef = useRef<number | null>(null);
 
@@ -154,11 +155,12 @@ const GraphView: React.FC<Props> = ({
           const nextTime = prevTime + stepMS;
           if (nextTime > animationEndTime) {
             setIsPlaying(false); // Stop when end is reached
+            setIsInAnimation(false); 
             return animationStartTime; // Loop back to start
           }
           return nextTime;
         });
-      }, 500); // Animation update rate (adjust as needed)
+      }, 1500); // Animation update rate (adjust as needed)
     } else {
       if (intervalRef.current) {
         window.clearInterval(intervalRef.current);
@@ -185,6 +187,7 @@ const GraphView: React.FC<Props> = ({
 
   const handleStep = useCallback((direction: 'forward' | 'backward') => {
     setIsPlaying(false); // Pause animation on manual step
+    setIsInAnimation(true)
     setCurrentAnimationTime(prevTime => {
       let newTime = prevTime;
       if (direction === 'forward') {
@@ -206,7 +209,7 @@ const GraphView: React.FC<Props> = ({
     <div style={{ position: "absolute", top: 10, left: 10, zIndex: 10 }}>
       <button onClick={() => setIsPlaying(true)}>▶ Play</button>
       <button onClick={() => setIsPlaying(false)}>⏸ Pause</button>
-      <button onClick={() => { setIsPlaying(false); setCurrentAnimationTime(animationStartTime); }}>⏹ Stop</button>
+      <button onClick={() => { setIsPlaying(false); setIsInAnimation(false); setCurrentAnimationTime(animationStartTime); }}>⏹ Stop</button>
       <button onClick={() => handleStep('backward')}>◀ Step Back</button>
       <button onClick={() => handleStep('forward')}>Step ▶</button>
       <select value={stepMS / 60000} onChange={e => setStepMS(+e.target.value * 60000)}>
@@ -247,21 +250,7 @@ const GraphView: React.FC<Props> = ({
       .attr("viewBox", `0 0 ${width} ${height}`);
 
     svg.select("defs").remove();
-    svg
-      .append("defs")
-      .append("marker") 
-      .attr("id", "arrow")
-      .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 24)
-      .attr("refY", 0)
-      .attr("markerWidth", 6)
-      .attr("markerHeight", 6)
-      .attr("markerUnits", "userSpaceOnUse")
-      .attr("orient", "auto")
-      .append("path")
-      .attr("d", "M 0,-5 L 10,0 L 0,5")
-      .attr("fill", "#999")
-      .style("stroke", "none");
+
 
     let g = svg.select<SVGGElement>("g.graph-content"); // Select by class
     if (g.empty()) {
@@ -605,7 +594,6 @@ const GraphView: React.FC<Props> = ({
         .attr("stroke", d => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
         .attr("stroke-opacity", 0.6)
         .attr("stroke-width", 1)
-        //.attr("marker-end", "url(#arrow)") // Uncomment if you want to use arrow markers
         .on("click", (event: any, d: any) => setSelectedInfo({ type: "link", data: d }));
 
       simulation.on("tick", () => {
@@ -654,35 +642,7 @@ const GraphView: React.FC<Props> = ({
             link.target = { x: 0, y: 0 } as GraphNode;
         }
       });
-      const linkFlow = g.selectAll("polygon.link-arrow")
-        .data(linksToRender, (d: any) => `${d.source.id}-${d.target.id}`); // key for data join
-
-      // Remove arrows no longer needed
-      linkFlow.exit().remove();
-
-      // Add current arrows (using polygon)
-      linkFlow.enter()
-        .append("polygon")
-        .attr("class", "link-arrow")
-        .attr("points", "-7,-5 8,0 -7,5") // triangle shape
-        .merge(linkFlow as any) // merge enter + update
-        .attr("fill", (d: any) =>
-          d.type === "COMMUNICATION" ? "#2ca02c" :
-          d.type === "EVIDENCE_FOR" ? "#800080" :
-          "#999"
-        )
-        .attr("opacity", 0.9)
-        .attr("transform", (d: any) => {
-          const source = typeof d.source === "object" ? d.source : nodePositions[d.source];
-          const target = typeof d.target === "object" ? d.target : nodePositions[d.target];
-
-          const ratio = 0.25; // 0 = at source, 1 = at target; use 0.25 for "near source"
-          const arrowX = source.x + (target.x - source.x) * ratio;
-          const arrowY = source.y + (target.y - source.y) * ratio;
-
-          const angle = Math.atan2(target.y - source.y, target.x - source.x) * (180 / Math.PI);
-          return `translate(${arrowX},${arrowY}) rotate(${angle})`;
-        });
+      
 
     
     
@@ -713,7 +673,6 @@ const GraphView: React.FC<Props> = ({
           })
           .attr("stroke-opacity", 0.6)
           .attr("stroke-width", 1)
-          //.attr("marker-end", "url(#arrow)") // Uncomment if you want to use arrow markers
           .on("click", (event, d) => setSelectedInfo({ type: "link", data: d })),
         update => update,
         exit => exit.remove()
@@ -787,109 +746,138 @@ const GraphView: React.FC<Props> = ({
             
           return group;
         },
-        update => {
-          // Mouse interaction handlers (applies in both states)
-          update
-            .on("mouseover", (event, d) =>
-              d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4)
-            )
-            .on("mouseout", (event, d) =>
-              d3.select(event.currentTarget).select("circle").attr("stroke", "none")
-            )
-            .on("click", (event, d) => {
-              setSelectedInfo({ type: "node", data: d });
-              if (d.type === "Entity") {
-                setFilterSender(d.id);
-              }
-            });
+  // Mouse interaction handlers
+  update => {
+  // === Interaction handlers ===
+  update
+    .on("mouseover", (event, d) =>
+      d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4)
+    )
+    .on("mouseout", (event, d) =>
+      d3.select(event.currentTarget).select("circle").attr("stroke", "none")
+    )
+    .on("click", (event, d) => {
+      setSelectedInfo({ type: "node", data: d });
+      if (d.type === "Entity") {
+        setFilterSender(d.id);
+      }
+    });
 
-          if (isPlaying) {
-            const animationWindowEnd = currentAnimationTime + stepMS;
+  // === Precompute active events and links for use in both branches ===
+  const animationWindowEnd = currentAnimationTime + stepMS;
 
-            const isActiveEvent = (d) => {
-              if (d.type === "Event") {
-                if (Array.isArray(d.timestamps)) {
-                  return d.timestamps.some(ts => {
-                    const time = new Date(ts).getTime();
-                    return time >= currentAnimationTime && time < animationWindowEnd;
-                  });
-                } else if (d.timestamp) {
-                  const eventTime = new Date(d.timestamp).getTime();
-                  return eventTime >= currentAnimationTime && eventTime < animationWindowEnd;
-                }
-              }
-              return false;
-            };
+  const isActiveEvent = (d) => {
+    if (d.type === "Event") {
+      if (Array.isArray(d.timestamps)) {
+        return d.timestamps.some(ts => {
+          const time = new Date(ts).getTime();
+          return time >= currentAnimationTime && time < animationWindowEnd;
+        });
+      } else if (d.timestamp) {
+        const eventTime = new Date(d.timestamp).getTime();
+        return eventTime >= currentAnimationTime && eventTime < animationWindowEnd;
+      }
+    }
+    return false;
+  };
 
-            const activeEventIds = new Set(
-              nodesToRender
-                .filter(d => isActiveEvent(d))
-                .map(d => d.id)
-            );
+  const activeEventIds = new Set(
+    nodesToRender
+      .filter(d => isActiveEvent(d))
+      .map(d => d.id)
+  );
 
-            const isActiveLink = (l) => {
-              const src = typeof l.source === "string" ? l.source : l.source.id;
-              const tgt = typeof l.target === "string" ? l.target : l.target.id;
-              return activeEventIds.has(src) || activeEventIds.has(tgt);
-            };
+  const isActiveLink = (l) => {
+    const src = typeof l.source === "string" ? l.source : l.source.id;
+    const tgt = typeof l.target === "string" ? l.target : l.target.id;
+    return activeEventIds.has(src) || activeEventIds.has(tgt);
+  };
 
-            // Update node visuals for animation
-            update.select("circle")
-              .attr("fill", d =>
-                d.type === "Entity"
-                  ? "#999"
-                  : d.sub_type === "Communication"
-                  ? "#1f77b4"
-                  : d.type === "Event"
-                  ? "#ff7f0e"
-                  : "#999"
-              )
-              .attr("stroke", d => (isActiveEvent(d) ? "red" : "none"))
-              .attr("stroke-width", d => (isActiveEvent(d) ? 3 : 0))
-              .attr("opacity", d => {
-                if (d.type === "Event") {
-                  return isActiveEvent(d) ? 1 : 0.15;
-                }
-                return 1;
-              });
+  // === Visuals for animated or normal state ===
+  if (isPlaying || isInAnimation) {
+    update.select("circle")
+      .attr("fill", d =>
+        d.type === "Entity"
+          ? "#999"
+          : d.sub_type === "Communication"
+          ? "#1f77b4"
+          : d.type === "Event"
+          ? "#ff7f0e"
+          : "#999"
+      )
+      .attr("stroke", d => (isActiveEvent(d) ? "red" : "none"))
+      .attr("stroke-width", d => (isActiveEvent(d) ? 3 : 0))
+      .attr("opacity", d => {
+        if (d.type === "Event") {
+          return isActiveEvent(d) ? 1 : 0.15;
+        }
+        return 1;
+      });
 
-            // Update link visibility during animation
-            d3.select(svgRef.current)
-              .selectAll("line")
-              .attr("opacity", d => (isActiveLink(d) ? 1 : 0.1));
+    d3.select(svgRef.current)
+      .selectAll("line")
+      .attr("opacity", d => (isActiveLink(d) ? 1 : 0.1));
+  } else {
+    update.select("circle")
+      .attr("fill", d =>
+        d.type === "Entity"
+          ? "#999"
+          : d.sub_type === "Communication"
+          ? "#1f77b4"
+          : d.type === "Event"
+          ? "#ff7f0e"
+          : "#999"
+      )
+      .attr("stroke", "none")
+      .attr("stroke-width", 0)
+      .attr("opacity", 1);
 
-          } else {
-            // Normal (non-animated) rendering
+    d3.select(svgRef.current)
+      .selectAll("line")
+      .attr("opacity", 1);
+  }
 
-            update.select("circle")
-              .attr("fill", d =>
-                d.type === "Entity"
-                  ? "#999"
-                  : d.sub_type === "Communication"
-                  ? "#1f77b4"
-                  : d.type === "Event"
-                  ? "#ff7f0e"
-                  : "#999"
-              )
-              .attr("stroke", "none")
-              .attr("stroke-width", 0)
-              .attr("opacity", 1); // full opacity for all
+  // === Render directional arrows (linkFlow) ===
+  const g = d3.select(svgRef.current).select("g");
 
-            d3.select(svgRef.current)
-              .selectAll("line")
-              .attr("opacity", 1); // all links visible
-          }
+  const linkFlow = g.selectAll("polygon.link-arrow")
+    .data(linksToRender, (d: any) => `${d.source.id}-${d.target.id}`);
 
-          // Update text labels (common to both states)
-          update.select("text")
-            .text(d => (d.type === "Entity" ? d.id : d.sub_type))
-            .style("font-size", d =>
-              `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
-            );
+  linkFlow.exit().remove();
 
-          return update;
+  linkFlow.enter()
+    .append("polygon")
+    .attr("class", "link-arrow")
+    .attr("points", "-7,-5 8,0 -7,5")
+    .merge(linkFlow as any)
+    .attr("fill", (d: any) =>
+      d.type === "COMMUNICATION" ? "#2ca02c" :
+      d.type === "EVIDENCE_FOR" ? "#800080" :
+      "#999"
+    )
+    .attr("opacity", (d: any) => (isActiveLink(d) ? 1 : 0.25))
+    .attr("transform", (d: any) => {
+      const source = typeof d.source === "object" ? d.source : nodePositions[d.source];
+      const target = typeof d.target === "object" ? d.target : nodePositions[d.target];
 
-        },
+      const ratio = 0.25;
+      const arrowX = source.x + (target.x - source.x) * ratio;
+      const arrowY = source.y + (target.y - source.y) * ratio;
+      const angle = Math.atan2(target.y - source.y, target.x - source.x) * (180 / Math.PI);
+      return `translate(${arrowX},${arrowY}) rotate(${angle})`;
+    });
+
+  // === Labels ===
+  update.select("text")
+    .text(d => (d.type === "Entity" ? d.id : d.sub_type))
+    .style("font-size", d =>
+      `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
+    );
+
+  return update;
+
+
+},
         exit => exit.remove()
       );
 
