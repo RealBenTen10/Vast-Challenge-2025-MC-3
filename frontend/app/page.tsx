@@ -52,7 +52,7 @@ export default function Home() {
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(true);
-  const [graphHeight, setGraphHeight] = useState<number>(600);
+  const [graphHeight, setGraphHeight] = useState<number>(550);
   const [sankeyHeight, setSankeyHeight] = useState<number>(800); // Add state for Sankey height
   const dragRef = useRef<HTMLDivElement | null>(null);
   const sankeyDragRef = useRef<HTMLDivElement | null>(null); // Ref for Sankey drag handle
@@ -440,13 +440,13 @@ export default function Home() {
             filterContent={filterContent}
             setFilterModeMessages={setFilterModeMessages}
             />
-            {/* Resizable Drag Handle for Sankey */}
+            {/* Resizable Drag Handle for Sankey 
             <div
               ref={sankeyDragRef}
               style={{ cursor: 'row-resize', height: '10px', width: '100%', background: '#e5e7eb' }}
               onMouseDown={() => { if (sankeyDragRef.current) sankeyDragRef.current.dataset.dragging = 'true'; }}
               className="mb-2"
-            />
+            />*/}
           </div>
         )}
 
