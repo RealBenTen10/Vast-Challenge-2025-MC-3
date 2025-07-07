@@ -71,6 +71,10 @@ export default function Home() {
   const [msvLoading, setMsvLoading] = useState(false);
   const [msvError, setMsvError] = useState<string | null>(null);
 
+  // For animation
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isInAnimation, setIsInAnimation] = useState(false);
+
   // Resizing logic
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -319,6 +323,10 @@ export default function Home() {
           relevantEvents={relevantEvents}
           setrelevantEvents={setrelevantEvents}
           commGraphData={commGraphData}
+          isPlaying={isPlaying}
+          setIsPlaying={setIsPlaying}
+          isInAnimation={isInAnimation}
+          setIsInAnimation={setIsInAnimation}
         />
         {/* Resizable Drag Handle */}
         <div
@@ -390,6 +398,8 @@ export default function Home() {
             filterModeMessages={filterModeMessages}
             setFilterModeMessages={setFilterModeMessages}
             selectedEventId={selectedEventId}
+            isPlaying={isPlaying}
+            isInAnimation={isInAnimation}
           />
         </div>
 
