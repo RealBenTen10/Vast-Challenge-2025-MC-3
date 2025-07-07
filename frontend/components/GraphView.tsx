@@ -792,7 +792,22 @@ const GraphView: React.FC<Props> = ({
     const tgt = typeof l.target === "string" ? l.target : l.target.id;
     return activeEventIds.has(src) || activeEventIds.has(tgt);
   };
+ // Identify entities connected to active events via links
+  const connectedEntities = new Set();
 
+  linksToRender.forEach(link => {
+    if (isActiveLink(link)) {
+      // Extract source and target node ids
+      const src = typeof link.source === "string" ? link.source : link.source.id;
+      const tgt = typeof link.target === "string" ? link.target : link.target.id;
+      // If source or target is an Entity, add to connectedEntities set
+      const srcNode = nodesToRender.find(n => n.id === src);
+      const tgtNode = nodesToRender.find(n => n.id === tgt);
+
+      if (srcNode?.type === "Entity") connectedEntities.add(src);
+      if (tgtNode?.type === "Entity") connectedEntities.add(tgt);
+    }
+  });
   // === Visuals for animated or normal state ===
   if (isPlaying || isInAnimation) {
     update.select("circle")
@@ -810,6 +825,10 @@ const GraphView: React.FC<Props> = ({
       .attr("opacity", d => {
         if (d.type === "Event") {
           return isActiveEvent(d) ? 1 : 0.15;
+        }
+        if (d.type === "Entity") {
+          // Dim entity if not connected to any active event
+          return connectedEntities.has(d.id) ? 1 : 0.2;
         }
         return 1;
       });
