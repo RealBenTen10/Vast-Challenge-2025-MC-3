@@ -375,7 +375,7 @@ async def read_db_graph():
                 edge_data["type"] = r.type if hasattr(r, "type") else r.get("type", "")
                 edges.append(edge_data)
             
-            print(rec["timestamps"])
+            
             
             all_nodes = nodes.copy() + comm_agg_nodes.copy()
             all_edges = edges.copy() + comm_agg_edges.copy()

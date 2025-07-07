@@ -1,3 +1,4 @@
+{/*
 import React, { useEffect } from "react";
 import * as d3 from "d3";
 import { GraphData, Node, Link } from "@/components/types";
@@ -392,7 +393,7 @@ const GraphView: React.FC<Props> = ({
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <svg ref={svgRef} className="w-full h-full"></svg>
       <div style={{ position: "absolute", right: 16, bottom: 16, zIndex: 10, background: "white", borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-        {/* LegendPanel unten rechts im GraphView-Panel */}
+        
         <LegendPanel />
       </div>
     </div>
@@ -401,3 +402,4 @@ const GraphView: React.FC<Props> = ({
 };
 
 export default GraphView;
+*/}

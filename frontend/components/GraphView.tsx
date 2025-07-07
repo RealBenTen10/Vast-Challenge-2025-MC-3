@@ -240,18 +240,22 @@ const GraphView: React.FC<Props> = ({
       .attr("height", height)
       .attr("viewBox", `0 0 ${width} ${height}`);
 
-    svg.append("defs").append("marker") 
+    svg.select("defs").remove();
+    svg
+      .append("defs")
+      .append("marker") 
       .attr("id", "arrow")
       .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 25)
+      .attr("refX", 24)
       .attr("refY", 0)
-      .attr("markerWidth", 10)
-      .attr("markerHeight", 10)
+      .attr("markerWidth", 6)
+      .attr("markerHeight", 6)
       .attr("markerUnits", "userSpaceOnUse")
       .attr("orient", "auto")
       .append("path")
-      .attr("d", "M0,-5L10,0L0,5")
-      .attr("fill", "#999");
+      .attr("d", "M 0,-5 L 10,0 L 0,5")
+      .attr("fill", "#999")
+      .style("stroke", "none");
 
     let g = svg.select<SVGGElement>("g.graph-content"); // Select by class
     if (g.empty()) {
@@ -414,9 +418,9 @@ const GraphView: React.FC<Props> = ({
 
     const getVisibleNodeIdsForCommunication = (): Set<string> => {
       let visible = new Set<string>();
-
       const filterEntities = [filterSender, filterReceiver].filter(Boolean);
 
+      // Step 1: Entity-based filtering
       if (filterEntities.length > 0) {
         const queue = [...filterEntities];
         let level = 0;
@@ -425,31 +429,37 @@ const GraphView: React.FC<Props> = ({
           visible.add(filterSender);
           visible.add(filterReceiver);
 
-          // Iterate through all links to find communication events between sender and receiver (bidirectional)
+          // Match communication events linking sender and receiver
           commGraphData.links.forEach(link => {
             const srcId = typeof link.source === "string" ? link.source : link.source.id;
             const tgtId = typeof link.target === "string" ? link.target : link.target.id;
 
-            // Find the event node connected to this link, if any
             const eventNode = commGraphData.nodes.find(n => n.id === srcId && n.type === "Event") ||
                               commGraphData.nodes.find(n => n.id === tgtId && n.type === "Event");
-            
-            // Check if this is a "Communication" event and it links sender/receiver
+
             if (eventNode && eventNode.sub_type === "Communication") {
-                // Scenario 1: Sender -> Event -> Receiver
-                const linkFromSender = commGraphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === filterSender && (typeof l.target === 'string' ? l.target : l.target.id) === eventNode.id);
-                const linkToReceiver = commGraphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === eventNode.id && (typeof l.target === 'string' ? l.target : l.target.id) === filterReceiver);
+              const linkFromSender = commGraphData.links.some(l =>
+                (typeof l.source === 'string' ? l.source : l.source.id) === filterSender &&
+                (typeof l.target === 'string' ? l.target : l.target.id) === eventNode.id
+              );
+              const linkToReceiver = commGraphData.links.some(l =>
+                (typeof l.source === 'string' ? l.source : l.source.id) === eventNode.id &&
+                (typeof l.target === 'string' ? l.target : l.target.id) === filterReceiver
+              );
+              const linkFromReceiver = commGraphData.links.some(l =>
+                (typeof l.source === 'string' ? l.source : l.source.id) === filterReceiver &&
+                (typeof l.target === 'string' ? l.target : l.target.id) === eventNode.id
+              );
+              const linkToSender = commGraphData.links.some(l =>
+                (typeof l.source === 'string' ? l.source : l.source.id) === eventNode.id &&
+                (typeof l.target === 'string' ? l.target : l.target.id) === filterSender
+              );
 
-                // Scenario 2: Receiver -> Event -> Sender
-                const linkFromReceiver = commGraphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === filterReceiver && (typeof l.target === 'string' ? l.target : l.target.id) === eventNode.id);
-                const linkToSender = commGraphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === eventNode.id && (typeof l.target === 'string' ? l.target : l.target.id) === filterSender);
-
-                if ((linkFromSender && linkToReceiver) || (linkFromReceiver && linkToSender)) {
-                    visible.add(eventNode.id);
-                }
+              if ((linkFromSender && linkToReceiver) || (linkFromReceiver && linkToSender)) {
+                visible.add(eventNode.id);
+              }
             }
           });
-
         } else {
           while (queue.length > 0 && level <= filterDepth) {
             const nextQueue: string[] = [];
@@ -469,21 +479,25 @@ const GraphView: React.FC<Props> = ({
           }
         }
       } else {
+        // No entity filter → include all nodes
         commGraphData.nodes.forEach(n => visible.add(n.id));
       }
 
-
-
+      // Step 2: Content similarity filter (relevantEvents are original event_ids)
       if (filterContent.trim()) {
         console.log("Applying filter:", relevantEvents);
         visible = new Set(
           Array.from(visible).filter(id => {
             const node = commGraphData.nodes.find(n => n.id === id);
             if (!node) return false;
-            if (node.type === "Event") return relevantEvents.has(node.id); // logik um zu gocken ob event in set - wenn, dann return aggr event id, notevent id
-//-----------------------------------------------------------------------------------------------------------------------------------------
-            // Check if connected to relevant event
-            return commGraphData.links.some(link => { // Logik um ursprüngliche event_id zu holen
+
+            // For communication events: check if any of the original event_ids are relevant
+            if (node.type === "Event" && Array.isArray(node.event_ids)) {
+              return node.event_ids.some(eid => relevantEvents.has(eid));
+            }
+
+            // For other nodes: check if connected to a relevant communication event
+            return commGraphData.links.some(link => {
               const src = typeof link.source === "string" ? link.source : link.source.id;
               const tgt = typeof link.target === "string" ? link.target : link.target.id;
               return (relevantEvents.has(src) && tgt === id) || (relevantEvents.has(tgt) && src === id);
@@ -492,32 +506,34 @@ const GraphView: React.FC<Props> = ({
         );
       }
 
-      // iteriere durhc nods, itereier durch timessampt
-      // Apply the static timestamp filter from props *before* considering animation
-      let filteredByStaticTime = new Set(visible);
+      // Step 3: Static timestamp filtering (filtering using any timestamp in the node's "timestamps" array)
       if (propTimestampFilterStart || propTimestampFilterEnd) {
-        filteredByStaticTime = new Set(
-          Array.from(filteredByStaticTime).filter(id => {
+        const start = propTimestampFilterStart ? new Date(propTimestampFilterStart).getTime() : -Infinity;
+        const end = propTimestampFilterEnd ? new Date(propTimestampFilterEnd).getTime() : Infinity;
+
+        visible = new Set(
+          Array.from(visible).filter(id => {
             const node = commGraphData.nodes.find(n => n.id === id);
-            if (!node || node.type !== "Event" || !node.timestamp) return true;
-            const ts = new Date(node.timestamp).getTime();
-            const start = propTimestampFilterStart ? new Date(propTimestampFilterStart).getTime() : -Infinity;
-            const end = propTimestampFilterEnd ? new Date(propTimestampFilterEnd).getTime() : Infinity;
-            return (ts >= start) && (ts <= end);
+            if (!node || node.type !== "Event") return true;
+
+            const timestamps: string[] =
+              Array.isArray(node.timestamps) ? node.timestamps :
+              typeof node.timestamp === "string" ? [node.timestamp] :
+              [];
+
+            // Keep the node if any of its timestamps fall in the range
+            return timestamps.some(ts => {
+              const t = new Date(ts).getTime();
+              return t >= start && t <= end;
+            });
           })
         );
       }
-      visible = filteredByStaticTime;
 
       return visible;
     };
-    const visibleIds = getVisibleNodeIdsForCommunication();
 
-    // const visibleEdges = graphData.links.filter(link => { // Tried to apply ANimation on visible Edges Only
-    //   const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
-    //   const targetId = typeof link.target === 'string' ? link.target : link.target.id;
-    //   return visibleIds.has(sourceId) && visibleIds.has(targetId);
-    // });
+    const visibleIds = getVisibleNodeIdsForCommunication();
 
 
     // Create a mutable copy of nodes to allow D3 to set x/y
@@ -586,14 +602,6 @@ const GraphView: React.FC<Props> = ({
         //.attr("marker-end", "url(#arrow)") // Uncomment if you want to use arrow markers
         .on("click", (event: any, d: any) => setSelectedInfo({ type: "link", data: d }));
 
-      const linkFlow = g.append("g")
-        .selectAll("polygon")
-        .data(linksToRender)
-        .enter().append("polygon")
-        .attr("points", "-7,-5 8,0 -7,5") // triangle shape, pointing right
-        .attr("fill", (d: any) => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
-        .attr("opacity", 0.9);
-
       simulation.on("tick", () => {
         g.selectAll<SVGLineElement, GraphLink>(".link")
           .attr("x1", d => (d.source as GraphNode).x!)
@@ -640,6 +648,38 @@ const GraphView: React.FC<Props> = ({
             link.target = { x: 0, y: 0 } as GraphNode;
         }
       });
+      const linkFlow = g.selectAll("polygon.link-arrow")
+        .data(linksToRender, (d: any) => `${d.source.id}-${d.target.id}`); // key for data join
+
+      // Remove arrows no longer needed
+      linkFlow.exit().remove();
+
+      // Add current arrows (using polygon)
+      linkFlow.enter()
+        .append("polygon")
+        .attr("class", "link-arrow")
+        .attr("points", "-7,-5 8,0 -7,5") // triangle shape
+        .merge(linkFlow as any) // merge enter + update
+        .attr("fill", (d: any) =>
+          d.type === "COMMUNICATION" ? "#2ca02c" :
+          d.type === "EVIDENCE_FOR" ? "#800080" :
+          "#999"
+        )
+        .attr("opacity", 0.9)
+        .attr("transform", (d: any) => {
+          const source = typeof d.source === "object" ? d.source : nodePositions[d.source];
+          const target = typeof d.target === "object" ? d.target : nodePositions[d.target];
+
+          const ratio = 0.25; // 0 = at source, 1 = at target; use 0.25 for "near source"
+          const arrowX = source.x + (target.x - source.x) * ratio;
+          const arrowY = source.y + (target.y - source.y) * ratio;
+
+          const angle = Math.atan2(target.y - source.y, target.x - source.x) * (180 / Math.PI);
+          return `translate(${arrowX},${arrowY}) rotate(${angle})`;
+        });
+
+    
+    
 
       // Stop any active simulation if a filter is applied after the initial render
       if (simulationRef.current) {
@@ -667,18 +707,16 @@ const GraphView: React.FC<Props> = ({
           })
           .attr("stroke-opacity", 0.6)
           .attr("stroke-width", 1)
+          //.attr("marker-end", "url(#arrow)") // Uncomment if you want to use arrow markers
           .on("click", (event, d) => setSelectedInfo({ type: "link", data: d })),
         update => update,
         exit => exit.remove()
       );
 
-      const linkFlow = g.append("g")
-        .selectAll("polygon")
-        .data(linksToRender)
-        .enter().append("polygon")
-        .attr("points", "-7,-5 8,0 -7,5") // triangle shape, pointing right
-        .attr("fill", (d: any) => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
-        .attr("opacity", 0.9);
+      
+
+
+
 
     // Drawing the nodes
     const node = g.selectAll<SVGGElement, GraphNode>(".node-group")
@@ -728,8 +766,8 @@ const GraphView: React.FC<Props> = ({
                   })
                   .attr("fill", (d: any) =>
                     d.type === "Entity" ? "#999" :
-                      d.type === "Event" ? "#1f77b4" :
-                        d.type === "Communication" ? "#1f77b4" :
+                      d.sub_type === "Communication" ? "#1f77b4" :
+                        d.type === "Event" ? "#ff7f0e" :
                           d.type === "Relationship" ? "#d62728" :
                             d.id === highlightedMessageId ? "#ff00ff" : "#999"
                   );
@@ -738,36 +776,54 @@ const GraphView: React.FC<Props> = ({
             .attr("text-anchor", "middle")
             .attr("dy", ".35em")
             .attr("fill", "black")
-            .text(d => d.type === "Entity" ? d.id : d.label)
-            .style("font-size", d => `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.label)?.length || 0 - 10))}px`);
-
-          // --- Animation ---
-          let animationFrameId: number;
-              function animateFlowDots() {
-                linkFlow.each(function (d: any, i: number) {
-                  const source = d.source as any;
-                  const target = d.target as any;
-                  if (!source || !target) return;
-                  const t = ((Date.now() / 3000 + i * 0.2) % 1);
-                  const x = source.x + (target.x - source.x) * t;
-                  const y = source.y + (target.y - source.y) * t;
-                  // Calculate angle for rotation
-                  const dx = target.x - source.x;
-                  const dy = target.y - source.y;
-                  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-                  d3.select(this)
-                    .attr("transform", `translate(${x},${y}) rotate(${angle})`);
-                });
-                animationFrameId = requestAnimationFrame(animateFlowDots);
-              }
-              animateFlowDots();
+            .text(d => d.type === "Entity" ? d.id : d.sub_type)
+            .style("font-size", d => `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`);
+            
           return group;
         },
         update => {
+          // Time window setup
+          const animationWindowEnd = currentAnimationTime + stepMS;
+
+          // Define which events are active (considering aggregated timestamps)
+          const isActiveEvent = (d) => {
+            if (d.type === "Event") {
+              if (Array.isArray(d.timestamps)) {
+                return d.timestamps.some(ts => {
+                  const time = new Date(ts).getTime();
+                  return time >= currentAnimationTime && time < animationWindowEnd;
+                });
+              } else if (d.timestamp) {
+                const eventTime = new Date(d.timestamp).getTime();
+                return eventTime >= currentAnimationTime && eventTime < animationWindowEnd;
+              }
+            }
+            return false;
+          };
+
+          // Collect active event IDs
+          const activeEventIds = new Set(
+            nodesToRender
+              .filter(d => isActiveEvent(d))
+              .map(d => d.id)
+          );
+
+          // Define which links are connected to active events
+          const isActiveLink = (l) => {
+            const src = typeof l.source === "string" ? l.source : l.source.id;
+            const tgt = typeof l.target === "string" ? l.target : l.target.id;
+            return activeEventIds.has(src) || activeEventIds.has(tgt);
+          };
           
+
+          // Mouse interaction handlers
           update
-            .on("mouseover", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4))
-            .on("mouseout", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "none"))
+            .on("mouseover", (event, d) =>
+              d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4)
+            )
+            .on("mouseout", (event, d) =>
+              d3.select(event.currentTarget).select("circle").attr("stroke", "none")
+            )
             .on("click", (event, d) => {
               setSelectedInfo({ type: "node", data: d });
               if (d.type === "Entity") {
@@ -775,35 +831,37 @@ const GraphView: React.FC<Props> = ({
               }
             });
 
-          // Update attributes for the circle and text within the node group
-          // Animation highlight logic
+          // Update node visuals
           update.select("circle")
-            .attr("fill", d => d.type === "Entity" ? "#999" : d.sub_type === "Communication" ? "#1f77b4" : d.type === "Event" ? "#2ca02c" : "#999")
-            .attr("stroke", (d) => { // Highlight active event nodes
-                if (d.type === "Event" && d.timestamp) {
-                    const eventTime = new Date(d.timestamp).getTime();
-                    const animationWindowEnd = currentAnimationTime + stepMS; // End of current step window
-                    if (eventTime >= currentAnimationTime && eventTime < animationWindowEnd) {
-                      // ANimation passend zu nodes in momeentanen frame
-                        return "red"; // Highlight color
-                    }
-                }
-                return "none";
-            })
-            .attr("stroke-width", (d) => {
-                if (d.type === "Event" && d.timestamp) {
-                    const eventTime = new Date(d.timestamp).getTime();
-                    const animationWindowEnd = currentAnimationTime + stepMS;
-                    if (eventTime >= currentAnimationTime && eventTime < animationWindowEnd) {
-                        return 3; // Highlight thickness
-                    }
-                }
-                return 0;
+            .attr("fill", d =>
+              d.type === "Entity"
+                ? "#999"
+                : d.sub_type === "Communication"
+                ? "#1f77b4"
+                : d.type === "Event"
+                ? "#ff7f0e"
+                : "#999"
+            )
+            .attr("stroke", d => (isActiveEvent(d) ? "red" : "none"))
+            .attr("stroke-width", d => (isActiveEvent(d) ? 3 : 0))
+            .attr("opacity", d => {
+              if (d.type === "Event") {
+                return isActiveEvent(d) ? 1 : 0.15;
+              }
+              return 1;
             });
 
+          // Update text labels
           update.select("text")
-            .text(d => d.type === "Entity" ? d.id : d.label)
-            .style("font-size", d => `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.label)?.length || 0 - 10))}px`);
+            .text(d => (d.type === "Entity" ? d.id : d.sub_type))
+            .style("font-size", d =>
+              `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
+            );
+
+          // OPTIONAL: Update link visibility
+          d3.select(svgRef.current)
+            .selectAll("line") // update class if your links have a different tag/class
+            .attr("opacity", d => (isActiveLink(d) ? 1 : 0.5));
 
           return update;
         },
