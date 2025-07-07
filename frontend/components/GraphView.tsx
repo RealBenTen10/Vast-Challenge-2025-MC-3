@@ -223,9 +223,9 @@ const GraphView: React.FC<Props> = ({
         <option value={12 * 60}>12 h</option>
         <option value={24 * 60}>1 day</option>
       </select>
-      <div style={{ marginTop: '10px' }}>
-      <strong>Current Time:</strong> {new Date(currentAnimationTime).toLocaleString()}
-    </div>
+      
+      <strong> Current Time: </strong> {new Date(currentAnimationTime).toLocaleString()}
+    
     </div>
     
   );
