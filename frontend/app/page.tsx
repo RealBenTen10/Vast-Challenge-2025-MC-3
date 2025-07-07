@@ -53,7 +53,7 @@ export default function Home() {
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(true);
   const [graphHeight, setGraphHeight] = useState<number>(600);
-  const [sankeyHeight, setSankeyHeight] = useState<number>(400); // Add state for Sankey height
+  const [sankeyHeight, setSankeyHeight] = useState<number>(800); // Add state for Sankey height
   const dragRef = useRef<HTMLDivElement | null>(null);
   const sankeyDragRef = useRef<HTMLDivElement | null>(null); // Ref for Sankey drag handle
   const [allEntities, setAllEntities] = useState<{ id: string; sub_type?: string }[]>([]);
@@ -283,103 +283,85 @@ export default function Home() {
     <div className="flex w-full max-w-7xl gap-4">
     </div>
 
-    {/* Graph + Sankey */}
-    {(showGraph || showSankey) && (
-      <div className="w-full flex flex-row gap-4 items-start">
-        {showGraph && (
-          <div className="flex-1 min-w-0 flex flex-col items-center">
-            <div ref={graphContainerRef} className="flex-1 border rounded-lg mt-6" style={{ height: `${graphHeight}px`, width: "100%" }}>
-            </div>
-            <GraphView
-              graphData={graphData}
-              svgRef={svgRef}
-              graphContainerRef={graphContainerRef}
-              filterSender={filterSender}
-              setFilterSender={setFilterSender}
-              filterReceiver={filterReceiver}
-              setFilterReceiver={setFilterReceiver}
-              filterEntityId={filterEntityId}
-              filterDepth={filterDepth}
-              filterContent={filterContent}
-              filterMode={filterMode}
-              timestampFilterStart={timestampFilterStart}
-              timestampFilterEnd={timestampFilterEnd}
-              selectedTimestamp={selectedTimestamp}
-              setVisibleEntities={setVisibleEntities}
-              setSubtypeCounts={setSubtypeCounts}
-              setEdgeTypeCounts={setEdgeTypeCounts}
-              setEdgeCount={setEdgeCount}
-              setSelectedInfo={setSelectedInfo}
-              highlightedMessageId={highlightedMessageId}
-              graphHeight={graphHeight}
-              setCommunicationEvents={setCommunicationEvents}
-              communicationEvents={communicationEvents}
-              setCommunicationEventsAfterTimeFilter={setCommunicationEventsAfterTimeFilter}
-              setEventsAfterTimeFilter={setEventsAfterTimeFilter}
-              communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
-              callApi={callApi}
-              relevantEvents={relevantEvents}
-              setrelevantEvents={setrelevantEvents}
-              commGraphData={commGraphData}
-            />
-            {/* Resizable Drag Handle */}
-            <div
-              ref={dragRef}
-              style={{ cursor: 'row-resize', height: '10px', width: '100%', background: '#e5e7eb' }}
-              onMouseDown={() => { if (dragRef.current) dragRef.current.dataset.dragging = 'true'; }}
-              className="mb-2"
-            />
-          </div>
-        )}
-        {showSankey && (
-          <div className="flex-1 min-w-0 mt-6" style={{height: sankeyHeight}}>
-            <Sankey 
-            entityId={filterEntityId} 
-            selectedDate={selectedTimestamp} 
-            height={sankeyHeight} 
-            filterSender={filterSender}
-            setFilterSender={setFilterSender}
-            filterReceiver={filterReceiver}
-            setFilterReceiver={setFilterReceiver}
-            timestampFilterStart={timestampFilterStart}
-            timestampFilterEnd={timestampFilterEnd}
-            filterContent={filterContent}
-            setFilterModeMessages={setFilterModeMessages}
-            />
-            {/* Resizable Drag Handle for Sankey */}
-            <div
-              ref={sankeyDragRef}
-              style={{ cursor: 'row-resize', height: '10px', width: '100%', background: '#e5e7eb' }}
-              onMouseDown={() => { if (sankeyDragRef.current) sankeyDragRef.current.dataset.dragging = 'true'; }}
-              className="mb-2"
-            />
-          </div>
-        )}
+    {/* Graph */}
+    {showGraph && (
+      <div className="w-full flex-1 min-w-0 flex flex-col items-center">
+        <div ref={graphContainerRef} className="w-full flex-1 border rounded-lg mt-6" style={{ height: `${graphHeight}px`, width: "100%" }}>
+        </div>
+        <GraphView
+          graphData={graphData}
+          svgRef={svgRef}
+          graphContainerRef={graphContainerRef}
+          filterSender={filterSender}
+          setFilterSender={setFilterSender}
+          filterReceiver={filterReceiver}
+          setFilterReceiver={setFilterReceiver}
+          filterEntityId={filterEntityId}
+          filterDepth={filterDepth}
+          filterContent={filterContent}
+          filterMode={filterMode}
+          timestampFilterStart={timestampFilterStart}
+          timestampFilterEnd={timestampFilterEnd}
+          selectedTimestamp={selectedTimestamp}
+          setVisibleEntities={setVisibleEntities}
+          setSubtypeCounts={setSubtypeCounts}
+          setEdgeTypeCounts={setEdgeTypeCounts}
+          setEdgeCount={setEdgeCount}
+          setSelectedInfo={setSelectedInfo}
+          highlightedMessageId={highlightedMessageId}
+          graphHeight={graphHeight}
+          setCommunicationEvents={setCommunicationEvents}
+          communicationEvents={communicationEvents}
+          setCommunicationEventsAfterTimeFilter={setCommunicationEventsAfterTimeFilter}
+          setEventsAfterTimeFilter={setEventsAfterTimeFilter}
+          communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
+          callApi={callApi}
+          relevantEvents={relevantEvents}
+          setrelevantEvents={setrelevantEvents}
+          commGraphData={commGraphData}
+        />
+        {/* Resizable Drag Handle */}
+        <div
+          ref={dragRef}
+          style={{ cursor: 'row-resize', height: '10px', width: '100%', background: '#e5e7eb' }}
+          onMouseDown={() => { if (dragRef.current) dragRef.current.dataset.dragging = 'true'; }}
+          className="mb-2"
+        />
       </div>
     )}
 
-    {/* Time Bar Chart und CommunicationView nebeneinander */}
-    {(showTimeBar || true) && (
-      <div className="w-full max-w-7xl flex flex-row gap-4 items-start mt-4">
-        {showTimeBar && (
-          <div className="flex-1 min-w-0">
-            <TimeBarChart
-              graphData={graphData}
-              selectedTimestamp={selectedTimestamp}
-              setSelectedTimestamp={setSelectedTimestamp}
-              visibleEntities={visibleEntities}
-              timestampFilterStart={timestampFilterStart}
-              timestampFilterEnd={timestampFilterEnd}
-              setTimestampFilterStart={setTimestampFilterStart}
-              setTimestampFilterEnd={setTimestampFilterEnd}
-              filterSender={filterSender}
-              setFilterSender={setFilterSender}
-              filterReceiver={filterReceiver}
-              setFilterReceiver={setFilterReceiver}
-              communicationEvents={communicationEvents}
-            />
-          </div>
-        )}
+    {/* Selected Info with Toggle Button and Sidepanel Wrapper */}
+    <div className="fixed right-0 top-20 z-50">
+      <button 
+        onClick={() => setShowInfoPanel(!showInfoPanel)} 
+        className="bg-blue-500 text-white px-4 py-2 rounded-l"
+      >
+        {showInfoPanel ? "Close Info" : "Show Info"}
+      </button>
+    </div>
+
+    {/* Filters with Toggle Button and Sidepanel Wrapper */}
+    <div className="fixed left-0 top-20 z-50">
+      <button 
+        onClick={() => setShowFilterPanel(!showFilterPanel)} 
+        className="bg-blue-500 text-white px-4 py-2 rounded-r"
+      >
+        {showFilterPanel ? "Close Filters" : "Show Filters"}
+      </button>
+    </div>
+
+    {showInfoPanel && (
+      <div className="fixed top-20 right-0 w-[300px] h-[calc(100vh-5rem)] bg-white shadow-lg border-l z-40 overflow-y-auto flex flex-col gap-4">
+        <SelectedInfoPanel selectedInfo={selectedInfo} />
+        <GraphSummary edgeCount={edgeCount} edgeTypeCounts={edgeTypeCounts} subtypeCounts={subtypeCounts} entities={allEntities} />
+      </div>
+    )}
+
+    {/* CommunicationView, Time Bar Chart, Sankey  und EventsView nebeneinander */}
+    {(true || showTimeBar || showSankey || true) && (
+      <div className="w-full flex gap-4 items-center gap-4">
+
+        {/* CommunicationView */}
         <div className="flex-1 min-w-0">
           <CommunicationView
             className="mt-0"
@@ -410,19 +392,67 @@ export default function Home() {
             selectedEventId={selectedEventId}
           />
         </div>
+
+        {/* Time Bar Chart */}
+        {showTimeBar && (
+          <div className="flex-1 min-w-0">
+            <TimeBarChart
+              graphData={graphData}
+              selectedTimestamp={selectedTimestamp}
+              setSelectedTimestamp={setSelectedTimestamp}
+              visibleEntities={visibleEntities}
+              timestampFilterStart={timestampFilterStart}
+              timestampFilterEnd={timestampFilterEnd}
+              setTimestampFilterStart={setTimestampFilterStart}
+              setTimestampFilterEnd={setTimestampFilterEnd}
+              filterSender={filterSender}
+              setFilterSender={setFilterSender}
+              filterReceiver={filterReceiver}
+              setFilterReceiver={setFilterReceiver}
+              communicationEvents={communicationEvents}
+            />
+          </div>
+        )}
+
+        {/* Sankey Diagram */}
+        {showSankey && (
+          <div className="flex-1 min-w-0 mt-6" style={{height: sankeyHeight}}>
+            <Sankey 
+            entityId={filterEntityId} 
+            selectedDate={selectedTimestamp} 
+            height={sankeyHeight} 
+            filterSender={filterSender}
+            setFilterSender={setFilterSender}
+            filterReceiver={filterReceiver}
+            setFilterReceiver={setFilterReceiver}
+            timestampFilterStart={timestampFilterStart}
+            timestampFilterEnd={timestampFilterEnd}
+            filterContent={filterContent}
+            setFilterModeMessages={setFilterModeMessages}
+            />
+            {/* Resizable Drag Handle for Sankey */}
+            <div
+              ref={sankeyDragRef}
+              style={{ cursor: 'row-resize', height: '10px', width: '100%', background: '#e5e7eb' }}
+              onMouseDown={() => { if (sankeyDragRef.current) sankeyDragRef.current.dataset.dragging = 'true'; }}
+              className="mb-2"
+            />
+          </div>
+        )}
+
+        {/*Events View */}
+        <div className="flex-1 min-w-0">
+            <EventsView
+              eventsAfterTimeFilter={EventsAfterTimeFilter}
+              setSelectedEventId={setSelectedEventId}
+              selectedEventId={selectedEventId}
+              setFilterModeMessages={setFilterModeMessages}
+              />
+                
+        </div>
       </div>
     )}
 
-    {/* Event View */}
-    <EventsView
-      eventsAfterTimeFilter={EventsAfterTimeFilter}
-      setSelectedEventId={setSelectedEventId}
-      selectedEventId={selectedEventId}
-      setFilterModeMessages={setFilterModeMessages}
-      />
-
-    {/* Massive Sequence View */}
-    
   </section>
 );
 
