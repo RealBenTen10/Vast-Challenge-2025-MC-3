@@ -211,14 +211,20 @@ const GraphView: React.FC<Props> = ({
       <button onClick={() => handleStep('forward')}>Step ▶</button>
       <select value={stepMS / 60000} onChange={e => setStepMS(+e.target.value * 60000)}>
         <option value={1}>1 min</option>
-        <option value={10}>10 min</option>
+        <option value={5}>5 min</option>
+        <option value={15}>15 min</option>
+        <option value={30}>30 min</option>
         <option value={60}>1 h</option>
+        <option value={3 * 60}>3 h</option>
+        <option value={6 * 60}>6 h</option>
+        <option value={12 * 60}>12 h</option>
         <option value={24 * 60}>1 day</option>
       </select>
-      {/* <div style={{marginTop: '10px', color: 'white'}}>
-        Current Time: {new Date(currentAnimationTime).toLocaleString()}
-      </div> */}
+      <div style={{ marginTop: '10px' }}>
+      <strong>Current Time:</strong> {new Date(currentAnimationTime).toLocaleString()}
     </div>
+    </div>
+    
   );
 
   useEffect(() => {
@@ -782,41 +788,7 @@ const GraphView: React.FC<Props> = ({
           return group;
         },
         update => {
-          // Time window setup
-          const animationWindowEnd = currentAnimationTime + stepMS;
-
-          // Define which events are active (considering aggregated timestamps)
-          const isActiveEvent = (d) => {
-            if (d.type === "Event") {
-              if (Array.isArray(d.timestamps)) {
-                return d.timestamps.some(ts => {
-                  const time = new Date(ts).getTime();
-                  return time >= currentAnimationTime && time < animationWindowEnd;
-                });
-              } else if (d.timestamp) {
-                const eventTime = new Date(d.timestamp).getTime();
-                return eventTime >= currentAnimationTime && eventTime < animationWindowEnd;
-              }
-            }
-            return false;
-          };
-
-          // Collect active event IDs
-          const activeEventIds = new Set(
-            nodesToRender
-              .filter(d => isActiveEvent(d))
-              .map(d => d.id)
-          );
-
-          // Define which links are connected to active events
-          const isActiveLink = (l) => {
-            const src = typeof l.source === "string" ? l.source : l.source.id;
-            const tgt = typeof l.target === "string" ? l.target : l.target.id;
-            return activeEventIds.has(src) || activeEventIds.has(tgt);
-          };
-          
-
-          // Mouse interaction handlers
+          // Mouse interaction handlers (applies in both states)
           update
             .on("mouseover", (event, d) =>
               d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4)
@@ -831,39 +803,92 @@ const GraphView: React.FC<Props> = ({
               }
             });
 
-          // Update node visuals
-          update.select("circle")
-            .attr("fill", d =>
-              d.type === "Entity"
-                ? "#999"
-                : d.sub_type === "Communication"
-                ? "#1f77b4"
-                : d.type === "Event"
-                ? "#ff7f0e"
-                : "#999"
-            )
-            .attr("stroke", d => (isActiveEvent(d) ? "red" : "none"))
-            .attr("stroke-width", d => (isActiveEvent(d) ? 3 : 0))
-            .attr("opacity", d => {
-              if (d.type === "Event") {
-                return isActiveEvent(d) ? 1 : 0.15;
-              }
-              return 1;
-            });
+          if (isPlaying) {
+            const animationWindowEnd = currentAnimationTime + stepMS;
 
-          // Update text labels
+            const isActiveEvent = (d) => {
+              if (d.type === "Event") {
+                if (Array.isArray(d.timestamps)) {
+                  return d.timestamps.some(ts => {
+                    const time = new Date(ts).getTime();
+                    return time >= currentAnimationTime && time < animationWindowEnd;
+                  });
+                } else if (d.timestamp) {
+                  const eventTime = new Date(d.timestamp).getTime();
+                  return eventTime >= currentAnimationTime && eventTime < animationWindowEnd;
+                }
+              }
+              return false;
+            };
+
+            const activeEventIds = new Set(
+              nodesToRender
+                .filter(d => isActiveEvent(d))
+                .map(d => d.id)
+            );
+
+            const isActiveLink = (l) => {
+              const src = typeof l.source === "string" ? l.source : l.source.id;
+              const tgt = typeof l.target === "string" ? l.target : l.target.id;
+              return activeEventIds.has(src) || activeEventIds.has(tgt);
+            };
+
+            // Update node visuals for animation
+            update.select("circle")
+              .attr("fill", d =>
+                d.type === "Entity"
+                  ? "#999"
+                  : d.sub_type === "Communication"
+                  ? "#1f77b4"
+                  : d.type === "Event"
+                  ? "#ff7f0e"
+                  : "#999"
+              )
+              .attr("stroke", d => (isActiveEvent(d) ? "red" : "none"))
+              .attr("stroke-width", d => (isActiveEvent(d) ? 3 : 0))
+              .attr("opacity", d => {
+                if (d.type === "Event") {
+                  return isActiveEvent(d) ? 1 : 0.15;
+                }
+                return 1;
+              });
+
+            // Update link visibility during animation
+            d3.select(svgRef.current)
+              .selectAll("line")
+              .attr("opacity", d => (isActiveLink(d) ? 1 : 0.1));
+
+          } else {
+            // Normal (non-animated) rendering
+
+            update.select("circle")
+              .attr("fill", d =>
+                d.type === "Entity"
+                  ? "#999"
+                  : d.sub_type === "Communication"
+                  ? "#1f77b4"
+                  : d.type === "Event"
+                  ? "#ff7f0e"
+                  : "#999"
+              )
+              .attr("stroke", "none")
+              .attr("stroke-width", 0)
+              .attr("opacity", 1); // full opacity for all
+
+            d3.select(svgRef.current)
+              .selectAll("line")
+              .attr("opacity", 1); // all links visible
+          }
+
+          // Update text labels (common to both states)
           update.select("text")
             .text(d => (d.type === "Entity" ? d.id : d.sub_type))
             .style("font-size", d =>
               `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
             );
 
-          // OPTIONAL: Update link visibility
-          d3.select(svgRef.current)
-            .selectAll("line") // update class if your links have a different tag/class
-            .attr("opacity", d => (isActiveLink(d) ? 1 : 0.5));
-
           return update;
+
         },
         exit => exit.remove()
       );
