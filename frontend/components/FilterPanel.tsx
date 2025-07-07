@@ -116,8 +116,8 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   };
 
   return (
-    <div className="w-[400px] flex-shrink-0 border rounded-lg p-4">
-      <h3 className="text-lg font-semibold mb-2">Neo4j Graph Actions</h3>
+    <div className="w-[300px] flex-shrink-0 border rounded-lg p-4">
+      <h3 className="text-lg font-semibold mb-2 text-right">Graph Actions</h3>
       <Button onPress={() => callApi("/load-graph-json")} className="mt-2" color="primary">
         Load JSON Graph
       </Button>
@@ -234,16 +234,6 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
       
       
       <Alert isVisible={!!statusMsg} color="info" title="Status" description={statusMsg} className="mt-4" />
-
-      {/* CommunicationView Filter */}
-      <div className="mt-6 border-t pt-4">
-        <div className="font-semibold mb-2">Message Filter</div>
-        <Input label="Start Date (YYYY-MM-DD)" value={msvStartDate} onChange={e => setMsvStartDate(e.target.value)} className="mb-2" />
-        <Input label="End Date" value={msvEndDate} onChange={e => setMsvEndDate(e.target.value)} className="mb-2" />
-        <Input label="Entity ID" value={msvEntityFilter} onChange={e => setMsvEntityFilter(e.target.value)} className="mb-2" />
-        <Input label="Keyword" value={msvKeyword} onChange={e => setMsvKeyword(e.target.value)} className="mb-2" />
-        <Button color="primary" onPress={loadMSV} className="mt-2">Apply Message Filter</Button>
-      </div>
     </div>
   );
 };
