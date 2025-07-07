@@ -177,7 +177,7 @@ const TimeBarChart: React.FC<TimeBarChartProps> = ({
     g.append("text")
       .attr("transform", "rotate(-90)")
       .attr("x", -innerHeight / 2)
-      .attr("y", -35)
+      .attr("y", -25)
       .attr("text-anchor", "middle")
       .text("Event Count");
 
