@@ -126,15 +126,17 @@ const GraphView: React.FC<Props> = ({
         const tgt = typeof link.target === "string" ? link.target : link.target.id;
         // Prüfe, ob die Entity beteiligt ist und die andere Seite ein CommunicationAggregate ist
         if (src === id) {
-          const tgtNode = graphData.nodes.find((n: any) => n.id === tgt && n.type === "Communication");
+          const tgtNode = graphData.nodes.find((n: any) => n.id === tgt && n.sub_type === "Communication");
           if (tgtNode) commCount++;
         }
         if (tgt === id) {
-          const srcNode = graphData.nodes.find((n: any) => n.id === src && n.type === "Communication");
+          const srcNode = graphData.nodes.find((n: any) => n.id === src && n.sub_type === "Communication");
           if (srcNode) commCount++;
         }
       });
-      return DEFAULT_RADIUS + 1.5 * (Math.max(1, commCount) - 1);
+      console.log(`Entity ${id} has ${commCount} CommunicationAggregate connections.`);
+      return DEFAULT_RADIUS + commCount * 0.2;
+
     };
 
   // Parse prop timestamps for initial animation range

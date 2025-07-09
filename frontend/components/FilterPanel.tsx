@@ -67,6 +67,8 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   ...props
 }) => {
   const [contentInput, setContentInput] = useState(filterContent);
+  const [lastEditedField, setLastEditedField] = useState<"sender" | "receiver" | null>(null);
+
 
   const handleContentKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -128,9 +130,42 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           className="mt-1 block w-full border rounded px-2 py-1 text-sm"
           type="text"
           value={filterSender}
-          onChange={(e) => setFilterSender(e.target.value)}
+          onChange={(e) => {
+            setLastEditedField("sender");
+            const val = e.target.value;
+            setFilterSender(val);
+            if (val.length > 0) {
+              setEntitySuggestions(
+                allEntities
+                  .map((e) => e.id)
+                  .filter((id) => id.toLowerCase().includes(val.toLowerCase()))
+                  .slice(0, 8)
+              );
+            } else {
+              setEntitySuggestions([]);
+            }
+          }}
           placeholder="e.g., Boss"
+          autoComplete="off"
         />
+        {lastEditedField === "sender" && entitySuggestions.length > 0 && (
+        <ul className="absolute left-0 right-0 bg-white border rounded shadow z-10 max-h-40 overflow-auto mt-1">
+          {entitySuggestions.map((suggestion) => (
+            <li
+              key={suggestion}
+              className="px-2 py-1 hover:bg-blue-100 cursor-pointer"
+              onMouseDown={() => {
+                if (lastEditedField === "sender") setFilterSender(suggestion);
+                else setFilterReceiver(suggestion);
+                setEntitySuggestions([]);
+                setLastEditedField(null);
+              }}
+            >
+              {suggestion}
+            </li>
+          ))}
+        </ul>
+      )}
       </div>
 
       <div className="mt-4">
@@ -139,19 +174,35 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           className="mt-1 block w-full border rounded px-2 py-1 text-sm"
           type="text"
           value={filterReceiver}
-          onChange={(e) => setFilterReceiver(e.target.value)}
+          onChange={(e) => {
+            setLastEditedField("receiver");
+            const val = e.target.value;
+            setFilterReceiver(val);
+            if (val.length > 0) {
+              setEntitySuggestions(
+                allEntities
+                  .map((e) => e.id)
+                  .filter((id) => id.toLowerCase().includes(val.toLowerCase()))
+                  .slice(0, 8)
+              );
+            } else {
+              setEntitySuggestions([]);
+            }
+          }}
           placeholder="e.g., Boss"
           autoComplete="off"
         />
-        {entitySuggestions.length > 0 && (
+        {lastEditedField === "receiver" && entitySuggestions.length > 0 && (
           <ul className="absolute left-0 right-0 bg-white border rounded shadow z-10 max-h-40 overflow-auto mt-1">
             {entitySuggestions.map((suggestion) => (
               <li
                 key={suggestion}
                 className="px-2 py-1 hover:bg-blue-100 cursor-pointer"
                 onMouseDown={() => {
-                  setFilterEntityId(suggestion);
+                  if (lastEditedField === "receiver") setFilterReceiver(suggestion);
+                  else setFilterSender(suggestion);
                   setEntitySuggestions([]);
+                  setLastEditedField(null);
                 }}
               >
                 {suggestion}
