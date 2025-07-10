@@ -100,53 +100,55 @@ export default function CommunicationView({
   };
 
   useEffect(() => {
-    const loadMSV = async () => {
-      if (filterModeMessages === "evidence" || filterModeMessages === "similarity") return;
+  const loadMSV = async () => {
+    if (filterModeMessages === "evidence" || filterModeMessages === "similarity") return;
 
-      setLoading(true);
-      setError(null);
-      try {
-        const eventIds = communicationEventsWithTimeFilter.map((e) => e.id);
-        if (eventIds.length === 0) {
-          setMsvData([]);
-          return;
-        }
-
-        const BATCH_SIZE = 300;
-        const batches = [];
-
-        for (let i = 0; i < eventIds.length; i += BATCH_SIZE) {
-          batches.push(eventIds.slice(i, i + BATCH_SIZE));
-        }
-
-        const allResults: MSVItem[] = [];
-
-        for (const batch of batches) {
-          const params = new URLSearchParams();
-          batch.forEach((id) => params.append("event_ids", id));
-
-          const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
-          const text = await res.text();
-          if (!text) throw new Error("Empty response from server");
-
-          const data = JSON.parse(text);
-          if (data.success) {
-            allResults.push(...data.data);
-          } else {
-            throw new Error(data.error || "Failed to load data");
-          }
-        }
-
-        setMsvData(allResults);
-      } catch (err) {
-        setError(String(err));
-      } finally {
-        setLoading(false);
+    setLoading(true);
+    setError(null);
+    try {
+      const eventIds = communicationEventsWithTimeFilter; // Already a list of strings
+      console.log("loadMSV: ", eventIds)
+      if (eventIds.length === 0) {
+        setMsvData([]);
+        return;
       }
-    };
 
-    loadMSV();
-  }, [communicationEventsWithTimeFilter, filterModeMessages]);
+      const BATCH_SIZE = 300;
+      const batches = [];
+
+      for (let i = 0; i < eventIds.length; i += BATCH_SIZE) {
+        batches.push(eventIds.slice(i, i + BATCH_SIZE));
+      }
+
+      const allResults: MSVItem[] = [];
+
+      for (const batch of batches) {
+        const params = new URLSearchParams();
+        batch.forEach((id) => params.append("event_ids", id));
+
+        const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
+        const text = await res.text();
+        if (!text) throw new Error("Empty response from server");
+
+        const data = JSON.parse(text);
+        if (data.success) {
+          allResults.push(...data.data);
+        } else {
+          throw new Error(data.error || "Failed to load data");
+        }
+      }
+
+      setMsvData(allResults);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadMSV();
+}, [communicationEventsWithTimeFilter, filterModeMessages]);
+
 
   const filteredData = (() => {
     if (filterModeMessages === "evidence") return evidenceResults;

@@ -655,6 +655,7 @@ async def massive_sequence_view(
     """
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     results = []
+    print("Event_ids:" ,event_ids)
 
     try:
         with driver.session() as session:

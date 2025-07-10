@@ -301,6 +301,7 @@ const GraphView: React.FC<Props> = ({
     const svg = d3.select(svgRef.current);
     const g = svg.select<SVGGElement>("g.graph-content"); // Select the existing group
 
+    if (!isPlaying || !isInAnimation) {
     const getVisibleNodeIds = (): Set<string> => {
       let visible = new Set<string>();
 
@@ -407,13 +408,17 @@ const GraphView: React.FC<Props> = ({
 
 
       const visibleSetAfterTimeFilter = new Set(visible);
-      setCommunicationEventsAfterTimeFilter(
-        graphData.nodes.filter(n =>
-          n.type === "Event" &&
-          n.sub_type === "Communication" &&
-          visibleSetAfterTimeFilter.has(n.id)
-        )
-      );
+        setCommunicationEventsAfterTimeFilter(
+          graphData.nodes
+            .filter(
+              (n) =>
+                n.type === "Event" &&
+                n.sub_type === "Communication" &&
+                visibleSetAfterTimeFilter.has(n.id)
+            )
+            .map((n) => n.id) // extract only the IDs
+        );
+
 
       const filteredEvents = graphData.nodes.filter(n =>
         n.type === "Event" &&
@@ -427,7 +432,9 @@ const GraphView: React.FC<Props> = ({
 
       return visible;
     };
-    if (!isPlaying) {const notUsed = getVisibleNodeIds();}
+    const notUsed = getVisibleNodeIds();
+  }
+    
     
 
     const getVisibleNodeIdsForCommunication = (): Set<string> => {
@@ -811,12 +818,53 @@ const GraphView: React.FC<Props> = ({
     }
     return false;
   };
-
+  
   const activeEventIds = new Set(
     nodesToRender
       .filter(d => isActiveEvent(d))
       .map(d => d.id)
   );
+  
+  if (isPlaying || isInAnimation) {
+  const getActiveEventIdsForCommView = (nodes: any[]) => {
+    const activeIds = new Set<string>();
+
+    nodes.forEach((d) => {
+      if (
+        d.sub_type === "Communication" &&
+        Array.isArray(d.timestamps) &&
+        Array.isArray(d.event_ids)
+      ) {
+        // Ensure matching lengths to avoid index mismatches
+        const minLen = Math.min(d.timestamps.length, d.event_ids.length);
+
+        for (let i = 0; i < minLen; i++) {
+          const ts = new Date(d.timestamps[i]).getTime();
+          if (ts >= currentAnimationTime && ts < animationWindowEnd) {
+            activeIds.add(d.event_ids[i]);
+          }
+        }
+      } else if (
+        d.sub_type === "Communication" &&
+        d.timestamp &&
+        d.id
+      ) {
+        // Fallback for single timestamp + single id (non-aggregated case)
+        const ts = new Date(d.timestamp).getTime();
+        if (ts >= currentAnimationTime && ts < animationWindowEnd) {
+          activeIds.add(d.id);
+        }
+      }
+    });
+
+    return Array.from(activeIds); // Convert Set<string> to string[]
+  };
+
+  const activeEventIdsForCommView = getActiveEventIdsForCommView(nodesToRender);
+  setCommunicationEventsAfterTimeFilter(activeEventIdsForCommView);
+  console.log("Nodes to render: ", nodesToRender)
+  console.log("For Animation: ", activeEventIdsForCommView)
+  }
 
   const isActiveLink = (l) => {
     const src = typeof l.source === "string" ? l.source : l.source.id;
@@ -851,7 +899,7 @@ const GraphView: React.FC<Props> = ({
           ? "#ff7f0e"
           : "#999"
       )
-      .attr("stroke", d => (isActiveEvent(d) ? "red" : "none"))
+      //.attr("stroke", d => (isActiveEvent(d) ? "red" : "none")) // Do we still need this?
       .attr("stroke-width", d => (isActiveEvent(d) ? 3 : 0))
       .attr("opacity", d => {
         if (d.type === "Event") {
