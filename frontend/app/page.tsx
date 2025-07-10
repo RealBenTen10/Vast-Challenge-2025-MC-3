@@ -319,6 +319,7 @@ export default function Home() {
           relevantEvents={relevantEvents}
           setrelevantEvents={setrelevantEvents}
           commGraphData={commGraphData}
+          setSelectedEventId={setSelectedEventId}
         />
         {/* Resizable Drag Handle */}
         <div

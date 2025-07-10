@@ -64,6 +64,7 @@ interface Props {
   highlightedMessageId?: string | null;
   graphHeight: number;
   commGraphData: GraphDataModified;
+  setSelectedEventId: (id: string) => void;
 }
 
 const GraphView: React.FC<Props> = ({
@@ -96,7 +97,8 @@ const GraphView: React.FC<Props> = ({
   callApi,
   relevantEvents,
   setrelevantEvents,
-  commGraphData
+  commGraphData,
+  setSelectedEventId
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isInAnimation, setIsInAnimation] = useState(false);
@@ -114,6 +116,7 @@ const GraphView: React.FC<Props> = ({
   const [animationStartTime, setAnimationStartTime] = useState<number>(defaultStartDate);
   const [animationEndTime, setAnimationEndTime] = useState<number>(defaultEndDate);
   const [currentAnimationTime, setCurrentAnimationTime] = useState<number>(defaultStartDate);
+
 
   const DEFAULT_RADIUS = 20;
   const HIGHLIGHT_RADIUS = 30;
@@ -784,6 +787,10 @@ const GraphView: React.FC<Props> = ({
       setSelectedInfo({ type: "node", data: d });
       if (d.type === "Entity") {
         setFilterSender(d.id);
+      }
+      // Get glicked Event for EventView and CommView (Evidence_for)
+      if (d.type === "Event" && d.sub_type !== "Communication") {
+        setSelectedEventId(d.id);
       }
     });
 
