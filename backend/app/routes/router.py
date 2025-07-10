@@ -667,7 +667,7 @@ async def massive_sequence_view(
                 RETURN comm, sender.id AS source, receiver.id AS target
                 ORDER BY comm.timestamp
             """
-            records = session.run(query, event_ids=event_ids_sorted)
+            records = session.run(query, event_ids=event_ids)
 
             for record in records:
                 comm = record["comm"]
