@@ -416,7 +416,7 @@ const GraphView: React.FC<Props> = ({
                 n.sub_type === "Communication" &&
                 visibleSetAfterTimeFilter.has(n.id)
             )
-            .map((n) => n.id) // extract only the IDs
+            .map((n) => n.id) // extract only the IDs rest is fetched in CommView
         );
 
 
@@ -1005,7 +1005,6 @@ const GraphView: React.FC<Props> = ({
     filterMode,
     nodePositions,
     currentAnimationTime,
-    stepMS,
     setSelectedInfo,
     setFilterSender,
     commGraphData
