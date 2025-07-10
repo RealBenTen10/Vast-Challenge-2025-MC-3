@@ -55,6 +55,10 @@ export default function CommunicationView({
   const [similarityResults, setSimilarityResults] = useState<MSVItem[]>([]);
   const [evidenceResults, setEvidenceResults] = useState<MSVItem[]>([]);
   const [queryInput, setQueryInput] = useState<string>(""); 
+  const [similarityThreshold, setSimilarityThreshold] = useState<number>(0.7)
+  const [prevSimilarityThreshold, setPrevSimilarityThreshold] = useState<number>(0.7)
+  const [topK, setTopK] = useState<number>(50);
+  const [byTime, setByTime] = useState(false);
 
   useEffect(() => {
     const fetchEvidence = async () => {
@@ -83,11 +87,12 @@ export default function CommunicationView({
     if (!searchQuery) return;
     try {
       setLoading(true);
-      setSimilarityQuery("")
-      const res = await fetch(`/api/similarity-search?query=${encodeURIComponent(searchQuery)}&top_k=50`);
+      if (query) setSimilarityQuery("");
+      const res = await fetch(`/api/similarity-search?query=${encodeURIComponent(searchQuery)}&top_k=${topK}&score_threshold=${similarityThreshold}&order_by_time=${byTime}`);
       const data = await res.json();
       if (data.success) {
         setSimilarityResults(data.data);
+        console.log(data.data)
       } else {
         setError("Failed to fetch similar messages.");
       }
@@ -192,56 +197,107 @@ export default function CommunicationView({
   return (
     <Card className={`w-full max-w-7xl mt-8`}>
       <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <h4 className="text-lg font-semibold">{filteredData.length} Messages</h4>
-          <div className="flex gap-2 flex-wrap">
-            {["all", "filtered", "direct", "directed", "evidence", "similarity"].map((mode) => (
-              <button
-                key={mode}
-                className={`px-3 py-1 text-sm border rounded ${
-                  filterModeMessages === mode ? "bg-blue-500 text-white" : "bg-gray-100"
-                }`}
-                onClick={() => setFilterModeMessages(mode as CommunicationViewProps["filterModeMessages"])}
-              >
-                {mode === "all" && "All"}
-                {mode === "filtered" && "Sender or Receiver"}
-                {mode === "direct" && "Sender and Receiver"}
-                {mode === "directed" && "Sender to Receiver"}
-                {mode === "evidence" && "Evidence for Events"}
-                {mode === "similarity" && "Similar Message Search"}
-              </button>
-            ))}
-          </div>
-        </div>
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <h4 className="text-lg font-semibold">{filteredData.length} Messages</h4>
+    <div className="flex gap-2 flex-wrap">
+      {["all", "filtered", "direct", "directed", "evidence", "similarity"].map((mode) => (
+        <button
+          key={mode}
+          className={`px-3 py-1 text-sm border rounded ${
+            filterModeMessages === mode ? "bg-blue-500 text-white" : "bg-gray-100"
+          }`}
+          onClick={() => setFilterModeMessages(mode as CommunicationViewProps["filterModeMessages"])}
+        >
+          {mode === "all" && "All"}
+          {mode === "filtered" && "Sender or Receiver"}
+          {mode === "direct" && "Sender and Receiver"}
+          {mode === "directed" && "Sender to Receiver"}
+          {mode === "evidence" && "Evidence for Events"}
+          {mode === "similarity" && "Similar Message Search"}
+        </button>
+      ))}
+    </div>
+  </div>
 
-        {filterModeMessages === "similarity" && (
-        <div className="mt-4 flex gap-2 items-center">
-          <input
-            type="text"
-            value={similarityQuery}
-            onChange={(e) => setSimilarityQuery(e.target.value)}
-            placeholder="Enter message text (e.g., 'dolphins at Nemo Reef')"
-            className="border px-3 py-1 rounded w-full"
-          />
-          <button
-            onClick={() => 
-              {
-                setQueryInput(similarityQuery);
-                handleSimilaritySearch();
-              }}
-            className="px-3 py-1 bg-blue-600 text-white rounded"
-          >
-            Search
-          </button>
-          <span className="ml-4">
-            {queryInput !== ""
-              ? `Searching for similar messages for: ${queryInput}`
-              : "Set query input"}
-          </span>
-        </div>
+  {filterModeMessages === "similarity" && (
+    <div className="mt-4 flex flex-col gap-3">
+      <div className="flex gap-2 items-center">
+        <input
+          type="text"
+          value={similarityQuery}
+          onChange={(e) => setSimilarityQuery(e.target.value)}
+          placeholder="Enter message text (e.g., 'dolphins at Nemo Reef')"
+          className="border px-3 py-1 rounded w-full"
+        />
+        <button
+          onClick={() => {
+            setQueryInput(similarityQuery);
+            setPrevSimilarityThreshold(similarityThreshold)
+            handleSimilaritySearch();
+          }}
+          className="px-3 py-1 bg-blue-600 text-white rounded"
+        >
+          Search
+        </button>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <label htmlFor="similarity-threshold" className="text-sm font-medium whitespace-nowrap">
+          Similarity Threshold:
+        </label>
+        <input
+          id="similarity-threshold"
+          type="range"
+          min="0"
+          max="1"
+          step="0.001"
+          value={similarityThreshold}
+          onChange={(e) => setSimilarityThreshold(parseFloat(e.target.value))}
+          className="w-full"
+        />
+        <span className="w-12 text-sm text-right">{PrevSimilarityThreshold.toFixed(3)}</span>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <label htmlFor="top-k" className="text-sm font-medium whitespace-nowrap">
+          Top-K Results:
+        </label>
+        <input
+          id="top-k"
+          type="number"
+          min={1}
+          max={500}
+          step={1}
+          value={topK}
+          onChange={(e) => setTopK(Math.max(1, Math.min(500, Number(e.target.value))))}
+          className="border px-3 py-1 rounded w-24"
+        />
+      </div>
+
+      <div className="flex items-center gap-4">
+        <label htmlFor="by-time" className="text-sm font-medium whitespace-nowrap">
+          Order by Time:
+        </label>
+        <input
+          id="by-time"
+          type="checkbox"
+          checked={byTime}
+          onChange={(e) => setByTime(e.target.checked)}
+          className="w-5 h-5"
+        />
+      </div>
+
+      {queryInput !== "" && (
+        <span className="text-sm text-gray-600">
+          Displaying top {topK} similar messages with threshold {similarityThreshold} for: <strong>{queryInput}</strong>
+        </span>
       )}
+    </div>
+  )}
+</CardHeader>
 
-      </CardHeader>
+
+
 
       {filterModeMessages !== "evidence" && filterModeMessages !== "similarity" && (
         <div className="mt-2 flex flex-wrap gap-1 text-sm">

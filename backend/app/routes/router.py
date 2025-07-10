@@ -766,7 +766,8 @@ def calculate_similarity_between_all_messages():
 async def similarity_search(
     query: str = Query(..., description="Text query for semantic message similarity"),
     top_k: int = Query(50, description="Number of top similar messages to return"),
-    score_threshold: float = Query(0.5, description="Minimum similarity score to consider a match")
+    score_threshold: float = Query(0.5, description="Minimum similarity score to consider a match"),
+    order_by_time: bool = Query(False)
     ):
     try:
         
@@ -782,7 +783,7 @@ async def similarity_search(
         # Compute cosine similarity
         scores = util.cos_sim(encoded_query, message_embs)[0]
         top_indices = torch.topk(scores, k=top_k).indices.cpu().numpy()
-        
+
         filtered_indices = [i for i in top_indices if scores[i].item() >= score_threshold]
 
         if not filtered_indices:
@@ -801,27 +802,44 @@ async def similarity_search(
 
         try:
             with driver.session() as session:
+                
                 cypher_query = """
                 UNWIND $ids AS eid
                 MATCH (source:Entity)-[:sent]->(comm:Event {id: eid})-[:received]->(target:Entity)
                 RETURN comm.id AS event_id, comm.timestamp AS timestamp, comm.content AS content,
                        source.id AS source, target.id AS target
+                ORDER BY comm.timestamp
                 """
+                
                 records = session.run(cypher_query, ids=event_ids)
-                result_map = {record["event_id"]: record for record in records}
-
-            for _, row in results_df.iterrows():
-                event_id = row["id"]
-                record = result_map.get(event_id, {})
-                result.append({
-                    "event_id": event_id,
-                    "timestamp": record.get("timestamp", ""),
-                    "source": record.get("source", ""),
-                    "target": record.get("target", ""),
-                    "content": record.get("content", ""),
-                    "sub_type": row.get("sub_type", "Communication"),
-                    "similarity": float(row.get("similarity", 0))
-                })
+                if order_by_time:
+                    print("Here")
+                    for row in records:
+                        print("Row", row)
+                        print(row["event_id"])
+                        print()
+                        event_id = row["event_id"]
+                        result.append({
+                            "event_id": row["event_id"],
+                            "timestamp": row["timestamp"],
+                            "source": row["source"],
+                            "target": row["target"],
+                            "content": row["content"],
+                            "sub_type": "Communication"
+                        })
+                else:
+                    result_map = {record["event_id"]: record for record in records}
+                    for _, row in results_df.iterrows():
+                        event_id = row["id"]
+                        record = result_map.get(event_id, {})
+                        result.append({
+                            "event_id": event_id,
+                            "timestamp": record.get("timestamp", ""),
+                            "source": record.get("source", ""),
+                            "target": record.get("target", ""),
+                            "content": record.get("content", ""),
+                            "sub_type": row.get("sub_type", "Communication")
+                        })
 
         finally:
             driver.close()
