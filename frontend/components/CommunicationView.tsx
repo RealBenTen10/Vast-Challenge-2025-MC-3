@@ -51,9 +51,10 @@ export default function CommunicationView({
   const [msvData, setMsvData] = useState<MSVItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [similarityQuery, setSimilarityQuery] = useState("");
+  const [similarityQuery, setSimilarityQuery] = useState<string>("");
   const [similarityResults, setSimilarityResults] = useState<MSVItem[]>([]);
   const [evidenceResults, setEvidenceResults] = useState<MSVItem[]>([]);
+  const [queryInput, setQueryInput] = useState<string>(""); 
 
   useEffect(() => {
     const fetchEvidence = async () => {
@@ -77,11 +78,13 @@ export default function CommunicationView({
     fetchEvidence();
   }, [filterModeMessages, selectedEventId]);
 
-  const handleSimilaritySearch = async () => {
-    if (!similarityQuery.trim()) return;
+  const handleSimilaritySearch = async (query?: string) => {
+    const searchQuery = query ?? similarityQuery;
+    if (!searchQuery) return;
     try {
       setLoading(true);
-      const res = await fetch(`/api/similarity-search?query=${encodeURIComponent(similarityQuery)}&top_k=50`);
+      setSimilarityQuery("")
+      const res = await fetch(`/api/similarity-search?query=${encodeURIComponent(searchQuery)}&top_k=50`);
       const data = await res.json();
       if (data.success) {
         setSimilarityResults(data.data);
@@ -92,6 +95,7 @@ export default function CommunicationView({
       setError(String(err));
     } finally {
       setLoading(false);
+      setFilterModeMessages("similarity")
     }
   };
 
@@ -206,22 +210,32 @@ export default function CommunicationView({
         </div>
 
         {filterModeMessages === "similarity" && (
-          <div className="mt-4 flex gap-2 items-center">
-            <input
-              type="text"
-              value={similarityQuery}
-              onChange={(e) => setSimilarityQuery(e.target.value)}
-              placeholder="Enter message text (e.g., 'dolphins at Nemo Reef')"
-              className="border px-3 py-1 rounded w-full"
-            />
-            <button
-              onClick={handleSimilaritySearch}
-              className="px-3 py-1 bg-blue-600 text-white rounded"
-            >
-              Search
-            </button>
-          </div>
-        )}
+        <div className="mt-4 flex gap-2 items-center">
+          <input
+            type="text"
+            value={similarityQuery}
+            onChange={(e) => setSimilarityQuery(e.target.value)}
+            placeholder="Enter message text (e.g., 'dolphins at Nemo Reef')"
+            className="border px-3 py-1 rounded w-full"
+          />
+          <button
+            onClick={() => 
+              {
+                setQueryInput(similarityQuery);
+                handleSimilaritySearch();
+              }}
+            className="px-3 py-1 bg-blue-600 text-white rounded"
+          >
+            Search
+          </button>
+          <span className="ml-4">
+            {queryInput !== ""
+              ? `Searching for similar messages for: ${queryInput}`
+              : "Set query input"}
+          </span>
+        </div>
+      )}
+
       </CardHeader>
 
       {filterModeMessages !== "evidence" && filterModeMessages !== "similarity" && (
@@ -236,6 +250,12 @@ export default function CommunicationView({
               {new Date(timestampFilterEnd).toLocaleString()}
             </Badge>
           )}
+        </div>
+      )}
+      {filterModeMessages == "evidence" && (
+        <div className="mt-2 flex flex-wrap gap-1 text-sm">
+          <span className="ml-4">Filters:</span>
+          {filterSender && <Badge color="blue">Found evidence for : {filterSender}</Badge>}
         </div>
       )}
 
@@ -278,7 +298,15 @@ export default function CommunicationView({
                     >
                       {item.target}
                     </td>
-                    <td className="p-2 whitespace-pre-wrap break-words">{item.content}</td>
+                    <td 
+                      className="p-2 whitespace-pre-wrap break-words"
+                      onClick={() => {
+                        setQueryInput(item.content);
+                        handleSimilaritySearch(item.content);
+                      }}
+                    >
+
+                      {item.content}</td>
                   </tr>
                 ))}
               </tbody>
