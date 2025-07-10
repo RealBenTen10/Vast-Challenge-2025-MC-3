@@ -118,6 +118,20 @@ const GraphView: React.FC<Props> = ({
   const DEFAULT_RADIUS = 20;
   const HIGHLIGHT_RADIUS = 30;
 
+  const EVENT_COLOR_MAP: Record<string, string> = {
+    Monitoring: "#1f77b4",        // blue
+    Assessment: "#ff7f0e",        // orange
+    VesselMovement: "#2ca02c",    // green
+    Enforcement: "#d62728",       // red
+    TourActivity: "#9467bd",      // violet
+    Collaborate: "#8c564b",       // brown
+    TransponderPing: "#17becf",   // turquoise
+    HarborReport: "#bcbd22",      // yellow
+    Criticize: "#e377c2",         // pink
+    Unknown: "#999999"            // grey
+  };
+
+
   const getEntityRadius = (id: string) => {
       // Zähle alle CommunicationAggregate-Nodes, die mit dieser Entity verbunden sind
       let commCount = 0;
@@ -662,17 +676,22 @@ const GraphView: React.FC<Props> = ({
         enter => enter.append("line")
           .attr("class", "link")
           .attr("stroke", d => {
-            if (d.type === "Suspicious") return "#d62728";
-            if (d.type === "Colleagues") return "#2ca02c";
-            if (d.type === "Operates") return "#2ca02c";
-            if (d.type === "Reports") return "#d62728";
-            if (d.type === "Unfriendly") return "#d62728";
-            if (d.type === "Friends") return "#2ca02c";
-            if (d.type === "Collaborate") return "#2ca02c";
-            if (d.type === "Jurisdiction") return "#2ca02c";
-            if (d.type === "AccessPermission") return "#2ca02c";
+            const sourceNode = typeof d.source === "object" ? d.source : commGraphData.nodes.find(n => n.id === d.source);
+            const targetNode = typeof d.target === "object" ? d.target : commGraphData.nodes.find(n => n.id === d.target);
+
+            
+            if (sourceNode?.sub_type === "Communication" || targetNode?.sub_type === "Communication") {
+              return "#1f77b4"; 
+            }
+            if (sourceNode?.type === "Event") {
+              return EVENT_COLOR_MAP[sourceNode.sub_type ?? "Unknown"] || "#999";
+            }
+            if (targetNode?.type === "Event") {
+              return EVENT_COLOR_MAP[targetNode.sub_type ?? "Unknown"] || "#999";
+            }
             return "#999";
           })
+
           .attr("stroke-opacity", 0.6)
           .attr("stroke-width", 1)
           .on("click", (event, d) => setSelectedInfo({ type: "link", data: d })),
@@ -727,8 +746,11 @@ const GraphView: React.FC<Props> = ({
           group.append("circle")
                   .attr("r", (d: any) => {
                     if (d.type === "Entity") return getEntityRadius(d.id);
-                    // CommunicationAggregate immer Standardgröße
-                    if (d.type === "CommunicationAggregate") return DEFAULT_RADIUS;
+                    if (d.type === "Event" && d.sub_type === "Communication") {
+                      const baseSize = DEFAULT_RADIUS;
+                      const count = d.count;
+                      return baseSize + count;  // Maybe stärker steigen lassen und dafür logarithmisch amchen
+                    }
                     return DEFAULT_RADIUS;
                   })
                   .attr("fill", (d: any) =>
