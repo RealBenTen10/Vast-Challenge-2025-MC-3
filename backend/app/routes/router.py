@@ -765,7 +765,8 @@ def calculate_similarity_between_all_messages():
 @router.get("/similarity-search", response_class=JSONResponse)
 async def similarity_search(
     query: str = Query(..., description="Text query for semantic message similarity"),
-    top_k: int = Query(50, description="Number of top similar messages to return")
+    top_k: int = Query(50, description="Number of top similar messages to return"),
+    score_threshold: float = Query(0.5, description="Minimum similarity score to consider a match")
     ):
     try:
         
@@ -781,6 +782,11 @@ async def similarity_search(
         # Compute cosine similarity
         scores = util.cos_sim(encoded_query, message_embs)[0]
         top_indices = torch.topk(scores, k=top_k).indices.cpu().numpy()
+        
+        filtered_indices = [i for i in top_indices if scores[i].item() >= score_threshold]
+
+        if not filtered_indices:
+            return {"success": True, "data": []}
 
         # Extract matching rows
         results_df = communication_events.iloc[top_indices].copy()
