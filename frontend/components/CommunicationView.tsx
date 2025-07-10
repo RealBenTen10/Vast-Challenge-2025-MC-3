@@ -58,7 +58,9 @@ export default function CommunicationView({
   const [similarityThreshold, setSimilarityThreshold] = useState<number>(0.7)
   const [prevSimilarityThreshold, setPrevSimilarityThreshold] = useState<number>(0.7)
   const [topK, setTopK] = useState<number>(50);
+  const [prevTopK, setPrevTopK] = useState<number>(50);
   const [byTime, setByTime] = useState(false);
+  const [prevByTime, setPrevByTime] = useState(false); 
 
   useEffect(() => {
     const fetchEvidence = async () => {
@@ -87,6 +89,7 @@ export default function CommunicationView({
     if (!searchQuery) return;
     try {
       setLoading(true);
+      // set input box to "" if message was clicked instead of user input
       if (query) setSimilarityQuery("");
       const res = await fetch(`/api/similarity-search?query=${encodeURIComponent(searchQuery)}&top_k=${topK}&score_threshold=${similarityThreshold}&order_by_time=${byTime}`);
       const data = await res.json();
@@ -233,6 +236,8 @@ export default function CommunicationView({
           onClick={() => {
             setQueryInput(similarityQuery);
             setPrevSimilarityThreshold(similarityThreshold)
+            setPrevTopK(topK)
+            setPrevByTime(byTime)
             handleSimilaritySearch();
           }}
           className="px-3 py-1 bg-blue-600 text-white rounded"
@@ -255,7 +260,7 @@ export default function CommunicationView({
           onChange={(e) => setSimilarityThreshold(parseFloat(e.target.value))}
           className="w-full"
         />
-        <span className="w-12 text-sm text-right">{PrevSimilarityThreshold.toFixed(3)}</span>
+        <span className="w-12 text-sm text-right">{similarityThreshold.toFixed(3)}</span>
       </div>
 
       <div className="flex items-center gap-4">
@@ -289,7 +294,8 @@ export default function CommunicationView({
 
       {queryInput !== "" && (
         <span className="text-sm text-gray-600">
-          Displaying top {topK} similar messages with threshold {similarityThreshold} for: <strong>{queryInput}</strong>
+          Displaying top {prevTopK} similar messages with threshold {prevSimilarityThreshold.toFixed(3)} ordered by{" "}
+          <strong>{prevByTime ? "Timestamp" : "Similarity Score"}</strong> for: <strong>{queryInput}</strong>
         </span>
       )}
     </div>
