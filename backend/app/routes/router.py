@@ -655,6 +655,9 @@ async def massive_sequence_view(
     """
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     results = []
+    # Since the ordering of the events is not correct anymore we have to re-order
+    # Since we can't re-order using the Cypher, we just use the inherent ordering of the CommIDs
+    
 
     try:
         with driver.session() as session:
@@ -664,7 +667,7 @@ async def massive_sequence_view(
                 RETURN comm, sender.id AS source, receiver.id AS target
                 ORDER BY comm.timestamp
             """
-            records = session.run(query, event_ids=event_ids)
+            records = session.run(query, event_ids=event_ids_sorted)
 
             for record in records:
                 comm = record["comm"]

@@ -44,7 +44,7 @@ export default function Home() {
   const [timestampFilterStart, setTimestampFilterStart] = useState<string | null>(null);
   const [timestampFilterEnd, setTimestampFilterEnd] = useState<string | null>(null);
   const [communicationEvents, setCommunicationEvents] = useState<Node[]>([]);
-  const [communicationEventsAfterTimeFilter, setCommunicationEventsAfterTimeFilter] = useState<Node[]>([]);
+  const [communicationEventsAfterTimeFilter, setCommunicationEventsAfterTimeFilter] = useState<string[]>([]);
   const [EventsAfterTimeFilter, setEventsAfterTimeFilter] = useState<Node[]>([]);
   const [filterModeMessages, setFilterModeMessages] = useState<"all" | "filtered" | "direct" | "directed" |"evidence" | "similarity">("all");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -387,7 +387,7 @@ export default function Home() {
             timestampFilterStart={timestampFilterStart}
             timestampFilterEnd={timestampFilterEnd}
             visibleEntities={visibleEntities}
-            communicationEventsWithTimeFilter={communicationEventsAfterTimeFilter}
+            communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
             filterModeMessages={filterModeMessages}
             setFilterModeMessages={setFilterModeMessages}
             selectedEventId={selectedEventId}

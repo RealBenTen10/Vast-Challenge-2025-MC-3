@@ -53,9 +53,9 @@ interface Props {
   setSelectedInfo: (info: any) => void;
   setCommunicationEvents: (nodes: GraphNode[]) => void;
   communicationEvents: GraphNode[];
-  setCommunicationEventsAfterTimeFilter: (nodes: GraphNode[]) => void;
+  setCommunicationEventsAfterTimeFilter: (eventIds: string[]) => void;
   setEventsAfterTimeFilter: (nodes: GraphNode[]) => void;
-  communicationEventsAfterTimeFilter: GraphNode[];
+  communicationEventsAfterTimeFilter: string[];
   callApi: (endpoint: string) => void;
   relevantEvents: Set<string>;
   setrelevantEvents: (events: Set<string>) => void;

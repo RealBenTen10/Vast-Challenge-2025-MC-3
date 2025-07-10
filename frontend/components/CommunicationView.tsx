@@ -28,7 +28,7 @@ interface CommunicationViewProps {
   timestampFilterStart: string;
   timestampFilterEnd: string;
   visibleEntities: { id: string; sub_type?: string }[];
-  communicationEventsWithTimeFilter: Node[];
+  communicationEventsAfterTimeFilter: string[];
   filterModeMessages: "all" | "filtered" | "direct" | "directed" | "evidence" | "similarity";
   setFilterModeMessages: (mode: CommunicationViewProps["filterModeMessages"]) => void;
   selectedEventId: string | null;
@@ -43,7 +43,7 @@ export default function CommunicationView({
   timestampFilterStart,
   timestampFilterEnd,
   visibleEntities,
-  communicationEventsWithTimeFilter,
+  communicationEventsAfterTimeFilter,
   filterModeMessages,
   setFilterModeMessages,
   selectedEventId,
@@ -106,13 +106,16 @@ export default function CommunicationView({
     setLoading(true);
     setError(null);
     try {
-      const eventIds = communicationEventsWithTimeFilter; // Already a list of strings
+      const eventIds = [...communicationEventsAfterTimeFilter]; // Already a list of strings
       console.log("loadMSV: ", eventIds)
       if (eventIds.length === 0) {
         setMsvData([]);
         return;
       }
-
+      eventIds.sort((a, b) => {
+        const getNumericSuffix = (id: string) => parseInt(id.split("_").pop() || "0", 10);
+        return getNumericSuffix(a) - getNumericSuffix(b);
+      });
       const BATCH_SIZE = 300;
       const batches = [];
 
@@ -129,7 +132,7 @@ export default function CommunicationView({
         const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
         const text = await res.text();
         if (!text) throw new Error("Empty response from server");
-
+          // test
         const data = JSON.parse(text);
         if (data.success) {
           allResults.push(...data.data);
@@ -137,7 +140,7 @@ export default function CommunicationView({
           throw new Error(data.error || "Failed to load data");
         }
       }
-
+      console.log(allResults)
       setMsvData(allResults);
     } catch (err) {
       setError(String(err));
@@ -147,7 +150,7 @@ export default function CommunicationView({
   };
 
   loadMSV();
-}, [communicationEventsWithTimeFilter, filterModeMessages]);
+}, [communicationEventsAfterTimeFilter, filterModeMessages]);
 
 
   const filteredData = (() => {
