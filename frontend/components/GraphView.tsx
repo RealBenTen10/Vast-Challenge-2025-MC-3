@@ -410,8 +410,8 @@ const GraphView: React.FC<Props> = ({
 
       return visible;
     };
-
-    const notUsed = getVisibleNodeIds();
+    if (!isPlaying) {const notUsed = getVisibleNodeIds();}
+    
 
     const getVisibleNodeIdsForCommunication = (): Set<string> => {
       let visible = new Set<string>();
