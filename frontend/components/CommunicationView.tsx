@@ -321,19 +321,19 @@ export default function CommunicationView({
       )}
       {filterModeMessages == "evidence" && (
         <div className="mt-2 flex flex-wrap gap-1 text-sm">
-          <span className="ml-4">Filters:</span>
-          {filterSender && <Badge color="blue">Found evidence for : {filterSender}</Badge>}
+          <span className="ml-4"></span>
+          {selectedEventId && <Badge color="blue">Found evidence for : {selectedEventId}</Badge>}
         </div>
       )}
 
 
       <CardBody>
         {loading ? (
-          <p>Loading sequence data...</p>
+          <p>Loading Message data...</p>
         ) : error ? (
           <p className="text-red-500">{error}</p>
         ) : filteredData.length === 0 ? (
-          <p>No communication records found.</p>
+          <p>No communication records found... Maybe you forgot to set an Entity, Event or Text?</p>
         ) : (
           <div className="overflow-auto max-h-96 border rounded">
             <table className="min-w-full text-sm text-left table-auto">
