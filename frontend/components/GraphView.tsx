@@ -119,6 +119,7 @@ const GraphView: React.FC<Props> = ({
 
 
   const DEFAULT_RADIUS = 20;
+  const DEFAULT_COMMUNICATION_RADIUS = 15;
   const HIGHLIGHT_RADIUS = 30;
 
   const EVENT_COLOR_MAP: Record<string, string> = {
@@ -757,9 +758,9 @@ const GraphView: React.FC<Props> = ({
                   .attr("r", (d: any) => {
                     if (d.type === "Entity") return getEntityRadius(d.id);
                     if (d.type === "Event" && d.sub_type === "Communication") {
-                      const baseSize = DEFAULT_RADIUS;
+                      const baseSize = DEFAULT_COMMUNICATION_RADIUS;
                       const count = d.count;
-                      return baseSize + count;  // Maybe stärker steigen lassen und dafür logarithmisch amchen
+                      return baseSize + count;
                     }
                     return DEFAULT_RADIUS;
                   })
@@ -775,7 +776,13 @@ const GraphView: React.FC<Props> = ({
             .attr("text-anchor", "middle")
             .attr("dy", ".35em")
             .attr("fill", "black")
-            .text(d => d.type === "Entity" ? d.id : d.sub_type)
+            .text(d =>
+              d.type === "Entity"
+                ? d.id
+                : d.sub_type === "Communication"
+                ? "Comm"
+                : d.sub_type
+            )
             .style("font-size", d => `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`);
             
           return group;
@@ -967,7 +974,13 @@ const GraphView: React.FC<Props> = ({
 
   // === Labels ===
   update.select("text")
-    .text(d => (d.type === "Entity" ? d.id : d.sub_type))
+    .text(d =>
+      d.type === "Entity"
+        ? d.id
+        : d.sub_type === "Communication"
+        ? "Comm"
+        : d.sub_type
+    )
     .style("font-size", d =>
       `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
     );

@@ -198,29 +198,28 @@ export default function CommunicationView({
   })();
 
   return (
-    <Card className={`w-full max-w-7xl mt-8`}>
-      <CardHeader>
-  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-    <h4 className="text-lg font-semibold">{filteredData.length} Messages</h4>
-    <div className="flex gap-2 flex-wrap">
-      {["all", "filtered", "direct", "directed", "evidence", "similarity"].map((mode) => (
-        <button
-          key={mode}
-          className={`px-3 py-1 text-sm border rounded ${
-            filterModeMessages === mode ? "bg-blue-500 text-white" : "bg-gray-100"
-          }`}
-          onClick={() => setFilterModeMessages(mode as CommunicationViewProps["filterModeMessages"])}
-        >
-          {mode === "all" && "All"}
-          {mode === "filtered" && "Sender or Receiver"}
-          {mode === "direct" && "Sender and Receiver"}
-          {mode === "directed" && "Sender to Receiver"}
-          {mode === "evidence" && "Evidence for Events"}
-          {mode === "similarity" && "Similar Message Search"}
-        </button>
-      ))}
-    </div>
-  </div>
+    <div className="w-full mt-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h4 className="text-lg font-semibold">{filteredData.length} Messages</h4>
+        <div className="flex gap-2 flex-wrap">
+          {["all", "filtered", "direct", "directed", "evidence", "similarity"].map((mode) => (
+            <button
+              key={mode}
+              className={`px-3 py-1 text-sm border rounded ${
+                filterModeMessages === mode ? "bg-blue-500 text-white" : "bg-gray-100"
+              }`}
+              onClick={() => setFilterModeMessages(mode as CommunicationViewProps["filterModeMessages"])}
+            >
+              {mode === "all" && "All"}
+              {mode === "filtered" && "Sender or Receiver"}
+              {mode === "direct" && "Sender and Receiver"}
+              {mode === "directed" && "Sender to Receiver"}
+              {mode === "evidence" && "Evidence for Events"}
+              {mode === "similarity" && "Similar Message Search"}
+            </button>
+          ))}
+        </div>
+      </div>
 
   {filterModeMessages === "similarity" && (
     <div className="mt-4 flex flex-col gap-3">
@@ -292,18 +291,14 @@ export default function CommunicationView({
         />
       </div>
 
-      {queryInput !== "" && (
-        <span className="text-sm text-gray-600">
-          Displaying top {prevTopK} similar messages with threshold {prevSimilarityThreshold.toFixed(3)} ordered by{" "}
-          <strong>{prevByTime ? "Timestamp" : "Similarity Score"}</strong> for: <strong>{queryInput}</strong>
-        </span>
+          {queryInput !== "" && (
+            <span className="text-sm text-gray-600">
+              Displaying top {prevTopK} similar messages with threshold {prevSimilarityThreshold.toFixed(3)} ordered by{" "}
+              <strong>{prevByTime ? "Timestamp" : "Similarity Score"}</strong> for: <strong>{queryInput}</strong>
+            </span>
+          )}
+        </div>
       )}
-    </div>
-  )}
-</CardHeader>
-
-
-
 
       {filterModeMessages !== "evidence" && filterModeMessages !== "similarity" && (
         <div className="mt-2 flex flex-wrap gap-1 text-sm">
@@ -326,8 +321,7 @@ export default function CommunicationView({
         </div>
       )}
 
-
-      <CardBody>
+      <div className="mt-4">
         {loading ? (
           <p>Loading Message data...</p>
         ) : error ? (
@@ -350,7 +344,6 @@ export default function CommunicationView({
                   <tr
                     key={item.event_id}
                     className="border-b hover:bg-gray-50 cursor-pointer"
-
                   >
                     <td className="p-2">{item.timestamp}</td>
                     <td
@@ -372,15 +365,15 @@ export default function CommunicationView({
                         handleSimilaritySearch(item.content);
                       }}
                     >
-
-                      {item.content}</td>
+                      {item.content}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </CardBody>
-    </Card>
+      </div>
+    </div>
   );
 }

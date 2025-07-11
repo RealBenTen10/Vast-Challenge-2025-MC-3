@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Card, CardHeader, CardBody, Badge } from "@heroui/react";
+import { Badge } from "@heroui/react";
 
 interface Node {
   id: string;
@@ -79,78 +79,73 @@ export default function EventsView({
   };
 
   return (
-    <Card className="w-full max-w-7xl mt-8">
-      <CardHeader>
-        <h4 className="text-lg font-semibold">
-          {eventsAfterTimeFilter.length} Events
-        </h4>
-      </CardHeader>
+    <div className="w-full mt-8">
+      <h4 className="text-lg font-semibold mb-2">
+        {eventsAfterTimeFilter.length} Events
+      </h4>
+      {eventsAfterTimeFilter.length === 0 ? (
+        <p>No events found.</p>
+      ) : (
+        <div className="overflow-auto max-h-96 border rounded">
+          <table className="min-w-full text-sm text-left table-auto">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="p-2 w-32">Timestamp</th>
+                <th className="p-2 w-24">Subtype</th>
+                <th className="p-2 w-24">Entity 1</th>
+                <th className="p-2 w-24">Entity 2</th>
+                <th className="p-2">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {eventsAfterTimeFilter.map((event) => {
+                const entities = eventEntitiesMap[event.id] || {};
+                const source = entities.source ?? event.source ?? "–";
+                const target = entities.target ?? event.target ?? "–";
+                const detail =
+                  event.findings ||
+                  event.results ||
+                  event.content ||
+                  (event.destination !== undefined
+                        ? `Destination: ${event.destination}`
+                        : "") ||
+                  (event.movement_type !== undefined
+                        ? ` Movement_type: ${event.movement_type}`
+                        : "") ||
+                  event.outcome ||
+                  (event.participants !== undefined
+                    ? `Participants: ${event.participants}`
+                    : null) ||
+                  "No details available.";
 
-      <CardBody>
-        {eventsAfterTimeFilter.length === 0 ? (
-          <p>No events found.</p>
-        ) : (
-          <div className="overflow-auto max-h-96 border rounded">
-            <table className="min-w-full text-sm text-left table-auto">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="p-2 w-32">Timestamp</th>
-                  <th className="p-2 w-24">Subtype</th>
-                  <th className="p-2 w-24">Entity 1</th>
-                  <th className="p-2 w-24">Entity 2</th>
-                  <th className="p-2">Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {eventsAfterTimeFilter.map((event) => {
-                  const entities = eventEntitiesMap[event.id] || {};
-                  const source = entities.source ?? event.source ?? "–";
-                  const target = entities.target ?? event.target ?? "–";
-                  const detail =
-                    event.findings ||
-                    event.results ||
-                    event.content ||
-                    (event.destination !== undefined
-                          ? `Destination: ${event.destination}`
-                          : "") ||
-                    (event.movement_type !== undefined
-                          ? ` Movement_type: ${event.movement_type}`
-                          : "") ||
-                    event.outcome ||
-                    (event.participants !== undefined
-                      ? `Participants: ${event.participants}`
-                      : null) ||
-                    "No details available.";
-
-                  return (
-                    <tr
-                      key={event.id}
-                      className={`border-b hover:bg-gray-50 cursor-pointer ${
-                        selectedEventId === event.id ? "bg-blue-100" : ""
-                      }`}
-                      onClick={() => handleRowClick(event.id)}
-                    >
-                      <td className="p-2">{event.timestamp || "Unknown"}</td>
-                      <td className="p-2">
-                        <Badge color="blue">{event.sub_type}</Badge>
-                      </td>
-                      <td className="p-2 text-blue-600">
-                        {source}
-                      </td>
-                      <td className="p-2 text-green-600">
-                        {target}
-                      </td>
-                      <td className="p-2 whitespace-pre-wrap break-words">
-                        {detail}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CardBody>
-    </Card>
+                return (
+                  <tr
+                    key={event.id}
+                    className={`border-b hover:bg-gray-50 cursor-pointer ${
+                      selectedEventId === event.id ? "bg-blue-100" : ""
+                    }`}
+                    onClick={() => handleRowClick(event.id)}
+                  >
+                    <td className="p-2">{event.timestamp || "Unknown"}</td>
+                    <td className="p-2">
+                      <Badge color="blue">{event.sub_type}</Badge>
+                    </td>
+                    <td className="p-2 text-blue-600">
+                      {source}
+                    </td>
+                    <td className="p-2 text-green-600">
+                      {target}
+                    </td>
+                    <td className="p-2 whitespace-pre-wrap break-words">
+                      {detail}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }

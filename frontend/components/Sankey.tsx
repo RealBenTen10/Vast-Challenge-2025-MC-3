@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Card, CardHeader, CardBody, Badge, Button } from "@heroui/react";
+import { Badge } from "@heroui/react";
 import * as d3 from "d3";
 import {
   SankeyGraph,
@@ -244,8 +244,7 @@ export default function Sankey({
   };
 
   return (
-    <Card className="w-full max-w-7xl mt-8">
-    <CardHeader>
+    <div className="w-full mt-8">
       <div className="mt-2 flex flex-wrap gap-1 text-sm">
         <h4 className="text-md font-semibold mb-2">
           Sankey Diagram: Communication Flow
@@ -253,21 +252,13 @@ export default function Sankey({
           {filterReceiver && ` to ${filterReceiver}`}
         </h4>
       </div>
-    </CardHeader>
-      
-    <div className="mt-2 flex flex-wrap gap-1 text-sm">
-      <span className="ml-4">  </span>
-
-      {(filterSender || filterReceiver) && sankeyData && <Badge color="green"> Following Flow is visualized: {filterSender} -{">"} {filterReceiver} </Badge>}
-      {(filterSender || filterReceiver) && !sankeyData && <Badge color="green"> No Communication visualized for this Filter setting </Badge>}
-      
-      {(!filterSender && !filterReceiver) && <Badge color="blue"> Please select a Sender or Receiver to display Flow using Sankey Diagram </Badge>}
-      
-    </div>
-    <CardBody>
+      <div className="mt-2 flex flex-wrap gap-1 text-sm">
+        <span className="ml-4">  </span>
+        {(filterSender || filterReceiver) && sankeyData && <Badge color="green"> Following Flow is visualized: {filterSender} -{">"} {filterReceiver} </Badge>}
+        {(filterSender || filterReceiver) && !sankeyData && <Badge color="green"> No Communication visualized for this Filter setting </Badge>}
+        {(!filterSender && !filterReceiver) && <Badge color="blue"> Please select a Sender or Receiver to display Flow using Sankey Diagram </Badge>}
+      </div>
       {(filterSender || filterReceiver) && <svg ref={svgRef} className="w-full h-96 border rounded-lg bg-white" />}
-    </CardBody>
-      
-    </Card>
+    </div>
   );
 }

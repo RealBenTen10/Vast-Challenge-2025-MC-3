@@ -60,6 +60,8 @@ export default function Home() {
   const [showGraph, setShowGraph] = useState<boolean>(true);
   const [showTimeBar, setShowTimeBar] = useState<boolean>(true);
   const [showSankey, setShowSankey] = useState<boolean>(true);
+  const [showCommunicationView, setShowCommunicationView] = useState(true);
+  const [showEventsView, setShowEventsView] = useState(true);
   const [selectedTimestamp, setSelectedTimestamp] = useState<string | null>(null);
 
   // State für CommunicationView-Filter
@@ -121,6 +123,12 @@ export default function Home() {
     }
   }, [graphData]);
 
+  useEffect(() => {
+    if (selectedInfo) {
+      setShowInfoPanel(true);
+    }
+  }, [selectedInfo]);
+
   const loadMSV = async () => {
     setMsvLoading(true);
     setMsvError(null);
@@ -164,39 +172,7 @@ export default function Home() {
 
   return (
   <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-    {/* Toggle Node-Link Diagram, Time Bar Chart & Sankey Checkbox */}
-    <div className="w-full max-w-7xl flex items-center gap-4">
-      <div className="flex it ems-center gap-2">
-        <input
-          type="checkbox"
-          id="toggle-graph"
-          checked={showGraph}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowGraph(e.target.checked)}
-          className="mr-2"
-        />
-        <label htmlFor="toggle-graph" className="select-none">Node-Link Diagram</label>
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="toggle-timebar"
-          checked={showTimeBar}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowTimeBar(e.target.checked)}
-          className="mr-2"
-        />
-        <label htmlFor="toggle-timebar" className="select-none">Communication Time Bar Chart</label>
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="toggle-sankey"
-          checked={showSankey}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowSankey(e.target.checked)}
-          className="mr-2"
-        />
-        <label htmlFor="toggle-sankey" className="select-none">Sankey Diagramm</label>
-      </div>
-    </div>
+
 
     {/* Selected Info with Toggle Button and Sidepanel Wrapper */}
     <div className="fixed right-0 top-20 z-50">
@@ -358,100 +334,152 @@ export default function Home() {
       </div>
     )}
 
+        {/* Toggle CommunicationVIew,Time Bar Chart, Sankey and EventView Checkbox */}
+    <div className="w-full max-w-7xl flex items-center gap-4">
+            <div className="flex items-center gap-2">
+    <input
+      type="checkbox"
+      id="toggle-communicationview"
+      checked={showCommunicationView}
+      onChange={(e) => setShowCommunicationView(e.target.checked)}
+      className="mr-2"
+    />
+    <label htmlFor="toggle-communicationview" className="select-none">Communication View</label>
+    </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="toggle-timebar"
+          checked={showTimeBar}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowTimeBar(e.target.checked)}
+          className="mr-2"
+        />
+        <label htmlFor="toggle-timebar" className="select-none">Time Bar Chart</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="toggle-sankey"
+          checked={showSankey}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowSankey(e.target.checked)}
+          className="mr-2"
+        />
+        <label htmlFor="toggle-sankey" className="select-none">Sankey Diagramm</label>
+      </div>
+
+    <div className="flex items-center gap-2">
+      <input
+        type="checkbox"
+        id="toggle-eventsview"
+        checked={showEventsView}
+        onChange={(e) => setShowEventsView(e.target.checked)}
+        className="mr-2"
+      />
+      <label htmlFor="toggle-eventsview" className="select-none">Event Communication View</label>
+    </div>
+    </div>
+
     {/* CommunicationView, Time Bar Chart, Sankey  und EventsView nebeneinander */}
     {(true || showTimeBar || showSankey || true) && (
-      <div className="w-full flex gap-4 items-center gap-4">
-
-        {/* CommunicationView */}
-        <div className="flex-1 min-w-0">
-          <CommunicationView
-            className="mt-0"
-            onMessageClick={(id: string) => {
-              let eventId = id;
-              if (typeof id === "string" && id.startsWith("Event_Communication_")) eventId = id.replace("Event_Communication_", "");
-              const aggId = findCommAggNodeIdForEvent(eventId);
-              if (aggId && nodeIdExists(aggId)) {
-                setHighlightedMessageId(aggId);
-              } else {
-                setHighlightedMessageId(null);
-              }
-            }}
-            msvData={msvData}
-            msvLoading={msvLoading}
-            msvError={msvError}
-            filterSender={filterSender}
-            setFilterSender={setFilterSender}
-            filterReceiver={filterReceiver}
-            setFilterReceiver={setFilterReceiver}
-            filterContent={filterContent}
-            timestampFilterStart={timestampFilterStart}
-            timestampFilterEnd={timestampFilterEnd}
-            visibleEntities={visibleEntities}
-            communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
-            filterModeMessages={filterModeMessages}
-            setFilterModeMessages={setFilterModeMessages}
-            selectedEventId={selectedEventId}
-          />
-        </div>
-
-        {/* Time Bar Chart */}
-        {showTimeBar && (
-          <div className="flex-1 min-w-0">
-            <TimeBarChart
-              graphData={graphData}
-              selectedTimestamp={selectedTimestamp}
-              setSelectedTimestamp={setSelectedTimestamp}
-              visibleEntities={visibleEntities}
-              timestampFilterStart={timestampFilterStart}
-              timestampFilterEnd={timestampFilterEnd}
-              setTimestampFilterStart={setTimestampFilterStart}
-              setTimestampFilterEnd={setTimestampFilterEnd}
-              filterSender={filterSender}
-              setFilterSender={setFilterSender}
-              filterReceiver={filterReceiver}
-              setFilterReceiver={setFilterReceiver}
-              communicationEvents={communicationEvents}
-            />
+      <Card className="w-full mt-8 mx-0 px-0">
+        <CardHeader>
+          <div className="flex flex-wrap gap-1 text-sm">
+            <h4 className="text-md font-semibold mb-2">
+              Additional Tools
+            </h4>
           </div>
-        )}
-
-        {/* Sankey Diagram */}
-        {showSankey && (
-          <div className="flex-1 min-w-0 mt-6" style={{height: sankeyHeight}}>
-            <Sankey 
-            entityId={filterEntityId} 
-            selectedDate={selectedTimestamp} 
-            height={sankeyHeight} 
-            filterSender={filterSender}
-            setFilterSender={setFilterSender}
-            filterReceiver={filterReceiver}
-            setFilterReceiver={setFilterReceiver}
-            timestampFilterStart={timestampFilterStart}
-            timestampFilterEnd={timestampFilterEnd}
-            filterContent={filterContent}
-            setFilterModeMessages={setFilterModeMessages}
-            />
-            {/* Resizable Drag Handle for Sankey 
-            <div
-              ref={sankeyDragRef}
-              style={{ cursor: 'row-resize', height: '10px', width: '100%', background: '#e5e7eb' }}
-              onMouseDown={() => { if (sankeyDragRef.current) sankeyDragRef.current.dataset.dragging = 'true'; }}
-              className="mb-2"
-            />*/}
-          </div>
-        )}
-
-        {/*Events View */}
-        <div className="flex-1 min-w-0">
-            <EventsView
-              eventsAfterTimeFilter={EventsAfterTimeFilter}
-              setSelectedEventId={setSelectedEventId}
-              selectedEventId={selectedEventId}
-              setFilterModeMessages={setFilterModeMessages}
+        </CardHeader>
+        <Divider />
+        <CardBody>
+          <div className="w-full flex gap-4 items-center">
+            {/* CommunicationView */}
+            {showCommunicationView && (
+            <div className="flex-1 min-w-0">
+              <CommunicationView
+                className="mt-0"
+                onMessageClick={(id: string) => {
+                  let eventId = id;
+                  if (typeof id === "string" && id.startsWith("Event_Communication_")) eventId = id.replace("Event_Communication_", "");
+                  const aggId = findCommAggNodeIdForEvent(eventId);
+                  if (aggId && nodeIdExists(aggId)) {
+                    setHighlightedMessageId(aggId);
+                  } else {
+                    setHighlightedMessageId(null);
+                  }
+                }}
+                msvData={msvData}
+                msvLoading={msvLoading}
+                msvError={msvError}
+                filterSender={filterSender}
+                setFilterSender={setFilterSender}
+                filterReceiver={filterReceiver}
+                setFilterReceiver={setFilterReceiver}
+                filterContent={filterContent}
+                timestampFilterStart={timestampFilterStart}
+                timestampFilterEnd={timestampFilterEnd}
+                visibleEntities={visibleEntities}
+                communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
+                filterModeMessages={filterModeMessages}
+                setFilterModeMessages={setFilterModeMessages}
+                selectedEventId={selectedEventId}
               />
-                
-        </div>
-      </div>
+            </div>
+            )}
+
+            {/* Time Bar Chart */}
+            {showTimeBar && (
+              <div className="flex-1 min-w-0">
+                <TimeBarChart
+                  graphData={graphData}
+                  selectedTimestamp={selectedTimestamp}
+                  setSelectedTimestamp={setSelectedTimestamp}
+                  visibleEntities={visibleEntities}
+                  timestampFilterStart={timestampFilterStart}
+                  timestampFilterEnd={timestampFilterEnd}
+                  setTimestampFilterStart={setTimestampFilterStart}
+                  setTimestampFilterEnd={setTimestampFilterEnd}
+                  filterSender={filterSender}
+                  setFilterSender={setFilterSender}
+                  filterReceiver={filterReceiver}
+                  setFilterReceiver={setFilterReceiver}
+                  communicationEvents={communicationEvents}
+                />
+              </div>
+            )}
+
+            {/* Sankey Diagram */}
+            {showSankey && (
+              <div className="flex-1 min-w-0 mt-6" style={{height: sankeyHeight}}>
+                <Sankey 
+                  entityId={filterEntityId} 
+                  selectedDate={selectedTimestamp} 
+                  height={sankeyHeight} 
+                  filterSender={filterSender}
+                  setFilterSender={setFilterSender}
+                  filterReceiver={filterReceiver}
+                  setFilterReceiver={setFilterReceiver}
+                  timestampFilterStart={timestampFilterStart}
+                  timestampFilterEnd={timestampFilterEnd}
+                  filterContent={filterContent}
+                  setFilterModeMessages={setFilterModeMessages}
+                />
+              </div>
+            )}
+
+            {/* Events View */}
+             {showEventsView && (
+            <div className="flex-1 min-w-0">
+              <EventsView
+                eventsAfterTimeFilter={EventsAfterTimeFilter}
+                setSelectedEventId={setSelectedEventId}
+                selectedEventId={selectedEventId}
+                setFilterModeMessages={setFilterModeMessages}
+              />
+            </div>
+             )}
+          </div>
+        </CardBody>
+      </Card>
     )}
 
   </section>
