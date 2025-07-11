@@ -124,93 +124,38 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         Load JSON Graph
       </Button>
 
-      <div className="mt-4" style={{ position: 'relative' }}>
+      <div className="mt-4">
         <label className="text-sm font-medium">Filter sender by Entity ID:</label>
-        <input
+        <select
           className="mt-1 block w-full border rounded px-2 py-1 text-sm"
-          type="text"
           value={filterSender}
-          onChange={(e) => {
-            setLastEditedField("sender");
-            const val = e.target.value;
-            setFilterSender(val);
-            if (val.length > 0) {
-              setEntitySuggestions(
-                allEntities
-                  .map((e) => e.id)
-                  .filter((id) => id.toLowerCase().includes(val.toLowerCase()))
-                  .slice(0, 8)
-              );
-            } else {
-              setEntitySuggestions([]);
-            }
-          }}
-          placeholder="e.g., Boss"
-          autoComplete="off"
-        />
-        {lastEditedField === "sender" && entitySuggestions.length > 0 && (
-        <ul className="absolute left-0 right-0 bg-white border rounded shadow z-10 max-h-40 overflow-auto mt-1">
-          {entitySuggestions.map((suggestion) => (
-            <li
-              key={suggestion}
-              className="px-2 py-1 hover:bg-blue-100 cursor-pointer"
-              onMouseDown={() => {
-                if (lastEditedField === "sender") setFilterSender(suggestion);
-                else setFilterReceiver(suggestion);
-                setEntitySuggestions([]);
-                setLastEditedField(null);
-              }}
-            >
-              {suggestion}
-            </li>
+          onChange={(e) => setFilterSender(e.target.value)}
+        >
+          <option value="">-- Select Sender --</option>
+          {allEntities.map((entity) => (
+            <option key={entity.id} value={entity.id}>
+              {entity.id}
+            </option>
           ))}
-        </ul>
-      )}
+        </select>
       </div>
 
       <div className="mt-4">
         <label className="text-sm font-medium">Filter receiver by Entity ID:</label>
-        <input
+        <select
           className="mt-1 block w-full border rounded px-2 py-1 text-sm"
-          type="text"
           value={filterReceiver}
-          onChange={(e) => {
-            setLastEditedField("receiver");
-            const val = e.target.value;
-            setFilterReceiver(val);
-            if (val.length > 0) {
-              setEntitySuggestions(
-                allEntities
-                  .map((e) => e.id)
-                  .filter((id) => id.toLowerCase().includes(val.toLowerCase()))
-                  .slice(0, 8)
-              );
-            } else {
-              setEntitySuggestions([]);
-            }
-          }}
-          placeholder="e.g., Boss"
-          autoComplete="off"
-        />
-        {lastEditedField === "receiver" && entitySuggestions.length > 0 && (
-          <ul className="absolute left-0 right-0 bg-white border rounded shadow z-10 max-h-40 overflow-auto mt-1">
-            {entitySuggestions.map((suggestion) => (
-              <li
-                key={suggestion}
-                className="px-2 py-1 hover:bg-blue-100 cursor-pointer"
-                onMouseDown={() => {
-                  if (lastEditedField === "receiver") setFilterReceiver(suggestion);
-                  else setFilterSender(suggestion);
-                  setEntitySuggestions([]);
-                  setLastEditedField(null);
-                }}
-              >
-                {suggestion}
-              </li>
-            ))}
-          </ul>
-        )}
+          onChange={(e) => setFilterReceiver(e.target.value)}
+        >
+          <option value="">-- Select Receiver --</option>
+          {allEntities.map((entity) => (
+            <option key={entity.id} value={entity.id}>
+              {entity.id}
+            </option>
+          ))}
+        </select>
       </div>
+
 
       <div className="mt-4">
         <label className="text-sm font-medium">Filter by Keywords:</label>
