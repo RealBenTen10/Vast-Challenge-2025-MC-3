@@ -461,6 +461,7 @@ async def evidence_for_event(event_id: str = Query(..., description="ID of the s
                 info["event"] = dict(event_node.items())
                 info["sources"] = [dict(entity.items()) for entity in source_entities if entity]
                 info["targets"] = [dict(entity.items()) for entity in target_entities if entity]
+            print("Got evidence and info")
 
     except Exception as e:
         print(f"Error in evidence_for_event: {str(e)}")
@@ -468,7 +469,7 @@ async def evidence_for_event(event_id: str = Query(..., description="ID of the s
 
     finally:
         driver.close()
-
+    print("Returned data: ", results, info)
     return {"success": True, "data": results, "info": info}
 
 

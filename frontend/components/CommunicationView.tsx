@@ -5,12 +5,50 @@ import { Card, CardHeader, CardBody, Badge } from "@heroui/react";
 
 interface MSVItem {
   event_id: string;
+  label: string;
+  timestamp?: string;
+  source?: string;
+  target?: string;
+  content: string;
+  sub_type: string;
+  destination?: string;
+  movement_type?: string;
+
+}
+
+interface EntityInfo {
+  id: string;
+  label: string;
+  sub_type?: string;
+  name?: string;
+  type: string;
+}
+
+interface EventMetadata {
+  id: string;
+  sub_type: string;
+  label?: string;
+  timestamp?: string;
+  content?: string;
+  movement_type?: string;
+  destination?: string;
+}
+
+interface EventInfoResponse {
+  event: EventMetadata;
+  sources: EntityInfo[];
+  targets: EntityInfo[];
+}
+
+interface EventInfo {
+  event_id: string;
   timestamp: string;
   source: string;
   target: string;
   content: string;
   sub_type: string;
 }
+
 
 interface Node {
   id: string;
@@ -61,30 +99,33 @@ export default function CommunicationView({
   const [prevTopK, setPrevTopK] = useState<number>(50);
   const [byTime, setByTime] = useState(false);
   const [prevByTime, setPrevByTime] = useState(false); 
+  const [infoText, setInfoText] = useState<EventInfo[]>([]);
+  const [eventInfo, setEventInfo] = useState<EventInfoResponse | null>(null);
+
 
   useEffect(() => {
-    const fetchEvidence = async () => {
-      if (filterModeMessages !== "evidence") return;
-      try {
-        setLoading(true);
-        const res = await fetch(`/api/evidence-for-event?event_id=${selectedEventId}`);
-        const data = await res.json();
-        if (data.success) {
-          setEvidenceResults(data.data);
-        } else {
-          setError("Failed to fetch evidence messages.");
-        }
-      } catch (err) {
-        setError(String(err));
-      } finally {
-        setLoading(false);
-        setFilterModeMessages("evidence");
+  const fetchEvidence = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/evidence-for-event?event_id=${selectedEventId}`);
+      const data = await res.json();
+      if (data.success) {
+        setEvidenceResults(data.data);           // Communication evidence
+        setEventInfo(data.info);                 // Event metadata + source/target entities
+      } else {
+        setError("Failed to fetch evidence messages.");
       }
-    };
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setLoading(false);
+      setFilterModeMessages("evidence");
+    }
+  };
+  fetchEvidence();
+}, [selectedEventId]);
 
-    fetchEvidence();
-    setFilterModeMessages("evidence");
-  }, [selectedEventId]);
+
 
   const handleSimilaritySearch = async (query?: string) => {
     const searchQuery = query ?? similarityQuery;
@@ -316,12 +357,37 @@ export default function CommunicationView({
           )}
         </div>
       )}
-      {filterModeMessages == "evidence" && (
-        <div className="mt-2 flex flex-wrap gap-1 text-sm">
-          <span className="ml-4"></span>
-          {selectedEventId && <Badge color="blue">Found evidence for : {selectedEventId}</Badge>}
+      {filterModeMessages === "evidence" && (
+        <div className="mt-2 flex flex-col gap-1 text-sm ml-4">
+
+          {eventInfo?.event && (
+            <div className="mt-1">
+              Evidence for <span className="font-semibold">{eventInfo.event.sub_type}</span>
+              {eventInfo.sources.length === 1 && eventInfo.targets.length === 1 ? (
+                <>
+                  {" "}
+                  of <span className="font-semibold">{eventInfo.targets[0].id}</span> by{" "}
+                  <span className="font-semibold">{eventInfo.sources[0].id}</span>
+                </>
+              ) : (
+                <>
+                  {" "}between{" "}
+                  {[...eventInfo.sources.map(e => e.id), ...eventInfo.targets.map(e => e.id)]
+                    .filter(Boolean)
+                    .map((id, idx, arr) => (
+                      <React.Fragment key={id}>
+                        <span className="font-semibold">{id}</span>
+                        {idx < arr.length - 1 && <span> and </span>}
+                      </React.Fragment>
+                    ))}
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
+
+
 
       <div className="flex-1 min-h-0 mt-4 overflow-auto">
         {loading ? (
