@@ -431,7 +431,7 @@ async def read_db_graph():
             result = session.run("""
                 MATCH (a)-[r]->(b)
                 WHERE NOT (type(r) = 'COMMUNICATION' AND a:Entity AND b:Entity)
-                RETURN a.id AS source, b.id AS target, r, id(r) AS rel_id, type(r) AS rel_type
+                RETURN a.id AS source, b.id AS target, r, r.id AS rel_id, r.type AS rel_type
             """)
 
             for record in result:

@@ -668,6 +668,7 @@ const GraphView: React.FC<Props> = ({
       }
       return true;
     });
+    console.log
 
     // Update counts based on currently visible nodes and links
     const subtypeCounts: Record<string, number> = {};
