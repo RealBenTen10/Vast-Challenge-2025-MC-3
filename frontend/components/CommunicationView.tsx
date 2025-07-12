@@ -78,11 +78,13 @@ export default function CommunicationView({
         setError(String(err));
       } finally {
         setLoading(false);
+        setFilterModeMessages("evidence");
       }
     };
 
     fetchEvidence();
-  }, [filterModeMessages, selectedEventId]);
+    setFilterModeMessages("evidence");
+  }, [selectedEventId]);
 
   const handleSimilaritySearch = async (query?: string) => {
     const searchQuery = query ?? similarityQuery;
