@@ -243,8 +243,24 @@ const GraphView: React.FC<Props> = ({
         <option value={24 * 60}>1 day</option>
       </select>
       
-      <strong> Current Time: </strong> {new Date(currentAnimationTime).toLocaleString()}
-    
+      {isPlaying || isInAnimation ? (
+        <div className="mt-2">
+          <strong>Currently showing animation for:</strong>{" "}
+          {new Date(currentAnimationTime).toLocaleString()} <strong>–</strong>{" "}
+          {new Date(currentAnimationTime + stepMS).toLocaleString()}
+        </div>
+      ) : (
+        <div className="mt-1 text-sm text-gray-700">
+          Showing Communications from{" "}
+          <span className="font-semibold">{new Date(animationStartTime).toLocaleString()}</span>{" "}
+          to{" "}
+          <span className="font-semibold">{new Date(animationEndTime).toLocaleString()}</span>
+        </div>
+      )}
+
+      {!isPlaying && !isInAnimation && (
+        <div className="text-sm mt-1">Press Play to start animation</div>
+      )}
     </div>
     
   );
