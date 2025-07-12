@@ -326,12 +326,14 @@ async def read_db_graph():
     comm_node_id_map = {}  # (src, tgt) -> agg node id
     try:
         with driver.session() as session:
+            
             result = session.run("MATCH (n) WHERE NOT (n:Event AND n.sub_type = 'Communication') RETURN n")
             for record in result:
                 n = record["n"]
                 node_data = dict(n.items())
                 node_data["id"] = n.get("id")
                 nodes.append(node_data)
+                
 
             comm_result = session.run("""
                 MATCH (sender:Entity)-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity)
@@ -382,6 +384,8 @@ async def read_db_graph():
 
 
             # Origin read
+            nodes = []
+            edges = []
             results = session.run("MATCH (n) RETURN n")
             for record in results:
                 n = record["n"]
