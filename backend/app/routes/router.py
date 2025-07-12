@@ -123,7 +123,25 @@ async def _load_graph_json():
         schema = json.load(f)["schema"]
 
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    # --- Pre-processing Step: Calculate evidence counts from edges ---
+    evidence_counts = {}
+    for edge in data.get("edges", []):
+        if edge.get("type") == "evidence_for":
+            target_id = edge.get("target")
+            # Only count if the target is an Event and not Communication
+            # (Requires knowing node types beforehand, or handle during node creation)
+            # For simplicity, we'll assume the target ID points to an Event here.
+            evidence_counts[target_id] = evidence_counts.get(target_id, 0) + 1
 
+    # Apply counts to the nodes data
+    for node in data.get("nodes", []):
+        if node.get("type") == "Event" and node.get("sub_type") != "Communication":
+            node_id = node.get("id")
+            if node_id in evidence_counts:
+                node["count"] = evidence_counts[node_id]
+            else:
+                node["count"] = 0 # Ensure all non-comm events have a count property
+    # --- End Pre-processing ---def create_node(tx, node):
     def create_node(tx, node):
         node_type = node.get("type")
         if node_type not in ["Entity", "Event", "Relationship"]:
@@ -154,6 +172,8 @@ async def _load_graph_json():
             MERGE (a)-[r:`{rel_type}`]->(b)
             {set_clause}
         """, source_id=source_id, target_id=target_id, **props)
+    
+    
 
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")  # Clear
