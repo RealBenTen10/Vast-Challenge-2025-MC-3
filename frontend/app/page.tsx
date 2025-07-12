@@ -72,11 +72,12 @@ export default function Home() {
   const [msvData, setMsvData] = useState<any[]>([]);
   const [msvLoading, setMsvLoading] = useState(false);
   const [msvError, setMsvError] = useState<string | null>(null);
+  const [resetFilterPushed, setResetFilterPushed] = useState(false);
 
   useEffect(() => {
     console.log("SelectedInfo: ", selectedInfo);
   }, [selectedInfo]); 
-  
+
   // Resizing logic
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -286,6 +287,7 @@ export default function Home() {
             setMsvKeyword={setMsvKeyword}
             loadMSV={loadMSV}
             allEntities={allEntities}
+            setResetFilterPushed={setResetFilterPushed}
           />
         </div>
       )}
@@ -331,6 +333,8 @@ export default function Home() {
             setrelevantEvents={setrelevantEvents}
             commGraphData={commGraphData}
             setSelectedEventId={setSelectedEventId}
+            setResetFilterPushed={setResetFilterPushed}
+            resetFilterPushed={resetFilterPushed}
           />
           {/* Resizable Drag Handle */}
           <div

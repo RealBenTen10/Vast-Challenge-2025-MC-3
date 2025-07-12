@@ -32,6 +32,7 @@ interface FilterPanelProps {
   setMsvKeyword: (v: string) => void;
   loadMSV: () => void;
   allEntities?: { id: string; sub_type?: string }[]; // Add allEntities prop
+  setResetFilterPushed: (v: boolean) => void;
 }
 
 const FilterPanel: React.FC<FilterPanelProps> = ({
@@ -64,6 +65,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   setMsvKeyword,
   loadMSV,
   allEntities = [],
+  setResetFilterPushed,
   ...props
 }) => {
   const [contentInput, setContentInput] = useState(filterContent);
@@ -221,6 +223,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           setSelectedEventTypes([]);
           setContentInput("");
           setrelevantEvents(new Set());
+          setResetFilterPushed(true)
         }}
         className="mt-4"
         color="danger"
