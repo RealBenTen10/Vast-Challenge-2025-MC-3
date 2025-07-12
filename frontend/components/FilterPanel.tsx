@@ -217,7 +217,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           setFilterSender("");
           setFilterReceiver("");
           setFilterContent("");
-          setFilterDepth(0);
+          setFilterDepth(1);
           setSelectedEventTypes([]);
           setContentInput("");
           setrelevantEvents(new Set());
