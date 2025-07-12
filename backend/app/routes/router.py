@@ -414,24 +414,27 @@ async def read_db_graph():
 async def evidence_for_event(event_id: str = Query(..., description="ID of the selected event")):
     """
     Given a selected event (e.g., 'Event_Monitoring_0'), return detailed information for each
-    communication event that points to it via [:evidence_for] edges.
+    communication event that points to it via [:evidence_for] edges, as well as full metadata
+    for the target event and its connected entity source/target nodes.
     """
     print("Getting evidence for event:", event_id)
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     results = []
+    info = {}
 
     try:
         with driver.session() as session:
-            query = """
+            # get evidence communication events
+            evidence_query = """
                 MATCH (sender:Entity)-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity),
                       (comm)-[:evidence_for]->(e:Event {id: $event_id})
                 RETURN comm, sender.id AS source, receiver.id AS target
                 ORDER BY comm.timestamp
             """
-            records = session.run(query, event_id=event_id)
+            evidence_records = session.run(evidence_query, event_id=event_id)
 
-            print("Processing results...")
-            for record in records:
+            print("Processing communication evidence...")
+            for record in evidence_records:
                 comm = record["comm"]
                 results.append({
                     "event_id": comm.id,
@@ -442,7 +445,22 @@ async def evidence_for_event(event_id: str = Query(..., description="ID of the s
                     "sub_type": comm.get("sub_type", "")
                 })
 
-            print(f"Found {len(results)} evidence communication events for event {event_id}.")
+            # get selected event data and its source and target
+            info_query = """
+                MATCH (e:Event {id: $event_id})
+                OPTIONAL MATCH (source:Entity)-[:RELATED_TO]->(e)
+                OPTIONAL MATCH (e)-[:RELATED_TO]->(target:Entity)
+                RETURN e, collect(DISTINCT source) AS sources, collect(DISTINCT target) AS targets
+            """
+            info_record = session.run(info_query, event_id=event_id).single()
+            if info_record:
+                event_node = info_record["e"]
+                source_entities = info_record["sources"]
+                target_entities = info_record["targets"]
+
+                info["event"] = dict(event_node.items())
+                info["sources"] = [dict(entity.items()) for entity in source_entities if entity]
+                info["targets"] = [dict(entity.items()) for entity in target_entities if entity]
 
     except Exception as e:
         print(f"Error in evidence_for_event: {str(e)}")
@@ -451,7 +469,8 @@ async def evidence_for_event(event_id: str = Query(..., description="ID of the s
     finally:
         driver.close()
 
-    return {"success": True, "data": results}
+    return {"success": True, "data": results, "info": info}
+
 
 
 @router.get("/get-events-by-date", response_class=JSONResponse)
