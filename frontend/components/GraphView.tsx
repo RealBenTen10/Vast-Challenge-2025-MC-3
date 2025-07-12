@@ -955,96 +955,104 @@ const GraphView: React.FC<Props> = ({
     }
   });
   // === Visuals for animated or normal state ===
-  if (isPlaying || isInAnimation) {
-    update.select("circle")
-      .attr("fill", d =>
-        d.type === "Entity"
-          ? "#999"
-          : d.sub_type === "Communication"
-          ? "#1f77b4"
-          : d.type === "Event"
-          ? "#ff7f0e"
-          : "#999"
-      )
-      //.attr("stroke", d => (isActiveEvent(d) ? "red" : "none")) // Do we still need this?
-      .attr("stroke-width", d => (isActiveEvent(d) ? 3 : 0))
-      .attr("opacity", d => {
-        if (d.type === "Event") {
-          return isActiveEvent(d) ? 1 : 0.15;
-        }
-        if (d.type === "Entity") {
-          // Dim entity if not connected to any active event
-          return connectedEntities.has(d.id) ? 1 : 0.2;
-        }
-        return 1;
-      });
+  // === Visuals for animated or normal state ===
+    if (isPlaying || isInAnimation) {
+      update.select("circle")
+        .attr("fill", d =>
+          d.type === "Entity"
+            ? "#999"
+            : d.sub_type === "Communication"
+            ? "#1f77b4"
+            : d.type === "Event"
+            ? "#ff7f0e"
+            : "#999"
+        )
+        //.attr("stroke", d => (isActiveEvent(d) ? "red" : "none")) // Do we still need this?
+        .attr("stroke-width", d => (isActiveEvent(d) ? 3 : 0))
+        .attr("opacity", d => {
+          if (d.type === "Event") {
+            return isActiveEvent(d) ? 1 : 0.15;
+          }
+          if (d.type === "Entity") {
+            // Dim entity if not connected to any active event
+            return connectedEntities.has(d.id) ? 1 : 0.2;
+          }
+          return 1;
+        });
 
-    d3.select(svgRef.current)
-      .selectAll("line")
-      .attr("opacity", d => (isActiveLink(d) ? 1 : 0.1));
-  } else {
-    update.select("circle")
-      .attr("fill", d =>
-        d.type === "Entity"
-          ? "#999"
-          : d.sub_type === "Communication"
-          ? "#1f77b4"
-          : d.type === "Event"
-          ? "#ff7f0e"
-          : "#999"
-      )
-      .attr("stroke", "none")
-      .attr("stroke-width", 0)
-      .attr("opacity", 1);
+      d3.select(svgRef.current)
+        .selectAll("line")
+        .attr("opacity", d => (isActiveLink(d) ? 1 : 0.1));
 
-    d3.select(svgRef.current)
-      .selectAll("line")
-      .attr("opacity", 1);
+      // Polygons (link-arrow) opacity for animation state
+      d3.select(svgRef.current).selectAll("polygon.link-arrow")
+        .attr("opacity", (d: any) => (isActiveLink(d) ? 1 : 0.25)); // This line was missing for the polygon update
+    } else {
+      // This block executes when animation is NOT playing
+      update.select("circle")
+        .attr("fill", d =>
+          d.type === "Entity"
+            ? "#999"
+            : d.sub_type === "Communication"
+            ? "#1f77b4"
+            : d.type === "Event"
+            ? "#ff7f0e"
+            : "#999"
+        )
+        .attr("stroke", "none")
+        .attr("stroke-width", 0)
+        .attr("opacity", 1); // Ensure circles are fully opaque
 
-    
-  }
+      d3.select(svgRef.current)
+        .selectAll("line")
+        .attr("opacity", 1); // Ensure lines are fully opaque
 
-  // === Render directional arrows (linkFlow) ===
-  const g = d3.select(svgRef.current).select("g");
+      // 👇 ADD THIS LINE for polygons when no animation is playing
+      d3.select(svgRef.current)
+        .selectAll("polygon.link-arrow")
+        .attr("opacity", 1); // Ensure polygons are fully opaque
+    }
 
-  const linkFlow = g.selectAll("polygon.link-arrow")
-    .data(linksToRender, (d: any) => `${d.source.id}-${d.target.id}`);
+      // === Render directional arrows (linkFlow) ===
+      const g = d3.select(svgRef.current).select("g");
 
-  linkFlow.exit().remove();
+      const linkFlow = g.selectAll("polygon.link-arrow")
+        .data(linksToRender, (d: any) => `${d.source.id}-${d.target.id}`);
 
-  linkFlow.enter()
-    .append("polygon")
-    .attr("class", "link-arrow")
-    .attr("points", "-7,-5 8,0 -7,5")
-    .merge(linkFlow as any)
-    .attr("fill", (d: any) =>
-      d.type === "COMMUNICATION" ? "#2ca02c" :
-      d.type === "EVIDENCE_FOR" ? "#800080" :
-      "#999"
-    )
-    .attr("opacity", (d: any) => (isActiveLink(d) ? 1 : 0.25))
-    .attr("transform", (d: any) => {
-      const source = typeof d.source === "object" ? d.source : nodePositions[d.source];
-      const target = typeof d.target === "object" ? d.target : nodePositions[d.target];
+      linkFlow.exit().remove();
 
-      const ratio = 0.25;
-      const arrowX = source.x + (target.x - source.x) * ratio;
-      const arrowY = source.y + (target.y - source.y) * ratio;
-      const angle = Math.atan2(target.y - source.y, target.x - source.x) * (180 / Math.PI);
-      return `translate(${arrowX},${arrowY}) rotate(${angle})`;
-    });
+      linkFlow.enter()
+        .append("polygon")
+        .attr("class", "link-arrow")
+        .attr("points", "-7,-5 8,0 -7,5")
+        .merge(linkFlow as any)
+        .attr("fill", (d: any) =>
+          d.type === "COMMUNICATION" ? "#2ca02c" :
+          d.type === "EVIDENCE_FOR" ? "#800080" :
+          "#999"
+        )
+        .attr("transform", (d: any) => {
+          const source = typeof d.source === "object" ? d.source : nodePositions[d.source];
+          const target = typeof d.target === "object" ? d.target : nodePositions[d.target];
 
-  // === Labels ===
-  update.select("text")
-    .text(d => (d.type === "Entity" ? d.id : d.sub_type))
-    .style("font-size", d =>
-      `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
-    );
+          const ratio = 0.25;
+          const arrowX = source.x + (target.x - source.x) * ratio;
+          const arrowY = source.y + (target.y - source.y) * ratio;
+          const angle = Math.atan2(target.y - source.y, target.x - source.x) * (180 / Math.PI);
+          return `translate(${arrowX},${arrowY}) rotate(${angle})`;
+        });
 
-  return update;
+      // === Labels ===
+      update.select("text")
+        .text(d => (d.type === "Entity" ? d.id : d.sub_type))
+        .style("font-size", d =>
+          `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
+        );
+
+      return update;
 
 
-},
+    },
         exit => exit.remove()
       );
 
