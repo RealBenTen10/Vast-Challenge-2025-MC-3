@@ -178,34 +178,78 @@ def create_relationship_edges(tx):
     # Get all Relationship nodes
     relationships = tx.run("MATCH (r:Relationship) RETURN r").data()
 
+    # Track edge counts between each entity pair to assign a unique "number"
+    edge_counter = {}
+
     for record in relationships:
         r = record['r']
         r_id = r['id']
         sub_type = r.get('sub_type', 'RELATIONSHIP')
-        props = dict(r)
+        base_props = dict(r)
 
-        # Find all connected Entities
+        # Get all connected Entities
         entities = tx.run("""
             MATCH (e:Entity)-[]-(r:Relationship {id: $r_id})
             RETURN e.id AS entity_id
         """, r_id=r_id).data()
-
         entity_ids = [e['entity_id'] for e in entities]
 
-        # Create edges between all pairs of connected Entities
+        # Aggregate evidence_for info from Communication events
+        evidence = tx.run("""
+            MATCH (comm:Event {sub_type: 'Communication'})-[:evidence_for]->(r:Relationship {id: $r_id})
+            RETURN collect(comm.content) AS contents, 
+                   count(comm) AS count, 
+                   collect(comm.id) AS comm_ids
+        """, r_id=r_id).single()
+
+        if evidence:
+            base_props["evidence_count"] = evidence["count"]
+            base_props["evidence_contents"] = evidence["contents"]
+            base_props["CommIDs"] = evidence["comm_ids"]
+        else:
+            base_props["evidence_count"] = 0
+            base_props["evidence_contents"] = []
+            base_props["CommIDs"] = []
+
+        # Find source and target based on edge direction
+        source_entities = tx.run("""
+            MATCH (e:Entity)-[]->(r:Relationship {id: $r_id})
+            RETURN collect(DISTINCT e.id) AS sources
+        """, r_id=r_id).single()["sources"]
+
+        target_entities = tx.run("""
+            MATCH (r:Relationship {id: $r_id})-[]->(e:Entity)
+            RETURN collect(DISTINCT e.id) AS targets
+        """, r_id=r_id).single()["targets"]
+
+        base_props["source"] = source_entities
+        base_props["target"] = target_entities
+        base_props["directed"] = len(source_entities) == 1 and len(target_entities) == 1
+
+        # Create edges between all unique pairs of entities
         for i in range(len(entity_ids)):
             for j in range(i + 1, len(entity_ids)):
                 source = entity_ids[i]
                 target = entity_ids[j]
+                key = tuple(sorted((source, target)))
+
+                # Clone base_props so numbering is not shared across other pairs
+                props = base_props.copy()
+                edge_counter[key] = edge_counter.get(key, 0) + 1
+                props["number"] = edge_counter[key]
 
                 tx.run(f"""
                     MATCH (a:Entity {{id: $source}}), (b:Entity {{id: $target}})
                     MERGE (a)-[rel:`{sub_type}`]->(b)
                     SET rel += $props
                 """, source=source, target=target, props=props)
-
-        # Delete the Relationship node
+        
+        
+        # Delete the original Relationship node
         tx.run("MATCH (r:Relationship {id: $r_id}) DETACH DELETE r", r_id=r_id)
+
+
+
 
 
 def create_communication_edges(tx):
@@ -340,7 +384,7 @@ async def read_db_graph():
                 RETURN sender.id AS source, receiver.id AS target, collect(comm.content) AS contents, collect(comm.id) AS event_ids, count(*) AS count, collect(comm.timestamp) AS timestamps
             """)
             for rec in comm_result:
-                agg_id = f"CommAgg_{rec['source']}_{rec['target']}"
+                agg_id = f"Communication between {rec['source']} and {rec['target']}"
                 comm_agg_nodes.append({
                     "id": agg_id,
                     "type": "Event",
@@ -469,7 +513,7 @@ async def evidence_for_event(event_id: str = Query(..., description="ID of the s
 
     finally:
         driver.close()
-    print("Returned data: ", results, info)
+    print("Returned evidence")
     return {"success": True, "data": results, "info": info}
 
 
@@ -748,7 +792,7 @@ async def event_entities(event_ids: List[str]):
     print("Event entities fetched successfully")
     return {"success": True, "data": result_map}
 
-
+'''
 
 ###
 # Here the Similarity Search starts
@@ -903,3 +947,4 @@ async def similarity_search_events(
     except Exception as e:
         print("Error in similarity search for events:", str(e))
         return {"success": False, "error": str(e)}
+'''
