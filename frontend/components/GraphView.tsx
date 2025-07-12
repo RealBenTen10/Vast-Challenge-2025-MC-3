@@ -226,7 +226,7 @@ const GraphView: React.FC<Props> = ({
 
   const controls = (
     <div style={{ position: "absolute", top: 10, left: 10, zIndex: 10 }}>
-      <button onClick={() => setIsPlaying(true)}>▶ Play</button>
+      <button onClick={() => { setIsPlaying(true); setIsInAnimation(true)}}>▶ Play</button>
       <button onClick={() => setIsPlaying(false)}>⏸ Pause</button>
       <button onClick={() => { setIsPlaying(false); setIsInAnimation(false); setCurrentAnimationTime(animationStartTime); }}>⏹ Stop</button>
       <button onClick={() => handleStep('backward')}>◀ Step Back</button>
@@ -1026,6 +1026,9 @@ const GraphView: React.FC<Props> = ({
         .attr("class", "link-arrow")
         .attr("points", "-7,-5 8,0 -7,5")
         .merge(linkFlow as any)
+        .each(function(d: any) {
+          console.log("Polygon datum:", d);
+        })
         .attr("fill", (d: any) =>
           d.type === "COMMUNICATION" ? "#2ca02c" :
           d.type === "EVIDENCE_FOR" ? "#800080" :
@@ -1041,6 +1044,7 @@ const GraphView: React.FC<Props> = ({
           const angle = Math.atan2(target.y - source.y, target.x - source.x) * (180 / Math.PI);
           return `translate(${arrowX},${arrowY}) rotate(${angle})`;
         });
+
 
       // === Labels ===
       update.select("text")
