@@ -79,14 +79,14 @@ export default function EventsView({
   };
 
   return (
-    <div className="w-full mt-8">
+    <div className="w-full mt-8 h-full flex flex-col">
       <h4 className="text-lg font-semibold mb-2">
         {eventsAfterTimeFilter.length} Events
       </h4>
       {eventsAfterTimeFilter.length === 0 ? (
         <p>No events found.</p>
       ) : (
-        <div className="overflow-auto max-h-96 border rounded">
+        <div className="flex-1 min-h-0 overflow-auto border rounded">
           <table className="min-w-full text-sm text-left table-auto">
             <thead className="bg-gray-100">
               <tr>

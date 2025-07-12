@@ -198,7 +198,7 @@ export default function CommunicationView({
   })();
 
   return (
-    <div className="w-full mt-8">
+    <div className="w-full mt-8 h-full flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <h4 className="text-lg font-semibold">{filteredData.length} Messages</h4>
         <div className="flex gap-2 flex-wrap">
@@ -321,7 +321,7 @@ export default function CommunicationView({
         </div>
       )}
 
-      <div className="mt-4">
+      <div className="flex-1 min-h-0 mt-4 overflow-auto">
         {loading ? (
           <p>Loading Message data...</p>
         ) : error ? (
@@ -329,49 +329,47 @@ export default function CommunicationView({
         ) : filteredData.length === 0 ? (
           <p>No communication records found... Maybe you forgot to set an Entity, Event or Text?</p>
         ) : (
-          <div className="overflow-auto max-h-96 border rounded">
-            <table className="min-w-full text-sm text-left table-auto">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="p-2 w-32">Timestamp</th>
-                  <th className="p-2 w-24">Source</th>
-                  <th className="p-2 w-24">Target</th>
-                  <th className="p-2">Content</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredData.map((item) => (
-                  <tr
-                    key={item.event_id}
-                    className="border-b hover:bg-gray-50 cursor-pointer"
+          <table className="min-w-full text-sm text-left table-auto">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="p-2 w-32">Timestamp</th>
+                <th className="p-2 w-24">Source</th>
+                <th className="p-2 w-24">Target</th>
+                <th className="p-2">Content</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((item) => (
+                <tr
+                  key={item.event_id}
+                  className="border-b hover:bg-gray-50 cursor-pointer"
+                >
+                  <td className="p-2">{item.timestamp}</td>
+                  <td
+                    className="p-2 text-blue-600 hover:underline cursor-pointer"
+                    onClick={() => setFilterSender(item.source)}
                   >
-                    <td className="p-2">{item.timestamp}</td>
-                    <td
-                      className="p-2 text-blue-600 hover:underline cursor-pointer"
-                      onClick={() => setFilterSender(item.source)}
-                    >
-                      {item.source}
-                    </td>
-                    <td
-                      className="p-2 text-green-600 hover:underline cursor-pointer"
-                      onClick={() => setFilterReceiver(item.target)}
-                    >
-                      {item.target}
-                    </td>
-                    <td 
-                      className="p-2 whitespace-pre-wrap break-words"
-                      onClick={() => {
-                        setQueryInput(item.content);
-                        handleSimilaritySearch(item.content);
-                      }}
-                    >
-                      {item.content}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    {item.source}
+                  </td>
+                  <td
+                    className="p-2 text-green-600 hover:underline cursor-pointer"
+                    onClick={() => setFilterReceiver(item.target)}
+                  >
+                    {item.target}
+                  </td>
+                  <td 
+                    className="p-2 whitespace-pre-wrap break-words"
+                    onClick={() => {
+                      setQueryInput(item.content);
+                      handleSimilaritySearch(item.content);
+                    }}
+                  >
+                    {item.content}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

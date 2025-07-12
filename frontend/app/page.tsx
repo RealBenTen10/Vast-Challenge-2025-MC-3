@@ -170,8 +170,47 @@ export default function Home() {
     }
   }, [graphData]);
 
+  // Panel-Breiten in Prozent (Summe = 100)
+  const [panelWidths, setPanelWidths] = useState([25, 25, 25, 25]);
+  const dragIndexRef = useRef<number | null>(null);
+
+  // Handler für Drag-Start
+  function handleDragStart(idx: number, e: React.MouseEvent) {
+    dragIndexRef.current = idx;
+    document.body.style.cursor = "col-resize";
+
+    function onMouseMove(ev: MouseEvent) {
+      const container = document.getElementById("tools-panels-row");
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const totalWidth = rect.width;
+      const x = ev.clientX - rect.left;
+      let leftSum = 0;
+      for (let i = 0; i < idx; i++) leftSum += panelWidths[i];
+      const minPercent = 10;
+      let newLeft = Math.max(minPercent, Math.min((x / totalWidth) * 100, 100 - minPercent * (4 - idx)));
+      let newWidths = [...panelWidths];
+      const delta = newLeft - leftSum;
+      newWidths[idx - 1] += delta;
+      newWidths[idx] -= delta;
+      // Clamp
+      newWidths = newWidths.map(w => Math.max(minPercent, w));
+      setPanelWidths(newWidths);
+    }
+
+    function onMouseUp() {
+      dragIndexRef.current = null;
+      document.body.style.cursor = "";
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    }
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  }
+
   return (
-  <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
+    <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
 
 
     {/* Selected Info with Toggle Button and Sidepanel Wrapper */}
@@ -381,54 +420,63 @@ export default function Home() {
 
     {/* CommunicationView, Time Bar Chart, Sankey  und EventsView nebeneinander */}
     {(true || showTimeBar || showSankey || true) && (
-      <Card className="w-full mt-8 mx-0 px-0">
+      <Card className="w-full mt-8 mx-0 px-0" style={{ height: `${sankeyHeight}px`, minHeight: 200, maxHeight: '90vh', position: 'relative' }}>
         <CardHeader>
-          <div className="flex flex-wrap gap-1 text-sm">
-            <h4 className="text-md font-semibold mb-2">
+          <div className="flex flex-wrap gap-1 text-sm justify-center w-full">
+            <h4 className="text-md font-semibold mb-2 text-center w-full">
               Additional Tools
             </h4>
           </div>
         </CardHeader>
         <Divider />
-        <CardBody>
-          <div className="w-full flex gap-4 items-center">
+        <CardBody className="h-full">
+          <div id="tools-panels-row" className="w-full h-full flex items-start relative">
             {/* CommunicationView */}
             {showCommunicationView && (
-            <div className="flex-1 min-w-0">
-              <CommunicationView
-                className="mt-0"
-                onMessageClick={(id: string) => {
-                  let eventId = id;
-                  if (typeof id === "string" && id.startsWith("Event_Communication_")) eventId = id.replace("Event_Communication_", "");
-                  const aggId = findCommAggNodeIdForEvent(eventId);
-                  if (aggId && nodeIdExists(aggId)) {
-                    setHighlightedMessageId(aggId);
-                  } else {
-                    setHighlightedMessageId(null);
-                  }
-                }}
-                msvData={msvData}
-                msvLoading={msvLoading}
-                msvError={msvError}
-                filterSender={filterSender}
-                setFilterSender={setFilterSender}
-                filterReceiver={filterReceiver}
-                setFilterReceiver={setFilterReceiver}
-                filterContent={filterContent}
-                timestampFilterStart={timestampFilterStart}
-                timestampFilterEnd={timestampFilterEnd}
-                visibleEntities={visibleEntities}
-                communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
-                filterModeMessages={filterModeMessages}
-                setFilterModeMessages={setFilterModeMessages}
-                selectedEventId={selectedEventId}
-              />
-            </div>
+              <div style={{ width: `${panelWidths[0]}%` }} className="h-full flex flex-col min-w-[100px]">
+                <CommunicationView
+                  className="mt-0"
+                  onMessageClick={(id: string) => {
+                    let eventId = id;
+                    if (typeof id === "string" && id.startsWith("Event_Communication_")) eventId = id.replace("Event_Communication_", "");
+                    const aggId = findCommAggNodeIdForEvent(eventId);
+                    if (aggId && nodeIdExists(aggId)) {
+                      setHighlightedMessageId(aggId);
+                    } else {
+                      setHighlightedMessageId(null);
+                    }
+                  }}
+                  msvData={msvData}
+                  msvLoading={msvLoading}
+                  msvError={msvError}
+                  filterSender={filterSender}
+                  setFilterSender={setFilterSender}
+                  filterReceiver={filterReceiver}
+                  setFilterReceiver={setFilterReceiver}
+                  filterContent={filterContent}
+                  timestampFilterStart={timestampFilterStart}
+                  timestampFilterEnd={timestampFilterEnd}
+                  visibleEntities={visibleEntities}
+                  communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
+                  filterModeMessages={filterModeMessages}
+                  setFilterModeMessages={setFilterModeMessages}
+                  selectedEventId={selectedEventId}
+                />
+              </div>
             )}
 
-            {/* Time Bar Chart */}
+            {/* Handle 1: nur wenn CommunicationView UND TimeBarChart sichtbar sind */}
+            {showCommunicationView && (
+              <div
+                style={{ cursor: "col-resize", width: 8, zIndex: 20 }}
+                className="h-full bg-gray-200 hover:bg-blue-300 transition-colors"
+                onMouseDown={e => handleDragStart(1, e)}
+              />
+            )}
+
+            {/* TimeBarChart */}
             {showTimeBar && (
-              <div className="flex-1 min-w-0">
+              <div style={{ width: `${panelWidths[1]}%` }} className="h-full flex flex-col min-w-[100px]">
                 <TimeBarChart
                   graphData={graphData}
                   selectedTimestamp={selectedTimestamp}
@@ -447,9 +495,18 @@ export default function Home() {
               </div>
             )}
 
-            {/* Sankey Diagram */}
+            {/* Handle 2: nur wenn TimeBarChart UND Sankey sichtbar sind */}
+            {showTimeBar && (
+              <div
+                style={{ cursor: "col-resize", width: 8, zIndex: 20 }}
+                className="h-full bg-gray-200 hover:bg-blue-300 transition-colors"
+                onMouseDown={e => handleDragStart(2, e)}
+              />
+            )}
+
+            {/* Sankey */}
             {showSankey && (
-              <div className="flex-1 min-w-0 mt-6" style={{height: sankeyHeight}}>
+              <div style={{ width: `${panelWidths[2]}%` }} className="h-full flex flex-col min-w-[100px]">
                 <Sankey 
                   entityId={filterEntityId} 
                   selectedDate={selectedTimestamp} 
@@ -466,9 +523,18 @@ export default function Home() {
               </div>
             )}
 
-            {/* Events View */}
+            {/* Handle 3: nur wenn Sankey UND EventsView sichtbar sind */}
+            {showSankey  && (
+              <div
+                style={{ cursor: "col-resize", width: 8, zIndex: 20 }}
+                className="h-full bg-gray-200 hover:bg-blue-300 transition-colors"
+                onMouseDown={e => handleDragStart(3, e)}
+              />
+            )}
+
+            {/* EventsView */}
              {showEventsView && (
-            <div className="flex-1 min-w-0">
+            <div style={{ width: `${panelWidths[3]}%` }} className="h-full flex flex-col min-w-[100px]">
               <EventsView
                 eventsAfterTimeFilter={EventsAfterTimeFilter}
                 setSelectedEventId={setSelectedEventId}
@@ -478,6 +544,36 @@ export default function Home() {
             </div>
              )}
           </div>
+          {/* --- Neuer Handle am unteren Rand für die Höhe --- */}
+          <div
+            style={{
+              cursor: "row-resize",
+              height: "10px",
+              width: "100%",
+              background: "#e5e7eb",
+              position: "absolute",
+              left: 0,
+              bottom: -5,
+              zIndex: 30
+            }}
+            onMouseDown={e => {
+              const startY = e.clientY;
+              const startHeight = sankeyHeight;
+              function onMouseMove(ev: MouseEvent) {
+                let newHeight = startHeight + (ev.clientY - startY);
+                newHeight = Math.max(200, Math.min(newHeight, window.innerHeight - 200));
+                setSankeyHeight(newHeight);
+              }
+              function onMouseUp() {
+                window.removeEventListener("mousemove", onMouseMove);
+                window.removeEventListener("mouseup", onMouseUp);
+                document.body.style.cursor = "";
+              }
+              window.addEventListener("mousemove", onMouseMove);
+              window.addEventListener("mouseup", onMouseUp);
+              document.body.style.cursor = "row-resize";
+            }}
+          />
         </CardBody>
       </Card>
     )}
