@@ -634,6 +634,7 @@ const GraphView: React.FC<Props> = ({
     let nodesToRender: GraphNode[] = commGraphData.nodes
         .filter(d => visibleIds.has(d.id))
         .map(d => ({ ...d })); // Deep copy to ensure D3 can modify x, y
+    console.log("Nodes to render: ", nodesToRender)
 
     let linksToRender: GraphLink[] = commGraphData.links.filter(link => {
       const src = typeof link.source === "string" ? link.source : link.source.id;
@@ -653,14 +654,7 @@ const GraphView: React.FC<Props> = ({
         }
       }
       return true;
-    }).map(link => ({
-      source: typeof link.source === "string" ? link.source : link.source.id,
-      target: typeof link.target === "string" ? link.target : link.target.id,
-      type: link.type || '',
-      timestamp: link.timestamp,
-      value: link.value || 1
-    }
-  ));
+    });
 
     // Update counts based on currently visible nodes and links
     const subtypeCounts: Record<string, number> = {};
@@ -1006,6 +1000,8 @@ const GraphView: React.FC<Props> = ({
     d3.select(svgRef.current)
       .selectAll("line")
       .attr("opacity", 1);
+
+    
   }
 
   // === Render directional arrows (linkFlow) ===

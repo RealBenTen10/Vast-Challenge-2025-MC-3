@@ -73,6 +73,10 @@ export default function Home() {
   const [msvLoading, setMsvLoading] = useState(false);
   const [msvError, setMsvError] = useState<string | null>(null);
 
+  useEffect(() => {
+    console.log("SelectedInfo: ", selectedInfo);
+  }, [selectedInfo]); 
+  
   // Resizing logic
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {

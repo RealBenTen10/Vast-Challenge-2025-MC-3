@@ -411,16 +411,21 @@ async def read_db_graph():
             result = session.run("""
                 MATCH (a)-[r]->(b)
                 WHERE NOT (type(r) = 'COMMUNICATION' AND a:Entity AND b:Entity)
-                RETURN a.id AS source, b.id AS target, r
+                RETURN a.id AS source, b.id AS target, r, id(r) AS rel_id, type(r) AS rel_type
             """)
+
             for record in result:
                 r = record["r"]
-                edge_data = dict(r.items())
+                edge_data = dict(r.items())  # includes all properties
+
                 edge_data["source"] = record["source"]
                 edge_data["target"] = record["target"]
-                edge_data["type"] = r.type if hasattr(r, "type") else r.get("type", "")
+                edge_data["id"] = record["rel_id"]  
+                edge_data["type"] = record["rel_type"]  
+
                 edges.append(edge_data)
-            
+
+            print("Got aggregated Graphdata")
             
             
             all_nodes = nodes.copy() + comm_agg_nodes.copy()
@@ -451,7 +456,7 @@ async def read_db_graph():
         return {"success": False, "error": str(e)}
     finally:
         driver.close()
-
+    print("Fetched all data")
     return {"success": True, "nodes": nodes, "links": edges, "comm_nodes": all_nodes, "comm_links": all_edges}
 
 @router.get("/evidence-for-event", response_class=JSONResponse)
