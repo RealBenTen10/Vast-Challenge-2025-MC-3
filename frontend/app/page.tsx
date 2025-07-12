@@ -107,6 +107,7 @@ export default function Home() {
     try {
       const res = await fetch(`/api${endpoint}`);
       const data = await res.json();
+      
       if (endpoint === "/load-graph-json") {}
       else setGraphData({ nodes: data.nodes, links: data.links }), setStatusMsg("Graph loaded successfully."), setCommGraphData({ nodes: data.comm_nodes, links: data.comm_links });
     } catch (err) {
@@ -115,13 +116,15 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (graphData && graphData.nodes) {
-      const entities = graphData.nodes
-        .filter((n: any) => n.type === "Entity")
-        .map((n: any) => ({ id: n.id, sub_type: n.sub_type || n.label }));
-      setAllEntities(entities);
-    }
-  }, [graphData]);
+  if (graphData && graphData.nodes) {
+    const entities = graphData.nodes
+      .filter((n: any) => n.type === "Entity")
+      .map((n: any) => ({ id: n.id, sub_type: n.sub_type || n.label }))
+      .sort((a, b) => a.id.toLowerCase().localeCompare(b.id.toLowerCase()));
+    setAllEntities(entities);
+  }
+}, [graphData]);
+
 
   useEffect(() => {
     if (selectedInfo) {

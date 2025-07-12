@@ -44,36 +44,33 @@ export default function Sankey({
   const [sankeyData, setSankeyData] = useState<SankeyDataItem[]>([]);
 
   useEffect(() => {
-    if (!filterSender && !filterReceiver) return;
+  if (!filterSender && !filterReceiver) return;
 
-    const fetchDataAndDraw = async () => {
-      try {
-        const params = new URLSearchParams();
-        if (filterSender) params.append("sender", filterSender);
-        if (filterReceiver) params.append("receiver", filterReceiver);
-        if (timestampFilterStart) params.append("start_date", timestampFilterStart);
-        if (timestampFilterEnd) params.append("end_date", timestampFilterEnd);
+  const params = new URLSearchParams();
+  if (filterSender) params.append("sender", filterSender);
+  if (filterReceiver) params.append("receiver", filterReceiver);
+  if (timestampFilterStart) params.append("start_date", timestampFilterStart);
+  if (timestampFilterEnd) params.append("end_date", timestampFilterEnd);
 
-        const res = await fetch(`/api/sankey-communication-flows?${params.toString()}`);
-        const json = await res.json();
-
-        if (json.success && Array.isArray(json.links) && json.links.length > 0) {
-          setSankeyData(json.links);
-          console.log("Sankey data loaded:", sankeyData);
-          drawSankeyDiagram(json.links);
-        } else {
-          d3.select(svgRef.current).selectAll("*").remove();
-          setSankeyData(json.links);
-          console.log("Sankey data loaded:", sankeyData);
-        }
-      } catch (err) {
-        console.error("Error loading Sankey data:", err);
+  fetch(`/api/sankey-communication-flows?${params.toString()}`)
+    .then(res => res.json())
+    .then(json => {
+      if (json.success && Array.isArray(json.links) && json.links.length > 0) {
+        setSankeyData(json.links);
+        console.log("Sankey data loaded:", json.links);
+        drawSankeyDiagram(json.links);
+      } else {
         d3.select(svgRef.current).selectAll("*").remove();
+        setSankeyData(json.links);
+        console.log("Sankey data loaded (empty or invalid):", json.links);
       }
-    };
+    })
+    .catch(err => {
+      console.error("Error loading Sankey data:", err);
+      d3.select(svgRef.current).selectAll("*").remove();
+    });
+}, [filterSender, filterReceiver, timestampFilterStart, timestampFilterEnd, filterContent]);
 
-    fetchDataAndDraw();
-  }, [filterSender, filterReceiver, timestampFilterStart, timestampFilterEnd, filterContent]);
 
   const colorPalette = d3.schemeTableau10; 
 

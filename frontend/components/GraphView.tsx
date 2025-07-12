@@ -303,7 +303,7 @@ const GraphView: React.FC<Props> = ({
 
     if (!isPlaying || !isInAnimation) {
     const getVisibleNodeIds = (): Set<string> => {
-      let visible = new Set<string>();
+      let visible1 = new Set<string>();
 
       const filterEntities = [filterSender, filterReceiver].filter(Boolean);
 
@@ -312,8 +312,8 @@ const GraphView: React.FC<Props> = ({
         let level = 0;
 
         if (filterSender && filterReceiver && filterDepth === 0) {
-          visible.add(filterSender);
-          visible.add(filterReceiver);
+          visible1.add(filterSender);
+          visible1.add(filterReceiver);
 
           // Iterate through all links to find communication events between sender and receiver (bidirectional)
           graphData.links.forEach(link => {
@@ -335,7 +335,7 @@ const GraphView: React.FC<Props> = ({
                 const linkToSender = graphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === eventNode.id && (typeof l.target === 'string' ? l.target : l.target.id) === filterSender);
 
                 if ((linkFromSender && linkToReceiver) || (linkFromReceiver && linkToSender)) {
-                    visible.add(eventNode.id);
+                    visible1.add(eventNode.id);
                 }
             }
           });
@@ -344,8 +344,8 @@ const GraphView: React.FC<Props> = ({
           while (queue.length > 0 && level <= filterDepth) {
             const nextQueue: string[] = [];
             for (const id of queue) {
-              if (visible.has(id)) continue;
-              visible.add(id);
+              if (visible1.has(id)) continue;
+              visible1.add(id);
               const neighbors = graphData.links.flatMap(link => {
                 const src = typeof link.source === "string" ? link.source : link.source.id;
                 const tgt = typeof link.target === "string" ? link.target : link.target.id;
@@ -363,7 +363,7 @@ const GraphView: React.FC<Props> = ({
           if (
             node.type === "Event" &&
             node.sub_type !== "Communication" &&
-            !visible.has(node.id)
+            !visible1.has(node.id)
           ) {
             // Find all neighboring node IDs
             const connectedEntities = graphData.links
@@ -377,22 +377,22 @@ const GraphView: React.FC<Props> = ({
                 const tgtId = typeof link.target === "string" ? link.target : link.target.id;
                 return srcId === node.id ? tgtId : srcId;
               })
-              .filter(id => visible.has(id));
+              .filter(id => visible1.has(id));
 
             // Add only if at least two visible neighbors
             if (connectedEntities.length >= 2) {
-              visible.add(node.id);
+              visible1.add(node.id);
             }
           }
         });
       } else {
-        graphData.nodes.forEach(n => visible.add(n.id));
+        graphData.nodes.forEach(n => visible1.add(n.id));
       }
 
       if (filterContent.trim()) {
         console.log("Applying filter:", relevantEvents);
-        visible = new Set(
-          Array.from(visible).filter(id => {
+        visible1 = new Set(
+          Array.from(visible1).filter(id => {
             const node = graphData.nodes.find(n => n.id === id);
             if (!node) return false;
             if (node.type === "Event") return relevantEvents.has(node.id);
@@ -408,7 +408,7 @@ const GraphView: React.FC<Props> = ({
       }
 
 
-      const visibleSetBeforeTimeFilter = new Set(visible);
+      const visibleSetBeforeTimeFilter = new Set(visible1);
       setCommunicationEvents(
         graphData.nodes.filter(n =>
           n.type === "Event" &&
@@ -418,7 +418,7 @@ const GraphView: React.FC<Props> = ({
       );
 
       // Apply the static timestamp filter from props *before* considering animation
-      let filteredByStaticTime = new Set(visible);
+      let filteredByStaticTime = new Set(visible1);
       if (propTimestampFilterStart || propTimestampFilterEnd) {
         filteredByStaticTime = new Set(
           Array.from(filteredByStaticTime).filter(id => {
@@ -431,10 +431,10 @@ const GraphView: React.FC<Props> = ({
           })
         );
       }
-      visible = filteredByStaticTime;
+      visible1 = filteredByStaticTime;
 
 
-      const visibleSetAfterTimeFilter = new Set(visible);
+      const visibleSetAfterTimeFilter = new Set(visible1);
         setCommunicationEventsAfterTimeFilter(
           graphData.nodes
             .filter(
@@ -457,9 +457,10 @@ const GraphView: React.FC<Props> = ({
       setEventsAfterTimeFilter(uniqueEvents);
 
 
-      return visible;
+      return visible1;
     };
     const notUsed = getVisibleNodeIds();
+    console.log("NotUsed: ", notUsed)
   }
     
     
@@ -610,6 +611,7 @@ const GraphView: React.FC<Props> = ({
     };
 
     const visibleIds = getVisibleNodeIdsForCommunication();
+    console.log("VisibleIds: ", visibleIds)
 
 
     // Create a mutable copy of nodes to allow D3 to set x/y
