@@ -421,11 +421,15 @@ async def read_db_graph():
                     "source": rec["source"],
                     "target": agg_id,
                     "type": "Event",
-                    "sub_type": "Communication"
+                    "sub_type": "Communication",
+                    "is_edge": "Y"
                 })
                 comm_agg_edges.append({
                     "source": agg_id,
-                    "target": rec["target"]
+                    "target": rec["target"],
+                    "type": "Event",
+                    "sub_type": "Communication",
+                    "is_edge": "Y"
                 })
 
             result = session.run("""
