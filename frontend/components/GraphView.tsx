@@ -127,7 +127,7 @@ const GraphView: React.FC<Props> = ({
   const HIGHLIGHT_RADIUS = 30;
 
   const EVENT_COLOR_MAP: Record<string, string> = {
-    Monitoring: "#1f77b4",        // blue
+    Monitoring: "#000",             // black
     Assessment: "#ff7f0e",        // orange
     VesselMovement: "#2ca02c",    // green
     Enforcement: "#d62728",       // red
@@ -141,12 +141,10 @@ const GraphView: React.FC<Props> = ({
 
 
   const getEntityRadius = (id: string) => {
-      // Zähle alle CommunicationAggregate-Nodes, die mit dieser Entity verbunden sind
       let commCount = 0;
       graphData.links.forEach((link: any) => {
         const src = typeof link.source === "string" ? link.source : link.source.id;
         const tgt = typeof link.target === "string" ? link.target : link.target.id;
-        // Prüfe, ob die Entity beteiligt ist und die andere Seite ein CommunicationAggregate ist
         if (src === id) {
           const tgtNode = graphData.nodes.find((n: any) => n.id === tgt && n.sub_type === "Communication");
           if (tgtNode) commCount++;
@@ -187,13 +185,13 @@ const GraphView: React.FC<Props> = ({
         setCurrentAnimationTime(prevTime => {
           const nextTime = prevTime + stepMS;
           if (nextTime > animationEndTime) {
-            setIsPlaying(false); // Stop when end is reached
+            setIsPlaying(false); 
             setIsInAnimation(false); 
-            return animationStartTime; // Loop back to start
+            return animationStartTime; 
           }
           return nextTime;
         });
-      }, 1500); // Animation update rate (adjust as needed)
+      }, 1500); 
     } else {
       if (intervalRef.current) {
         window.clearInterval(intervalRef.current);
@@ -239,44 +237,41 @@ const GraphView: React.FC<Props> = ({
   }, [stepMS, animationStartTime, animationEndTime]);
 
   const controls = (
-    <div style={{ position: "absolute", top: 10, left: 10, zIndex: 10 }}>
-      <button onClick={() => { setIsPlaying(true); setIsInAnimation(true)}}>▶ Play</button>
-      <button onClick={() => setIsPlaying(false)}>⏸ Pause</button>
-      <button onClick={() => { setIsPlaying(false); setIsInAnimation(false); setCurrentAnimationTime(animationStartTime); }}>⏹ Stop</button>
-      <button onClick={() => handleStep('backward')}>◀ Step Back</button>
-      <button onClick={() => handleStep('forward')}>Step ▶</button>
-      <select value={stepMS / 60000} onChange={e => setStepMS(+e.target.value * 60000)}>
-        <option value={1}>1 min</option>
-        <option value={5}>5 min</option>
-        <option value={15}>15 min</option>
-        <option value={30}>30 min</option>
-        <option value={60}>1 h</option>
-        <option value={3 * 60}>3 h</option>
-        <option value={6 * 60}>6 h</option>
-        <option value={12 * 60}>12 h</option>
-        <option value={24 * 60}>1 day</option>
-      </select>
-      
+    <div className="flex flex-col items-center">
+      <div className="flex flex-row gap-2 mb-2">
+        <button onClick={() => { setIsPlaying(true); setIsInAnimation(true)}}>▶ Play</button>
+        <button onClick={() => setIsPlaying(false)}>⏸ Pause</button>
+        <button onClick={() => { setIsPlaying(false); setIsInAnimation(false); setCurrentAnimationTime(animationStartTime); }}>⏹ Stop</button>
+        <button onClick={() => handleStep('backward')}>◀ Step Back</button>
+        <button onClick={() => handleStep('forward')}>Step ▶</button>
+        <select value={stepMS / 60000} onChange={e => setStepMS(+e.target.value * 60000)}>
+          <option value={1}>1 min</option>
+          <option value={5}>5 min</option>
+          <option value={15}>15 min</option>
+          <option value={30}>30 min</option>
+          <option value={60}>1 h</option>
+          <option value={3 * 60}>3 h</option>
+          <option value={6 * 60}>6 h</option>
+          <option value={12 * 60}>12 h</option>
+          <option value={24 * 60}>1 day</option>
+        </select>
+      </div>
       {isPlaying || isInAnimation ? (
-        <div className="mt-2">
+        <div className="mt-2 text-center">
           <strong>Currently showing animation for:</strong>{" "}
           {new Date(currentAnimationTime).toLocaleString()} <strong>–</strong>{" "}
           {new Date(currentAnimationTime + stepMS).toLocaleString()}
         </div>
       ) : (
-        <div className="mt-1 text-sm text-gray-700">
+        <div className="mt-1 text-sm text-gray-700 text-center">
           Showing Communications from{" "}
           <span className="font-semibold">{new Date(animationStartTime).toLocaleString()}</span>{" "}
           to{" "}
           <span className="font-semibold">{new Date(animationEndTime).toLocaleString()}</span>
+          <div className="text-sm mt-1">Press Play to start animation</div>
         </div>
       )}
-
-      {!isPlaying && !isInAnimation && (
-        <div className="text-sm mt-1">Press Play to start animation</div>
-      )}
     </div>
-    
   );
 
   useEffect(() => {
@@ -356,11 +351,11 @@ const GraphView: React.FC<Props> = ({
             
             // Check if this is a "Communication" event and it links sender/receiver
             if (eventNode && eventNode.sub_type === "Communication") {
-                // Scenario 1: Sender -> Event -> Receiver
+                // Case 1: Sender -> Event -> Receiver
                 const linkFromSender = graphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === filterSender && (typeof l.target === 'string' ? l.target : l.target.id) === eventNode.id);
                 const linkToReceiver = graphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === eventNode.id && (typeof l.target === 'string' ? l.target : l.target.id) === filterReceiver);
 
-                // Scenario 2: Receiver -> Event -> Sender
+                // Case 2: Receiver -> Event -> Sender
                 const linkFromReceiver = graphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === filterReceiver && (typeof l.target === 'string' ? l.target : l.target.id) === eventNode.id);
                 const linkToSender = graphData.links.some(l => (typeof l.source === 'string' ? l.source : l.source.id) === eventNode.id && (typeof l.target === 'string' ? l.target : l.target.id) === filterSender);
 
@@ -388,7 +383,7 @@ const GraphView: React.FC<Props> = ({
             level++;
           }
         }
-        // 🔽 Add non-communication events connected to two visible entities
+        //  Add non-communication events connected to two visible entities
         graphData.nodes.forEach(node => {
           if (
             node.type === "Event" &&
@@ -818,7 +813,6 @@ const GraphView: React.FC<Props> = ({
               if (d.type === "Entity") 
               {
                 setFilterSender(d.id);
-              // Count muss angepasst werden - sollte momentan nur 1 rauskjommen
               let incomingComm = 0;
               let outgoingComm = 0;
               commGraphData.links.forEach((link: any) => {
@@ -847,26 +841,40 @@ const GraphView: React.FC<Props> = ({
                   .attr("r", (d: any) => {
                     if (d.type === "Entity") return getEntityRadius(d.id);
                     if (d.type === "Event" && d.sub_type === "Communication") {
-                      const baseSize = DEFAULT_RADIUS;
+                      const baseSize = DEFAULT_RADIUS-10;
                       const count = d.count;
                       return baseSize + count;  // Maybe stärker steigen lassen und dafür logarithmisch amchen
                     }
                     return DEFAULT_RADIUS;
                   })
                   .attr("fill", (d: any) =>
-                    d.type === "Entity" ? "#999" :
-                      d.sub_type === "Communication" ? "#1f77b4" :
-                        d.type === "Event" ? "#ff7f0e" :
-                          d.type === "Relationship" ? "#d62728" :
-                            d.id === highlightedMessageId ? "#ff00ff" : "#999"
-                  );
+  d.type === "Entity"
+    ? "#999"
+    : d.type === "Event"
+      ? (d.sub_type === "Communication"
+          ? "#000"
+          : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
+      : d.type === "Relationship"
+        ? "#d62728"
+        : d.id === highlightedMessageId
+          ? "#ff00ff"
+          : "#999"
+);
 
           group.append("text")
             .attr("text-anchor", "middle")
             .attr("dy", ".35em")
             .attr("fill", "black")
-            .text(d => d.type === "Entity" ? d.id : d.sub_type)
-            .style("font-size", d => `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`);
+            .text(d =>
+              d.type === "Entity"
+                ? d.id
+                : d.sub_type === "Communication"
+                ? ""
+                : d.sub_type
+            )
+            .style("font-size", d =>
+              `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
+            );
             
           return group;
         },
@@ -981,15 +989,15 @@ const GraphView: React.FC<Props> = ({
   // === Visuals for animated or normal state ===
     if (isPlaying || isInAnimation) {
       update.select("circle")
-        .attr("fill", d =>
-          d.type === "Entity"
-            ? "#999"
-            : d.sub_type === "Communication"
-            ? "#1f77b4"
-            : d.type === "Event"
-            ? "#ff7f0e"
-            : "#999"
-        )
+  .attr("fill", d =>
+    d.type === "Entity"
+      ? "#999"
+      : d.type === "Event"
+        ? (d.sub_type === "Communication"
+            ? "#000"
+            : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
+        : "#999"
+  )
         //.attr("stroke", d => (isActiveEvent(d) ? "red" : "none")) // Do we still need this?
         .attr("stroke-width", d => (isActiveEvent(d) ? 3 : 0))
         .attr("opacity", d => {
@@ -1013,15 +1021,15 @@ const GraphView: React.FC<Props> = ({
     } else {
       // This block executes when animation is NOT playing
       update.select("circle")
-        .attr("fill", d =>
-          d.type === "Entity"
-            ? "#999"
-            : d.sub_type === "Communication"
-            ? "#1f77b4"
-            : d.type === "Event"
-            ? "#ff7f0e"
-            : "#999"
-        )
+  .attr("fill", d =>
+    d.type === "Entity"
+      ? "#999"
+      : d.type === "Event"
+        ? (d.sub_type === "Communication"
+            ? "#000"
+            : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
+        : "#999"
+  )
         .attr("stroke", "none")
         .attr("stroke-width", 0)
         .attr("opacity", 1); // Ensure circles are fully opaque
@@ -1068,10 +1076,16 @@ const GraphView: React.FC<Props> = ({
 
       // === Labels ===
       update.select("text")
-        .text(d => (d.type === "Entity" ? d.id : d.sub_type))
-        .style("font-size", d =>
-          `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
-        );
+  .text(d =>
+    d.type === "Entity"
+      ? d.id
+      : d.sub_type === "Communication"
+      ? ""
+      : d.sub_type
+  )
+  .style("font-size", d =>
+    `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
+  );
 
       return update;
 
@@ -1113,13 +1127,15 @@ const GraphView: React.FC<Props> = ({
 
   return (
     <>
-      {controls}
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <svg ref={svgRef} className="w-full h-full"></svg>
       <div style={{ position: "absolute", right: 16, bottom: 16, zIndex: 10, background: "white", borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-        {/* LegendPanel unten rechts im GraphView-Panel */}
+        {/* LegendPanel */}
         <LegendPanel />
       </div>
+    </div>
+    <div className="flex justify-center mt-2">
+      {controls}
     </div>
     </>
   );

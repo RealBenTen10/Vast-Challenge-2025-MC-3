@@ -53,9 +53,9 @@ export default function Home() {
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(true);
   const [graphHeight, setGraphHeight] = useState<number>(550);
-  const [sankeyHeight, setSankeyHeight] = useState<number>(800); // Add state for Sankey height
+  const [sankeyHeight, setSankeyHeight] = useState<number>(800); 
   const dragRef = useRef<HTMLDivElement | null>(null);
-  const sankeyDragRef = useRef<HTMLDivElement | null>(null); // Ref for Sankey drag handle
+  const sankeyDragRef = useRef<HTMLDivElement | null>(null); 
   const [allEntities, setAllEntities] = useState<{ id: string; sub_type?: string }[]>([]);
   const [showGraph, setShowGraph] = useState<boolean>(true);
   const [showTimeBar, setShowTimeBar] = useState<boolean>(true);
@@ -64,7 +64,7 @@ export default function Home() {
   const [showEventsView, setShowEventsView] = useState(true);
   const [selectedTimestamp, setSelectedTimestamp] = useState<string | null>(null);
 
-  // State für CommunicationView-Filter
+  // State for CommunicationView-Filter
   const [msvStartDate, setMsvStartDate] = useState<string>("");
   const [msvEndDate, setMsvEndDate] = useState<string>("");
   const [msvEntityFilter, setMsvEntityFilter] = useState<string>("");
@@ -178,11 +178,9 @@ export default function Home() {
     }
   }, [graphData]);
 
-  // Panel-Breiten in Prozent (Summe = 100)
   const [panelWidths, setPanelWidths] = useState([25, 25, 25, 25]);
   const dragIndexRef = useRef<number | null>(null);
 
-  // Handler für Drag-Start
   function handleDragStart(idx: number, e: React.MouseEvent) {
     dragIndexRef.current = idx;
     document.body.style.cursor = "col-resize";
@@ -220,7 +218,7 @@ export default function Home() {
   return (
     <section className="flex flex-col h-screen">
     {/* Toggle Buttons */}
-    <div className="fixed top-20 left-0 z-50">
+    <div className="fixed top-0 left-0 z-50">
       <button
         onClick={() => setShowFilterPanel(!showFilterPanel)}
         className="bg-blue-500 text-white px-4 py-2 rounded-r"
@@ -228,7 +226,7 @@ export default function Home() {
         {showFilterPanel ? "Close Filters" : "Show Filters"}
       </button>
     </div>
-    <div className="fixed top-20 right-0 z-50">
+    <div className="fixed top-0 right-0 z-50">
       <button
         onClick={() => setShowInfoPanel(!showInfoPanel)}
         className="bg-blue-500 text-white px-4 py-2 rounded-l"
@@ -237,68 +235,75 @@ export default function Home() {
       </button>
     </div>
 
-    <div className="flex flex-row flex-1 mt-20 w-full">
+    <div className="flex flex-row flex-1 w-full">
       {/* Sidebar: FilterPanel */}
       {showFilterPanel && (
-        <div className="w-[320px] h-full bg-white shadow-lg border-r overflow-y-auto flex-shrink-0">
-          <FilterPanel
-            graphData={graphData}
-            setGraphData={setGraphData}
-            callApi={callApi}
-            setSelectedEventTypes={setSelectedEventTypes}
-            setSubtypeCounts={setSubtypeCounts}
-            setEdgeTypeCounts={setEdgeTypeCounts}
-            setEdgeCount={setEdgeCount}
-            setSelectedInfo={setSelectedInfo}
-            setHighlightedMessageId={setHighlightedMessageId}
-            setShowInfoPanel={setShowInfoPanel}
-            setShowFilterPanel={setShowFilterPanel}
-            filterEntityId={filterEntityId}
-            setFilterEntityId={setFilterEntityId}
-            filterDepth={filterDepth}
-            setFilterDepth={setFilterDepth}
-            filterMode={filterMode}
-            setFilterMode={setFilterMode}
-            selectedTimestamp={selectedTimestamp}
-            setSelectedTimestamp={setSelectedTimestamp}
-            filterDate={filterDate}
-            setFilterDate={setFilterDate}
-            filterContent={filterContent}
-            setFilterContent={setFilterContent}
-            highlightedMessageId={highlightedMessageId}
-            filterSender={filterSender}
-            setFilterSender={setFilterSender}
-            filterReceiver={filterReceiver}
-            setFilterReceiver={setFilterReceiver}
-            timestampFilterStart={timestampFilterStart}
-            timestampFilterEnd={timestampFilterEnd}
-            setTimestampFilterStart={setTimestampFilterStart}
-            setTimestampFilterEnd={setTimestampFilterEnd}
-            statusMsg={statusMsg}
-            relevantEvents={relevantEvents}
-            setrelevantEvents={setrelevantEvents}
-            msvStartDate={msvStartDate}
-            setMsvStartDate={setMsvStartDate}
-            msvEndDate={msvEndDate}
-            setMsvEndDate={setMsvEndDate}
-            msvEntityFilter={msvEntityFilter}
-            setMsvEntityFilter={setMsvEntityFilter}
-            msvKeyword={msvKeyword}
-            setMsvKeyword={setMsvKeyword}
-            loadMSV={loadMSV}
-            allEntities={allEntities}
-            setResetFilterPushed={setResetFilterPushed}
-          />
-        </div>
-      )}
+  <div className="fixed top-0 left-0 w-[320px] h-screen bg-white shadow-lg border-r z-40 flex flex-col">
+    <div className="h-full overflow-y-auto">
+      <FilterPanel
+        graphData={graphData}
+        setGraphData={setGraphData}
+        callApi={callApi}
+        setSelectedEventTypes={setSelectedEventTypes}
+        setSubtypeCounts={setSubtypeCounts}
+        setEdgeTypeCounts={setEdgeTypeCounts}
+        setEdgeCount={setEdgeCount}
+        setSelectedInfo={setSelectedInfo}
+        setHighlightedMessageId={setHighlightedMessageId}
+        setShowInfoPanel={setShowInfoPanel}
+        setShowFilterPanel={setShowFilterPanel}
+        filterEntityId={filterEntityId}
+        setFilterEntityId={setFilterEntityId}
+        filterDepth={filterDepth}
+        setFilterDepth={setFilterDepth}
+        filterMode={filterMode}
+        setFilterMode={setFilterMode}
+        selectedTimestamp={selectedTimestamp}
+        setSelectedTimestamp={setSelectedTimestamp}
+        filterDate={filterDate}
+        setFilterDate={setFilterDate}
+        filterContent={filterContent}
+        setFilterContent={setFilterContent}
+        highlightedMessageId={highlightedMessageId}
+        filterSender={filterSender}
+        setFilterSender={setFilterSender}
+        filterReceiver={filterReceiver}
+        setFilterReceiver={setFilterReceiver}
+        timestampFilterStart={timestampFilterStart}
+        timestampFilterEnd={timestampFilterEnd}
+        setTimestampFilterStart={setTimestampFilterStart}
+        setTimestampFilterEnd={setTimestampFilterEnd}
+        statusMsg={statusMsg}
+        relevantEvents={relevantEvents}
+        setrelevantEvents={setrelevantEvents}
+        msvStartDate={msvStartDate}
+        setMsvStartDate={setMsvStartDate}
+        msvEndDate={msvEndDate}
+        setMsvEndDate={setMsvEndDate}
+        msvEntityFilter={msvEntityFilter}
+        setMsvEntityFilter={setMsvEntityFilter}
+        msvKeyword={msvKeyword}
+        setMsvKeyword={setMsvKeyword}
+        loadMSV={loadMSV}
+        allEntities={allEntities}
+        setResetFilterPushed={setResetFilterPushed}
+      />
+    </div>
+  </div>
+)}
 
-      {/* Hauptinhalt */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Oben: GraphView */}
+      <div
+        className="flex-1 flex flex-col overflow-hidden"
+        style={{
+          marginLeft: showFilterPanel ? 320 : 0,
+          marginRight: showInfoPanel ? 300 : 0,
+        }}
+      >
+        {/* GraphView */}
         <div className="border-b overflow-hidden flex flex-col items-center">
           <div
             ref={graphContainerRef}
-            className="w-full flex-1 border rounded-lg mt-6"
+            className="w-full flex-1 border rounded-lg"
             style={{ height: `${graphHeight}px`, width: "100%" }}
           />
           <GraphView
@@ -352,7 +357,7 @@ export default function Home() {
           />
         </div>
 
-        {/* Toggleleiste für die Tools jetzt UNTER GraphView */}
+        {/* Togglebar*/}
         <div className="w-full max-w-7xl flex items-center gap-4 mx-auto mt-2">
           <div className="flex items-center gap-2">
             <input
@@ -396,7 +401,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Unten: Additional Tools (Sankey, CommView etc.) */}
+        {/* Additional Tools  */}
         <div className="flex-1 min-h-0 flex flex-col">
           <Card className="w-full h-full flex flex-col" style={{ maxHeight: "100vh" }}>
             <CardHeader>
@@ -405,141 +410,144 @@ export default function Home() {
             <Divider />
             <CardBody className="h-full min-h-0 p-2 flex flex-col" style={{ maxHeight: "100vh" }}>
               <div className="flex w-full h-full min-h-0" id="tools-panels-row">
-                {showCommunicationView && (
-                  <div style={{ width: `${panelWidths[0]}%` }} className="h-full flex flex-col min-w-[100px]">
-                    <div className="flex-1 min-h-0 overflow-auto">
-                      <CommunicationView
-                        msvData={msvData}
-                        msvLoading={msvLoading}
-                        msvError={msvError}
-                        filterSender={filterSender}
-                        setFilterSender={setFilterSender}
-                        filterReceiver={filterReceiver}
-                        setFilterReceiver={setFilterReceiver}
-                        filterContent={filterContent}
-                        timestampFilterStart={timestampFilterStart}
-                        timestampFilterEnd={timestampFilterEnd}
-                        visibleEntities={visibleEntities}
-                        communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
-                        filterModeMessages={filterModeMessages}
-                        setFilterModeMessages={setFilterModeMessages}
-                        selectedEventId={selectedEventId}
-                      />
-                    </div>
-                  </div>
-                )}
-                {showCommunicationView && showTimeBar && (
-                  <div
-                    style={{ cursor: "col-resize", width: 8, zIndex: 20 }}
-                    className="h-full bg-gray-200 hover:bg-blue-300 transition-colors"
-                    onMouseDown={e => handleDragStart(1, e)}
-                  />
-                )}
-                {showTimeBar && (
-                  <div style={{ width: `${panelWidths[1]}%` }} className="h-full flex flex-col min-w-[100px]">
-                    <div className="flex-1 min-h-0 overflow-auto">
-                      <TimeBarChart
-                        graphData={graphData}
-                        selectedTimestamp={selectedTimestamp}
-                        setSelectedTimestamp={setSelectedTimestamp}
-                        visibleEntities={visibleEntities}
-                        timestampFilterStart={timestampFilterStart}
-                        timestampFilterEnd={timestampFilterEnd}
-                        setTimestampFilterStart={setTimestampFilterStart}
-                        setTimestampFilterEnd={setTimestampFilterEnd}
-                        filterSender={filterSender}
-                        setFilterSender={setFilterSender}
-                        filterReceiver={filterReceiver}
-                        setFilterReceiver={setFilterReceiver}
-                        communicationEvents={communicationEvents}
-                      />
-                    </div>
-                  </div>
-                )}
-                {showTimeBar && showSankey && (
-                  <div
-                    style={{ cursor: "col-resize", width: 8, zIndex: 20 }}
-                    className="h-full bg-gray-200 hover:bg-blue-300 transition-colors"
-                    onMouseDown={e => handleDragStart(2, e)}
-                  />
-                )}
-                {showSankey && (
-                  <div style={{ width: `${panelWidths[2]}%` }} className="h-full flex flex-col min-w-[100px]">
-                    <div className="flex-1 min-h-0 overflow-auto">
-                      <Sankey
-                        entityId={filterEntityId}
-                        selectedDate={selectedTimestamp}
-                        height={sankeyHeight}
-                        filterSender={filterSender}
-                        setFilterSender={setFilterSender}
-                        filterReceiver={filterReceiver}
-                        setFilterReceiver={setFilterReceiver}
-                        timestampFilterStart={timestampFilterStart}
-                        timestampFilterEnd={timestampFilterEnd}
-                        filterContent={filterContent}
-                        setFilterModeMessages={setFilterModeMessages}
-                      />
-                    </div>
-                  </div>
-                )}
-                {showSankey && showEventsView && (
-                  <div
-                    style={{ cursor: "col-resize", width: 8, zIndex: 20 }}
-                    className="h-full bg-gray-200 hover:bg-blue-300 transition-colors"
-                    onMouseDown={e => handleDragStart(3, e)}
-                  />
-                )}
-                {showEventsView && (
-                  <div style={{ width: `${panelWidths[3]}%` }} className="h-full flex flex-col min-w-[100px]">
-                    <div className="flex-1 min-h-0 overflow-auto">
-                      <EventsView
-                        eventsAfterTimeFilter={EventsAfterTimeFilter}
-                        setSelectedEventId={setSelectedEventId}
-                        selectedEventId={selectedEventId}
-                        setFilterModeMessages={setFilterModeMessages}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-              {/* Handle für die Höhe */}
-              <div
-                style={{
-                  cursor: "row-resize",
-                  height: "10px",
-                  width: "100%",
-                  background: "#e5e7eb",
-                  position: "absolute",
-                  left: 0,
-                  bottom: 0,
-                  zIndex: 30
-                }}
-                onMouseDown={e => {
-                  const startY = e.clientY;
-                  const startHeight = sankeyHeight;
-                  function onMouseMove(ev: MouseEvent) {
-                    let newHeight = startHeight + (ev.clientY - startY);
-                    newHeight = Math.max(200, Math.min(newHeight, window.innerHeight - 200));
-                    setSankeyHeight(newHeight);
-                  }
-                  function onMouseUp() {
-                    window.removeEventListener("mousemove", onMouseMove);
-                    window.removeEventListener("mouseup", onMouseUp);
-                    document.body.style.cursor = "";
-                  }
-                  window.addEventListener("mousemove", onMouseMove);
-                  window.addEventListener("mouseup", onMouseUp);
-                  document.body.style.cursor = "row-resize";
-                }}
-              />
-            </CardBody>
+                {(() => {
+    const panelDefs = [
+      { show: showCommunicationView, key: "comm", component: (
+        <CommunicationView
+          msvData={msvData}
+          msvLoading={msvLoading}
+          msvError={msvError}
+          filterSender={filterSender}
+          setFilterSender={setFilterSender}
+          filterReceiver={filterReceiver}
+          setFilterReceiver={setFilterReceiver}
+          filterContent={filterContent}
+          timestampFilterStart={timestampFilterStart}
+          timestampFilterEnd={timestampFilterEnd}
+          visibleEntities={visibleEntities}
+          communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
+          filterModeMessages={filterModeMessages}
+          setFilterModeMessages={setFilterModeMessages}
+          selectedEventId={selectedEventId}
+        />
+      )},
+      { show: showTimeBar, key: "timebar", component: (
+        <TimeBarChart
+          graphData={graphData}
+          selectedTimestamp={selectedTimestamp}
+          setSelectedTimestamp={setSelectedTimestamp}
+          visibleEntities={visibleEntities}
+          timestampFilterStart={timestampFilterStart}
+          timestampFilterEnd={timestampFilterEnd}
+          setTimestampFilterStart={setTimestampFilterStart}
+          setTimestampFilterEnd={setTimestampFilterEnd}
+          filterSender={filterSender}
+          setFilterSender={setFilterSender}
+          filterReceiver={filterReceiver}
+          setFilterReceiver={setFilterReceiver}
+          communicationEvents={communicationEvents}
+        />
+      )},
+      { show: showSankey, key: "sankey", component: (
+        <Sankey
+          entityId={filterEntityId}
+          selectedDate={selectedTimestamp}
+          height={sankeyHeight}
+          filterSender={filterSender}
+          setFilterSender={setFilterSender}
+          filterReceiver={filterReceiver}
+          setFilterReceiver={setFilterReceiver}
+          timestampFilterStart={timestampFilterStart}
+          timestampFilterEnd={timestampFilterEnd}
+          filterContent={filterContent}
+          setFilterModeMessages={setFilterModeMessages}
+        />
+      )},
+      { show: showEventsView, key: "events", component: (
+        <EventsView
+          eventsAfterTimeFilter={EventsAfterTimeFilter}
+          setSelectedEventId={setSelectedEventId}
+          selectedEventId={selectedEventId}
+          setFilterModeMessages={setFilterModeMessages}
+        />
+      )},
+    ];
+
+    const visiblePanels = panelDefs
+      .map((def, i) => ({ ...def, idx: i }))
+      .filter(def => def.show);
+
+    const totalWidth = visiblePanels.reduce((sum, panel) => sum + panelWidths[panel.idx], 0);
+
+    const normalizedWidths = visiblePanels.map(panel =>
+      (panelWidths[panel.idx] / totalWidth) * 100
+    );
+
+    const result: React.ReactNode[] = [];
+    visiblePanels.forEach((panel, idx) => {
+      if (idx > 0) {
+        result.push(
+          <div
+            key={`drag-${panel.idx}`}
+            style={{ cursor: "col-resize", width: 8, zIndex: 20 }}
+            className="h-full bg-gray-200 hover:bg-blue-300 transition-colors"
+            onMouseDown={e => handleDragStart(panel.idx, e)}
+          />
+        );
+      }
+      result.push(
+        <div
+          key={panel.key}
+          className="h-full flex flex-col min-w-[100px]"
+          style={{ width: `${normalizedWidths[idx]}%` }}
+        >
+          <div className="flex-1 min-h-0 overflow-auto">
+            {panel.component}
+          </div>
+        </div>
+      );
+    });
+    return result;
+  })()}
+</div>
+  {/* Height Handle */}
+  <div
+    style={{
+      cursor: "row-resize",
+      height: "10px",
+      width: "100%",
+      background: "#e5e7eb",
+      position: "absolute",
+      left: 0,
+      bottom: 0,
+      zIndex: 30
+    }}
+    onMouseDown={e => {
+      const startY = e.clientY;
+      const startHeight = sankeyHeight;
+      function onMouseMove(ev: MouseEvent) {
+        let newHeight = startHeight + (ev.clientY - startY);
+        newHeight = Math.max(200, Math.min(newHeight, window.innerHeight - 200));
+        setSankeyHeight(newHeight);
+      }
+      function onMouseUp() {
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "";
+      }
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "row-resize";
+    }}
+  />
+</CardBody>
           </Card>
         </div>
       </div>
 
       {/* Sidebar: InfoPanel */}
       {showInfoPanel && (
-        <div className="w-[300px] h-full bg-white shadow-lg border-l overflow-y-auto flex-shrink-0 flex flex-col gap-4">
+        <div className="fixed top-0 right-0 w-[300px] h-screen bg-white shadow-lg border-l z-40 flex flex-col gap-4">
           <SelectedInfoPanel selectedInfo={selectedInfo} />
           <GraphSummary
             edgeCount={edgeCount}

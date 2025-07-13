@@ -120,7 +120,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   };
 
   return (
-    <div className="w-[300px] flex-shrink-0 border rounded-lg p-4">
+    <div className="w-[329px] flex-shrink-0 border rounded-lg p-4">
       <h3 className="text-lg font-semibold mb-2 text-right">Graph Actions</h3>
       <Button onPress={() => callApi("/load-graph-json")} className="mt-2" color="primary">
         Load JSON Graph
