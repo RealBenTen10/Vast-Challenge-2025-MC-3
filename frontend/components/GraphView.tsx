@@ -819,10 +819,15 @@ const GraphView: React.FC<Props> = ({
               setSelectedInfo({ type: "node", data: d });
               if (d.type === "Entity") 
               {
-                setFilterSender(d.id);
-              let incomingComm = 0;
-              let outgoingComm = 0;
-              commGraphData.links.forEach((link: any) => {
+                if (filterSender == d.id && !filterReceiver) {
+                  setFilterSender("")
+                } else {
+                  setFilterSender(d.id);
+                }
+                
+                let incomingComm = 0;
+                let outgoingComm = 0;
+                commGraphData.links.forEach((link: any) => {
                 const src = typeof link.source === "string" ? link.source : link.source.id;
                 const tgt = typeof link.target === "string" ? link.target : link.target.id;
                 if (tgt === d.id) 
@@ -898,7 +903,11 @@ const GraphView: React.FC<Props> = ({
     .on("click", (event, d) => {
       setSelectedInfo({ type: "node", data: d });
       if (d.type === "Entity") {
-        setFilterSender(d.id);
+        if (filterSender == d.id && !filterReceiver) {
+          setFilterSender("")
+        } else {
+          setFilterSender(d.id);
+        }
       }
       // Get glicked Event for EventView and CommView (Evidence_for)
       if (d.type === "Event" && d.sub_type !== "Communication") {
