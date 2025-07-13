@@ -673,14 +673,9 @@ const GraphView: React.FC<Props> = ({
       const dy = target.y - source.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      if (d.number == null || d.number == 1) {
-        // draw a straight line if d.number is missing or 1
-        return `M${source.x},${source.y} L${target.x},${target.y}`;
-      }
+      const factor = 15 + d.number ? d.number : 15
 
-      // Compute arc with slight curvature influenced by d.number
-      const curvatureFactor = 0.01;
-      const dr = distance * (1 + curvatureFactor * d.number);
+      const dr = distance * factor;
 
       return `M${source.x},${source.y} A${dr},${dr} 0 0,1 ${target.x},${target.y}`;
     }
@@ -911,6 +906,17 @@ const GraphView: React.FC<Props> = ({
       }
     });
 
+  // --- Data Transformation ---
+  // Create a new array that has two entries for each link: one for the source-side
+  // polygon and one for the target-side.
+  const polygonData = linksToRender.flatMap((link) => [
+    // Polygon near the source, positioned at 15% along the path
+    { id: `${link.source}-${link.target}-source`, linkDetails: link, ratio: 0.2, isTarget: false },
+    // Polygon near the target, positioned at 85% along the path
+    { id: `${link.source}-${link.target}-target`, linkDetails: link, ratio: 0.8, isTarget: true },
+  ]);
+  console.log("PolygonDate", polygonData)
+
   // === Precompute active events and links for use in both branches ===
   const animationWindowEnd = currentAnimationTime + stepMS;
 
@@ -998,18 +1004,17 @@ const GraphView: React.FC<Props> = ({
     }
   });
   // === Visuals for animated or normal state ===
-  // === Visuals for animated or normal state ===
     if (isPlaying || isInAnimation) {
       update.select("circle")
-  .attr("fill", d =>
-    d.type === "Entity"
-      ? "#999"
-      : d.type === "Event"
-        ? (d.sub_type === "Communication"
-            ? "#000"
-            : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
-        : "#999"
-  )
+        .attr("fill", d =>
+          d.type === "Entity"
+            ? "#999"
+            : d.type === "Event"
+              ? (d.sub_type === "Communication"
+                  ? "#000"
+                  : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
+              : "#999"
+        )
         //.attr("stroke", d => (isActiveEvent(d) ? "red" : "none")) // Do we still need this?
         .attr("stroke-width", d => (isActiveEvent(d) ? 3 : 0))
         .attr("opacity", d => {
@@ -1025,23 +1030,23 @@ const GraphView: React.FC<Props> = ({
 
       d3.select(svgRef.current)
         .selectAll("path.link")
-        .attr("opacity", d => (isActiveLink(d) ? 1 : 0.1));
-
-      // Polygons (link-arrow) opacity for animation state
-      d3.select(svgRef.current).selectAll("polygon.link-arrow")
-        .attr("opacity", (d: any) => (isActiveLink(d) ? 1 : 0.25)); // This line was missing for the polygon update
+        .attr("opacity", d => {
+          //console.log("for d: ", d)
+          return isActiveLink(d) ? 1 : 0.1;
+        });
+      
     } else {
       // This block executes when animation is NOT playing
       update.select("circle")
-  .attr("fill", d =>
-    d.type === "Entity"
-      ? "#999"
-      : d.type === "Event"
-        ? (d.sub_type === "Communication"
-            ? "#000"
-            : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
-        : "#999"
-  )
+        .attr("fill", d =>
+          d.type === "Entity"
+            ? "#999"
+            : d.type === "Event"
+              ? (d.sub_type === "Communication"
+                  ? "#000"
+                  : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
+              : "#999"
+        )
         .attr("stroke", "none")
         .attr("stroke-width", 0)
         .attr("opacity", 1); // Ensure circles are fully opaque
@@ -1050,17 +1055,14 @@ const GraphView: React.FC<Props> = ({
         .selectAll("path.link")
         .attr("opacity", 1); // Ensure lines are fully opaque
 
-      // 👇 ADD THIS LINE for polygons when no animation is playing
-      d3.select(svgRef.current)
-        .selectAll("polygon.link-arrow")
-        .attr("opacity", 1); // Ensure polygons are fully opaque
     }
 
-      // === Render directional arrows (linkFlow) ===
+      // --- D3 Rendering ---
       const g = d3.select(svgRef.current).select("g");
 
+      // Bind the newly created polygonData
       const linkFlow = g.selectAll("polygon.link-arrow")
-        .data(linksToRender, (d: any) => `${d.source.id}-${d.target.id}`);
+        .data(polygonData, (d) => d.id); // Use the new unique ID for each polygon
 
       linkFlow.exit().remove();
 
@@ -1068,41 +1070,70 @@ const GraphView: React.FC<Props> = ({
         .append("polygon")
         .attr("class", "link-arrow")
         .attr("points", "-7,-5 8,0 -7,5")
-        .merge(linkFlow as any)
-        .attr("fill", (d: any) =>
-          d.type === "COMMUNICATION" ? "#2ca02c" :
-          d.type === "EVIDENCE_FOR" ? "#800080" :
+        .merge(linkFlow)
+        .attr("fill", (d) => // Access link type via d.linkDetails
+          d.linkDetails.type === "COMMUNICATION" ? "#2ca02c" :
+          d.linkDetails.type === "EVIDENCE_FOR" ? "#800080" :
           "#999"
         )
-        .attr("transform", (d: any) => {
-          const source = typeof d.source === "object" ? d.source : nodePositions[d.source];
-          const target = typeof d.target === "object" ? d.target : nodePositions[d.target];
+        .attr("opacity", (d: any) => {
+          if (isPlaying || isInAnimation) {
+            return isActiveLink(d.linkDetails) ? 0.5 : 0.2;
+          } else {
+            return 1; // Fully opaque when not playing or animating
+          }
+        })
+        .attr("transform", (d) => {
+          // Create a temporary path element to measure the arc
+          const tempPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          // Generate arc data from the original link object
+          tempPath.setAttribute("d", arcPath(d.linkDetails));
 
-          const ratio = 0.25;
-          const arrowX = source.x + (target.x - source.x) * ratio;
-          const arrowY = source.y + (target.y - source.y) * ratio;
-          const angle = Math.atan2(target.y - source.y, target.x - source.x) * (180 / Math.PI);
-          return `translate(${arrowX},${arrowY}) rotate(${angle})`;
+          const pathLength = tempPath.getTotalLength();
+          
+          // Prevent errors for zero-length paths
+          if (pathLength === 0) return "";
+
+          // Use the ratio from our new data object (0.15 or 0.85)
+          const positionOnPath = pathLength * d.ratio;
+
+          // Get the (x, y) coordinates at the specified position
+          const point = tempPath.getPointAtLength(positionOnPath);
+
+          // Get a second point slightly further along to calculate the angle
+          const nextPoint = tempPath.getPointAtLength(positionOnPath + 1);
+
+          // Calculate the base angle of the curve at that point
+          let angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x) * (180 / Math.PI);
+
+          // --- Rotation Logic ---
+          // If the link is not directed and this is the target-side polygon, rotate it 180 degrees.
+          if (d.linkDetails.directed === false && d.isTarget) {
+            angle += 180;
+          }
+
+          // Return the final transform with the correct position and rotation
+          return `translate(${point.x},${point.y}) rotate(${angle})`;
         });
 
 
       // === Labels ===
       update.select("text")
-  .text(d =>
-    d.type === "Entity"
-      ? d.id
-      : d.sub_type === "Communication"
-      ? ""
-      : d.sub_type
-  )
-  .style("font-size", d =>
-    `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
-  );
+        .text(d =>
+          d.type === "Entity"
+            ? d.id
+            : d.sub_type === "Communication"
+            ? "Comm"
+            : d.sub_type
+        )
+        .style("font-size", d =>
+          `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
+        );
 
-      return update;
+            return update;
 
 
-    },
+          },
         exit => exit.remove()
       );
 
