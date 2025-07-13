@@ -97,13 +97,14 @@ export default function Sankey({
     const svgEl = svg.node();
     if (!svgEl) return;
 
-    const width = svgEl.clientWidth || 800;
-    const height = svgEl.clientHeight || 600;
+    // Get the current client dimensions of the SVG container
+    const clientWidth = svgEl.clientWidth || 800;
+    const clientHeight = svgEl.clientHeight || height; // Use the height prop as a fallback
 
-    const sankey = d3Sankey()
-      .nodeWidth(20)
-      .nodePadding(20)
-      .extent([[0, 0], [width, height]]);
+    // Define margins to ensure text and diagram fit within the SVG frame
+    const margin = { top: 15, right: 80, bottom: 15, left: 80 }; // Increased side margins for text
+    const width = clientWidth - margin.left - margin.right;
+    const innerHeight = clientHeight - margin.top - margin.bottom;
 
     const nodeMap = new Map<string, { name: string }>();
     data.forEach((d) => {
@@ -112,6 +113,18 @@ export default function Sankey({
     });
 
     const nodes = Array.from(nodeMap.values());
+
+    // Calculate dynamic nodePadding
+    // The more nodes, the less padding. Set a min padding.
+    const numberOfNodes = nodes.length;
+    // Example: starts at 20, decreases with more nodes, min 5.
+    const dynamicNodePadding = Math.max(5, 20 - (numberOfNodes/4));
+
+
+    const sankey = d3Sankey()
+      .nodeWidth(20)
+      .nodePadding(dynamicNodePadding) // Use dynamic padding
+      .extent([[0, 0], [width, innerHeight]]); // Layout within the inner dimensions
 
     const links = data.map((d) => ({
       source: nodeMap.get(d.source)!,
@@ -125,8 +138,10 @@ export default function Sankey({
     const color = d3.scaleOrdinal(d3.schemeTableau10).domain(nodes.map((d) => d.name));
 
     const g = svg
-      .attr("viewBox", `0 0 ${width} ${height}`)
-      .append("g");
+      .attr("viewBox", `0 0 ${clientWidth} ${clientHeight}`) // ViewBox covers the full client dimensions
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`); // Translate the group by margins
+
 
     let tooltip = d3.select("#tooltip");
     if (tooltip.empty()) {
@@ -169,6 +184,7 @@ export default function Sankey({
           .style("left", `${event.pageX + 10}px`);
       })
       .on("click", function (event, d) {
+        // Adjust the condition for left/right based on the *inner* width
         if (d.x0! < width / 2) {
           if (filterSender === d.name) {
             setFilterSender("");
@@ -199,7 +215,7 @@ export default function Sankey({
       .data(sankeyGraph.nodes)
       .enter()
       .append("text")
-      .attr("x", (d) => (d.x0! < width / 2 ? d.x0! - 6 : d.x1! + 6))
+      .attr("x", (d) => (d.x0! < width / 2 ? d.x0! - 6 : d.x1! + 6)) // Position relative to inner width
       .attr("y", (d) => (d.y0! + d.y1!) / 2)
       .attr("dy", "0.35em")
       .attr("text-anchor", (d) => (d.x0! < width / 2 ? "end" : "start"))
