@@ -1181,7 +1181,7 @@ const GraphView: React.FC<Props> = ({
       .text(d =>
         d.type === "Entity"
           ? d.id
-          : ShowEventNames && d.sub_type
+          : ShowEventNames && (d.sub_type !== "Communication")
             ? d.sub_type
             : ""
       )
@@ -1189,7 +1189,7 @@ const GraphView: React.FC<Props> = ({
         const label =
           d.type === "Entity"
             ? d.id
-            : ShowEventNames && d.sub_type
+            : ShowEventNames && (d.sub_type !== "Communication")
               ? d.sub_type
               : "";
         return `${Math.max(8, 12 - Math.max(0, label.length - 10))}px`;
