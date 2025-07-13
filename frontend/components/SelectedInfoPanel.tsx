@@ -82,25 +82,34 @@ const renderEvent = (data: any) => (
 
 const renderCommunication = (data: any) => (
   <div className="space-y-1">
-    <p><span className="font-medium">Type:</span> {data.type}</p>
-    <p><span className="font-medium">Sub-Type:</span> {data.sub_type}</p>
-    <p>Filter sender to {data.source} and receiver to {data.target} to display Communications in Communication View at "Sender to Receiver" for better readability.</p>
-    {Array.isArray(data.event_ids) && Array.isArray(data.timestamps) && Array.isArray(data.contents) && (
-      <div className="mt-2 space-y-2">
-        <p className="font-medium"> {data.count} Associated Communications:</p>
-        {data.event_ids.map((id: string, idx: number) => (
-          <div key={`comm-event-${id}-${idx}`} className="ml-2 border-l pl-2 border-gray-300">
-            <p><span className="font-semibold">{id}</span></p>
-            {data.timestamps[idx] && (
-              <p><span className="font-medium">At:</span> {new Date(data.timestamps[idx]).toLocaleString()}</p>
-            )}
-            {data.contents[idx] && (
-              <p><span className="font-medium">Content:</span> {data.contents[idx]}</p>
-            )}
-          </div>
-        ))}
-      </div>
+    {(data.type) &&(
+        <p><span className="font-medium">Type:</span> {data.type}</p>    
     )}
+    {(data.sub_type) &&(
+      <p><span className="font-medium">Sub-Type:</span> {data.sub_type}</p>
+    )}
+    {(data.source && data.target) &&(
+        <p>Set Filter sender to {data.source} and receiver to {data.target} to display Communications in Communication View at "Sender to Receiver" for better readability.</p>
+    )}
+    {(data.event_ids && data.timestamps && data.contents && data.count) && 
+      Array.isArray(data.event_ids) && Array.isArray(data.timestamps) && Array.isArray(data.contents) && (
+        <div className="mt-2 space-y-2">
+          <p className="font-medium"> {data.count} Associated Communications:</p>
+          {data.event_ids.map((id: string, idx: number) => (
+            <div key={`comm-event-${id}-${idx}`} className="ml-2 border-l pl-2 border-gray-300">
+              <p><span className="font-semibold">{id}</span></p>
+              {data.timestamps[idx] && (
+                <p><span className="font-medium">At:</span> {new Date(data.timestamps[idx]).toLocaleString()}</p>
+              )}
+              {data.contents[idx] && (
+                <p><span className="font-medium">Content:</span> {data.contents[idx]}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )
+    }
+    
     {(data.source.id && data.target.id) &&(
       <p><span> This is the edge for {data.target.id}. </span> </p>
     )}
@@ -115,8 +124,9 @@ const renderCommunication = (data: any) => (
 const renderRelationship = (data: any) => (
   <div className="space-y-1">
     {(data.source.id && data.target.id) &&(
-      <p><span>This is the {data.directed ? "directed" : "undirected"} {data.sub_type}-{data.type} between</span> {data.source.id} {data.source.sub_type} <span> and </span> {data.target.id} {data.target.sub_type}</p>
+      <p><span>This is the {data.directed ? "directed" : "undirected"} {data.sub_type}-{data.type} {data.directed ? "from" : "between"}</span> {data.source.id} <span className="text-xs text-gray-500"> ({data.source.sub_type})</span> <span> {data.directed ? "to" : "and"} </span> {data.target.id} <span className="text-xs text-gray-500"> ({data.target.sub_type})</span></p>
     )}
+     
     {data.coordination_type && (
       <p><span className="font-medium">Coordination Type:</span> {data.coordination_type}</p>
     )}
@@ -193,9 +203,10 @@ const SelectedInfoPanel: React.FC<SelectedInfoPanelProps> = ({ selectedInfo }) =
           <h5 className="text-xl font-bold break-all mb-2">{data.id}</h5>
           {data.type === "Entity" && renderEntity(data)}
           {data.type === "Event" && data.sub_type !== "Communication" && renderEvent(data)}
-          {data.sub_type === "Communication" && renderCommunication(data)}
+          {data.sub_type === "Communication" && data.is_edge !== "Y" && renderCommunication(data)}
           {data.type === "Relationship" && renderRelationship(data)}
           {data.type !== "Entity" && data.type !== "Event" && data.type !== "Relationship" && renderExtraFields(data)}
+          
         </div>
       ) : (
         <p className="text-gray-500 italic">Click a node or edge to view details</p>

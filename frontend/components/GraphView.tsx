@@ -27,6 +27,7 @@ interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
   timestamp?: string; // Links can also have timestamps, especially 'COMMUNICATION'
   value?: number;
   number: number;
+  is_edge?: string;
 }
 
 interface GraphDataModified {
@@ -734,8 +735,8 @@ const GraphView: React.FC<Props> = ({
         .enter().append("path")
         .attr("stroke", d => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
         .attr("stroke-opacity", 0.6)
-        .attr("stroke-width", DEFAULT_EDGE_WIDTH)
-        .on("click", (event: any, d: any) => setSelectedInfo({ type: "link", data: d }));
+        .attr("stroke-width", DEFAULT_EDGE_WIDTH);
+
 
       simulation.on("tick", () => {
         g.selectAll<SVGLineElement, GraphLink>(".link")
@@ -827,7 +828,7 @@ const GraphView: React.FC<Props> = ({
           })
           .attr("fill", "none")
           .attr("d", arcPath)
-          .on("click", (event, d) => setSelectedInfo({ type: "link", data: d })),
+          .on("click", (event: any, d: any) => {setSelectedInfo({ type: "link", data: d }); console.log("Selected Info 2: ", d)}),
         update => update,
         exit => exit.remove()
       );
