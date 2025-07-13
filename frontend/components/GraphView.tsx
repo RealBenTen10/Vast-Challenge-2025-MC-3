@@ -889,18 +889,18 @@ const GraphView: React.FC<Props> = ({
                       return DEFAULT_RADIUS;
                     })
                   .attr("fill", (d: any) =>
-  d.type === "Entity"
-    ? "#999"
-    : d.type === "Event"
-      ? (d.sub_type === "Communication"
-          ? "#000"
-          : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
-      : d.type === "Relationship"
-        ? "#d62728"
-        : d.id === highlightedMessageId
-          ? "#ff00ff"
-          : "#999"
-);
+                    d.type === "Entity"
+                      ? "#999"
+                      : d.type === "Event"
+                        ? (d.sub_type === "Communication"
+                            ? "#000"
+                            : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
+                        : d.type === "Relationship"
+                          ? "#d62728"
+                          : d.id === highlightedMessageId
+                            ? "#ff00ff"
+                            : "#999"
+                  );
 
           group.append("text")
             .attr("text-anchor", "middle")
@@ -1109,11 +1109,25 @@ const GraphView: React.FC<Props> = ({
         .attr("class", "link-arrow")
         .attr("points", "-7,-5 8,0 -7,5")
         .merge(linkFlow)
-        .attr("fill", (d) => // Access link type via d.linkDetails
-          d.linkDetails.type === "COMMUNICATION" ? "#2ca02c" :
-          d.linkDetails.type === "EVIDENCE_FOR" ? "#800080" :
-          "#999"
-        )
+        .attr("stroke", d => {
+            const sourceNode = typeof d.linkDetails.source === "object" ? d.linkDetails.source : commGraphData.nodes.find(n => n.id === d.linkDetails.source);
+            const targetNode = typeof d.linkDetails.target === "object" ? d.linkDetails.target : commGraphData.nodes.find(n => n.id === d.linkDetails.target);
+
+            
+            if (sourceNode?.sub_type === "Communication" || targetNode?.sub_type === "Communication") {
+              return "#1f77b4"; 
+            }
+            if (sourceNode?.type === "Event") {
+              return EVENT_COLOR_MAP[sourceNode.sub_type ?? "Unknown"] || "#999";
+            }
+            if (targetNode?.type === "Event") {
+              return EVENT_COLOR_MAP[targetNode.sub_type ?? "Unknown"] || "#999";
+            }
+            if ((targetNode?.type === "Entity") && (sourceNode?.type === "Entity")){
+              return RELATIONSHIP_COLOR_MAP[d.linkDetails.label ?? "Unknown"] || "#999";
+            }
+            return "#999";
+          })
         .attr("opacity", (d: any) => {
           if (isPlaying || isInAnimation) {
             return isActiveLink(d.linkDetails) ? 0.5 : 0.2;
