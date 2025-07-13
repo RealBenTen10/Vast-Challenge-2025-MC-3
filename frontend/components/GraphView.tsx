@@ -665,15 +665,27 @@ const GraphView: React.FC<Props> = ({
       return true;
     });
     console.log("linksToRender: ", linksToRender)
-    function arcPath(d: GraphLink): string {
+    function arcPath(d: any) {
       const source = typeof d.source === "object" ? d.source : nodePositions[d.source];
       const target = typeof d.target === "object" ? d.target : nodePositions[d.target];
 
       const dx = target.x - source.x;
       const dy = target.y - source.y;
-      const dr = Math.sqrt(dx * dx + dy * dy) * (1 + d.number); 
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (d.number == null || d.number == 1) {
+        // draw a straight line if d.number is missing or 1
+        return `M${source.x},${source.y} L${target.x},${target.y}`;
+      }
+
+      // Compute arc with slight curvature influenced by d.number
+      const curvatureFactor = 0.01;
+      const dr = distance * (1 + curvatureFactor * d.number);
+
       return `M${source.x},${source.y} A${dr},${dr} 0 0,1 ${target.x},${target.y}`;
     }
+
+
 
     // Update counts based on currently visible nodes and links
     const subtypeCounts: Record<string, number> = {};
