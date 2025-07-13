@@ -127,7 +127,7 @@ const GraphView: React.FC<Props> = ({
   const HIGHLIGHT_RADIUS = 30;
 
   const EVENT_COLOR_MAP: Record<string, string> = {
-    Monitoring: "#000",             // black
+    Monitoring: "#1f77b4 ",       // blue
     Assessment: "#ff7f0e",        // orange
     VesselMovement: "#2ca02c",    // green
     Enforcement: "#d62728",       // red
