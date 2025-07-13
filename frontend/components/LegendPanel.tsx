@@ -32,18 +32,12 @@ const LegendPanel: React.FC = () => {
               </ul>
             </div>
             <div className="border rounded-lg p-4" style={{ marginTop: 0, paddingTop: 0 }}>
-              <h5 className="text-md font-semibold mb-2" style={{ marginTop: 0 }}>Edge Legend</h5>
+              <h5 className="text-md font-semibold mb-2" style={{ marginTop: 0 }}>Edge Legend (Relationships)</h5>
               <ul className="text-sm space-y-1">
-                <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#d62728" }}></span>Suspicious</li>
-          <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#d62728" }}></span>Reports</li>
-          <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#d62728" }}></span>Unfriendly</li>
-                <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>Colleagues</li>
-          <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>Operates</li>
-                <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>Friends</li>
-          <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>Collaborate</li>
-          <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>Jurisdiction</li>
-          <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>AccessPermission</li>
-                <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#999" }}></span>Other</li>
+                <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#d62728" }}></span>Negative</li>
+          <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>Social</li>
+          <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#1f77b4" }}></span>Institutional </li>
+                <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#ff7f0e" }}></span>Operational </li>
               </ul>
             </div>
           </div>

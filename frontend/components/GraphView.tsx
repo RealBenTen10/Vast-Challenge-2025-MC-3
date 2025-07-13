@@ -127,16 +127,30 @@ const GraphView: React.FC<Props> = ({
   const HIGHLIGHT_RADIUS = 30;
 
   const EVENT_COLOR_MAP: Record<string, string> = {
-    Monitoring: "#1f77b4 ",       // blue
+    Monitoring: "#bcbd22 ",       // blue
     Assessment: "#ff7f0e",        // orange
     VesselMovement: "#2ca02c",    // green
     Enforcement: "#d62728",       // red
     TourActivity: "#9467bd",      // violet
     Collaborate: "#8c564b",       // brown
     TransponderPing: "#17becf",   // turquoise
-    HarborReport: "#bcbd22",      // yellow
+    HarborReport: "#17becf",      // yellow
     Criticize: "#e377c2",         // pink
     Unknown: "#999999"            // grey
+  };
+
+  const RELATIONSHIP_COLOR_MAP: Record<string, string> = {
+    Suspicious: "#d62728 ",
+    Unfriendly: "#d62728",
+    Reports: "#d62728",
+    Colleagues: "#2ca02c",
+    Friends: "#2ca02c",
+    Collaborate: "#2ca02c",
+    Jurisdiction: "#1f77b4",
+    AccessPermission: "#1f77b4",
+    Operates: "#ff7f0e",
+    Coordinates: "#ff7f0e",
+    Other: "#ff7f0e"
   };
 
 
@@ -788,6 +802,9 @@ const GraphView: React.FC<Props> = ({
             }
             if (targetNode?.type === "Event") {
               return EVENT_COLOR_MAP[targetNode.sub_type ?? "Unknown"] || "#999";
+            }
+            if ((targetNode?.type === "Entity") && (sourceNode?.type === "Entity")){
+              return RELATIONSHIP_COLOR_MAP[d.label ?? "Unknown"] || "#999";
             }
             return "#999";
           })
