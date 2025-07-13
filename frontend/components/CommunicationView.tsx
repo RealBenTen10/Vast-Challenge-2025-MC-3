@@ -134,7 +134,7 @@ export default function CommunicationView({
       setLoading(true);
       // set input box to "" if message was clicked instead of user input
       if (query) setSimilarityQuery("");
-      const res = await fetch(`/api/similarity-search?query=${encodeURIComponent(searchQuery)}&top_k=${topK}&score_threshold=${similarityThreshold}&order_by_time=${byTime}`);
+      const res = await fetch(`/api/similarity-search?query=${encodeURIComponent(searchQuery)}&top_k=${topK}&order_by_time=${byTime}`);
       const data = await res.json();
       if (data.success) {
         setSimilarityResults(data.data);
@@ -277,7 +277,6 @@ export default function CommunicationView({
         <button
           onClick={() => {
             setQueryInput(similarityQuery);
-            setPrevSimilarityThreshold(similarityThreshold)
             setPrevTopK(topK)
             setPrevByTime(byTime)
             handleSimilaritySearch();
@@ -288,22 +287,7 @@ export default function CommunicationView({
         </button>
       </div>
 
-      <div className="flex items-center gap-4">
-        <label htmlFor="similarity-threshold" className="text-sm font-medium whitespace-nowrap">
-          Similarity Threshold:
-        </label>
-        <input
-          id="similarity-threshold"
-          type="range"
-          min="0"
-          max="1"
-          step="0.001"
-          value={similarityThreshold}
-          onChange={(e) => setSimilarityThreshold(parseFloat(e.target.value))}
-          className="w-full"
-        />
-        <span className="w-12 text-sm text-right">{similarityThreshold.toFixed(3)}</span>
-      </div>
+      
 
       <div className="flex items-center gap-4">
         <label htmlFor="top-k" className="text-sm font-medium whitespace-nowrap">
