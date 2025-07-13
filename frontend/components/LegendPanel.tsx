@@ -19,7 +19,15 @@ const LegendPanel: React.FC = () => {
               <h5 className="text-md font-semibold mb-2" style={{ marginTop: 0 }}>Node Legend</h5>
               <ul className="text-sm space-y-1">
                 <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#999" }}></span>Entity</li>
-                <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#ff7f0e" }}></span>Event</li>
+                <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#1f77b4 " }}></span>Monitoring</li>
+                <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#ff7f0e" }}></span>Assessment</li>
+                <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#2ca02c" }}></span>VesselMovement</li>
+                <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#d62728" }}></span>Enforcement</li>
+                <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#9467bd" }}></span>TourActivity</li>
+                <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#8c564b" }}></span>Collaborate</li>
+                <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#17becf" }}></span>TransponderPing</li>
+                <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#bcbd22" }}></span>HarborReport</li>
+                <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#e377c2" }}></span>Criticize</li>
                 <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#000" }}></span>Communication</li>
               </ul>
             </div>
