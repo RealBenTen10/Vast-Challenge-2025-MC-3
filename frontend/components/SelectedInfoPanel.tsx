@@ -4,19 +4,158 @@ interface SelectedInfoPanelProps {
   selectedInfo: any;
 }
 
+const irrelevantKeys = new Set([
+  "x", "y", "vx", "vy", "fx", "fy", "index"
+]);
+
+const renderEntity = (data: any) => (
+  <div className="space-y-1">
+    <p><span className="font-medium">Name:</span> {data.name}</p>
+    <p><span className="font-medium">Type:</span> {data.type}</p>
+    <p><span className="font-medium">Sub-Type:</span> {data.sub_type}</p>
+    <p><span className="font-medium">Outgoing Communication edges:</span> {data.outgoingCommunicationCount}</p>
+    <p><span className="font-medium">Incoming Communication edges:</span> {data.incomingCommunicationCount}</p>
+  </div>
+);
+
+const renderEvent = (data: any) => (
+  <div className="space-y-1">
+    <p><span className="font-medium">Type:</span> {data.type}</p>
+    <p><span className="font-medium">Sub-Type:</span> {data.sub_type}</p>
+    {data.timestamp && (
+      <p><span className="font-medium">Timestamp:</span> {new Date(data.timestamp).toLocaleString()}</p>
+    )}
+    {data.content && (
+      <p><span className="font-medium">Content:</span> {data.content}</p>
+    )}
+    {data.monitoring_type && (
+      <p><span className="font-medium">Monitoring Type:</span> {data.monitoring_type}</p>
+    )}
+    {data.findings && (
+      <p><span className="font-medium">Findings:</span> {data.findings}</p>
+    )}
+    {data.assessment_type && (
+      <p><span className="font-medium">Assessment Type:</span> {data.assessment_type}</p>
+    )}
+    {data.results && (
+      <p><span className="font-medium">Results:</span> {data.results}</p>
+    )}
+    {data.movement_type && (
+      <p><span className="font-medium">Movement Type:</span> {data.movement_type}</p>
+    )}
+    {data.destination && (
+      <p><span className="font-medium">Destination:</span> {data.destination}</p>
+    )}
+    {data.enforcement_type && (
+      <p><span className="font-medium">Enforcement Type:</span> {data.enforcement_type}</p>
+    )}
+    {data.outcome && (
+      <p><span className="font-medium">Outcome:</span> {data.outcome}</p>
+    )}
+    {data.activity_type && (
+      <p><span className="font-medium">Activity Type:</span> {data.activity_type}</p>
+    )}
+    {data.participants !== undefined && (
+      <p><span className="font-medium">Participants:</span> {data.participants}</p>
+    )}
+    {data.date && (
+      <p><span className="font-medium">Date:</span> {new Date(data.date).toLocaleDateString()}</p>
+    )}
+    {data.time && (
+      <p><span className="font-medium">Time:</span> {data.time}</p>
+    )}
+    {data.reference && (
+      <p><span className="font-medium">Reference:</span> {data.reference}</p>
+    )}
+    {data.count && (
+      <p><span className="font-medium">Number of Evidence:</span> {data.count}</p>
+    )}
+    {data.count && (
+      <p><span>For Evidence content go to "Evidence for Events" in the Communication View</span></p>
+    )}
+  </div>
+);
+
+const renderRelationship = (data: any) => (
+  <div className="space-y-1">
+    {(data.source.id && data.target.id) &&(
+      <p><span>This is the {data.directed ? "directed" : "undirected"} {data.sub_type}-{data.type} between</span> {data.source.id} {data.source.sub_type} <span> and </span> {data.target.id} {data.target.sub_type}</p>
+    )}
+    {data.coordination_type && (
+      <p><span className="font-medium">Coordination Type:</span> {data.coordination_type}</p>
+    )}
+    {data.start_date && (
+      <p><span className="font-medium">Timestamp:</span> {new Date(data.start_date).toLocaleString()}</p>
+    )}
+    {data.end_date && (
+      <p><span className="font-medium">End Date:</span> {new Date(data.end_date).toLocaleString()}</p>
+    )}
+    {data.permission_type && (
+      <p><span className="font-medium">Permission Type:</span> {data.permission_type}</p>
+    )}
+    {data.operational_role && (
+      <p><span className="font-medium">Operational Role:</span> {data.operational_role}</p>
+    )}
+    {data.report_type && (
+      <p><span className="font-medium">Report Type:</span> {data.report_type}</p>
+    )}
+    {data.submission_date && (
+      <p><span className="font-medium">Submission Date:</span> {new Date(data.submission_date).toLocaleString()}</p>
+    )}
+    {data.jurisdiction_type && (
+      <p><span className="font-medium">Jurisdiction Type:</span> {data.jurisdiction_type}</p>
+    )}
+    {data.authority_level && (
+      <p><span className="font-medium">Authority Level:</span> {data.authority_level}</p>
+    )}
+    {data.friendship_type && (
+      <p><span className="font-medium">Friendship Type:</span> {data.friendship_type}</p>
+    )}
+    {data.evidence_count && (
+      
+      <p><span className="font-medium">Found {data.evidence_count} {(data.evidence_count < 2) ? "evidence" : "evidences"} for this Relationship:</span></p>
+    )}
+    {Array.isArray(data.CommIDs) && data.CommIDs.length > 0 && (
+    <div>
+      <p className="font-medium">Communication IDs of evidence:</p>
+      <ul className="list-disc list-inside ml-2">
+        {data.CommIDs.map((id: string, idx: number) => (
+          <li key={`commid-${idx}`}>{id}</li>
+        ))}
+      </ul>
+    </div>
+    )}
+    {Array.isArray(data.evidence_contents) && data.evidence_contents.length > 0 && (
+      <div className="mt-2">
+        <p className="font-medium">Communication content of evidence:</p>
+        <ul className="list-disc list-inside ml-2">
+          {data.evidence_contents.map((content: string, idx: number) => (
+            <li key={`evidence-${idx}`}>{content}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    <p>{data.directed ? "This Relationship is directed" : "This Relationship is undirected"}</p>
+
+  </div>
+);
+
+
+
 const SelectedInfoPanel: React.FC<SelectedInfoPanelProps> = ({ selectedInfo }) => {
+  const data = selectedInfo?.data;
+
   return (
     <div className="w-[300px] flex-shrink-0 border rounded-lg p-4 overflow-y-auto" style={{ maxHeight: "400px" }}>
       <h4 className="text-md font-semibold mb-2">Selected Info</h4>
-      {selectedInfo ? (
-        <div className="text-sm space-y-1">
-          <h5 className="text-lg font-semibold">{selectedInfo.data.id}</h5>
-          {Object.entries(selectedInfo.data).map(([key, value]) => {
-            if (["x", "y", "vx", "vy", "fx", "fy", "index"].includes(key)) return null;
-            return (
-              <p key={key}><span className="font-medium">{key}:</span> {typeof value === "object" ? JSON.stringify(value) : value?.toString()}</p>
-            );
-          })}
+      {data ? (
+        <div className="text-sm">
+          <h5 className="text-xl font-bold break-all mb-2">{data.id}</h5>
+          {data.type === "Entity" && renderEntity(data)}
+          {data.type === "Event" && renderEvent(data)}
+          {data.type === "Relationship" && renderRelationship(data)}
+          
         </div>
       ) : (
         <p className="text-gray-500 italic">Click a node or edge to view details</p>
