@@ -122,7 +122,7 @@ const GraphView: React.FC<Props> = ({
   const [animationEndTime, setAnimationEndTime] = useState<number>(defaultEndDate);
   const [currentAnimationTime, setCurrentAnimationTime] = useState<number>(defaultStartDate);
 
-  const [ShowEventNames, setShowEventNames] = useState(false);
+
 
 
   const DEFAULT_RADIUS = 20;
@@ -291,15 +291,7 @@ const GraphView: React.FC<Props> = ({
           </div>
         )}
       </div>
-      <div className="flex flex-row gap-2 mb-2">
-        <span>Show:</span>
-        <button
-          onClick={() => setShowEventNames(prev => !prev)}
-          className="px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded"
-        >
-          {ShowEventNames ? "Hide Event Labels" : "Show Event Labels"}
-        </button>
-      </div>
+      
 
     </div>
   );
@@ -920,9 +912,17 @@ const GraphView: React.FC<Props> = ({
             .attr("text-anchor", "middle")
             .attr("dy", ".35em")
             .attr("fill", "black")
+            .text(d =>
+              d.type === "Entity"
+                ? d.id
+                : d.sub_type === "Communication"
+                ? ""
+                : d.sub_type
+            )
             .style("font-size", d =>
               `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
             );
+
             
           return group;
         },
@@ -1181,7 +1181,7 @@ const GraphView: React.FC<Props> = ({
       .text(d =>
         d.type === "Entity"
           ? d.id
-          : ShowEventNames && (d.sub_type !== "Communication")
+          : d.sub_type !== "Communication"
             ? d.sub_type
             : ""
       )
@@ -1189,7 +1189,7 @@ const GraphView: React.FC<Props> = ({
         const label =
           d.type === "Entity"
             ? d.id
-            : ShowEventNames && (d.sub_type !== "Communication")
+            : d.sub_type !== "Communication"
               ? d.sub_type
               : "";
         return `${Math.max(8, 12 - Math.max(0, label.length - 10))}px`;
