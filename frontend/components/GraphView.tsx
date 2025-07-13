@@ -26,6 +26,7 @@ interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
   type: string;
   timestamp?: string; // Links can also have timestamps, especially 'COMMUNICATION'
   value?: number;
+  number: number;
 }
 
 interface GraphDataModified {
@@ -668,7 +669,16 @@ const GraphView: React.FC<Props> = ({
       }
       return true;
     });
-    console.log
+    console.log("linksToRender: ", linksToRender)
+    function arcPath(d: GraphLink): string {
+      const source = typeof d.source === "object" ? d.source : nodePositions[d.source];
+      const target = typeof d.target === "object" ? d.target : nodePositions[d.target];
+
+      const dx = target.x - source.x;
+      const dy = target.y - source.y;
+      const dr = Math.sqrt(dx * dx + dy * dy) * (1 + d.number); 
+      return `M${source.x},${source.y} A${dr},${dr} 0 0,1 ${target.x},${target.y}`;
+    }
 
     // Update counts based on currently visible nodes and links
     const subtypeCounts: Record<string, number> = {};
@@ -695,9 +705,9 @@ const GraphView: React.FC<Props> = ({
         .force("collide", d3.forceCollide(50));
 
       const link = g.append("g")
-        .selectAll("line")
+        .selectAll("path")
         .data(linksToRender)
-        .enter().append("line")
+        .enter().append("path")
         .attr("stroke", d => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
         .attr("stroke-opacity", 0.6)
         .attr("stroke-width", 1)
@@ -705,10 +715,7 @@ const GraphView: React.FC<Props> = ({
 
       simulation.on("tick", () => {
         g.selectAll<SVGLineElement, GraphLink>(".link")
-          .attr("x1", d => (d.source as GraphNode).x!)
-          .attr("y1", d => (d.source as GraphNode).y!)
-          .attr("x2", d => (d.target as GraphNode).x!)
-          .attr("y2", d => (d.target as GraphNode).y!);
+          .attr("d", arcPath);
 
         g.selectAll<SVGGElement, GraphNode>(".node-group")
           .attr("transform", d => `translate(${d.x},${d.y})`);
@@ -751,20 +758,20 @@ const GraphView: React.FC<Props> = ({
       });
       
 
-    
-    
-
       // Stop any active simulation if a filter is applied after the initial render
       if (simulationRef.current) {
         simulationRef.current.stop();
       }
     }
 
+    
+
+
     // Drawing the links
     const link = g.selectAll<SVGLineElement, GraphLink>(".link")
       .data(linksToRender, d => `${(d.source as GraphNode).id}-${(d.target as GraphNode).id}`) // Use node IDs for join key
       .join(
-        enter => enter.append("line")
+        enter => enter.append("path")
           .attr("class", "link")
           .attr("stroke", d => {
             const sourceNode = typeof d.source === "object" ? d.source : commGraphData.nodes.find(n => n.id === d.source);
@@ -785,6 +792,8 @@ const GraphView: React.FC<Props> = ({
 
           .attr("stroke-opacity", 0.6)
           .attr("stroke-width", 1)
+          .attr("fill", "none")
+          .attr("d", arcPath)
           .on("click", (event, d) => setSelectedInfo({ type: "link", data: d })),
         update => update,
         exit => exit.remove()
@@ -995,7 +1004,7 @@ const GraphView: React.FC<Props> = ({
         });
 
       d3.select(svgRef.current)
-        .selectAll("line")
+        .selectAll("path.link")
         .attr("opacity", d => (isActiveLink(d) ? 1 : 0.1));
 
       // Polygons (link-arrow) opacity for animation state
@@ -1018,7 +1027,7 @@ const GraphView: React.FC<Props> = ({
         .attr("opacity", 1); // Ensure circles are fully opaque
 
       d3.select(svgRef.current)
-        .selectAll("line")
+        .selectAll("path.link")
         .attr("opacity", 1); // Ensure lines are fully opaque
 
       // 👇 ADD THIS LINE for polygons when no animation is playing
@@ -1040,9 +1049,6 @@ const GraphView: React.FC<Props> = ({
         .attr("class", "link-arrow")
         .attr("points", "-7,-5 8,0 -7,5")
         .merge(linkFlow as any)
-        .each(function(d: any) {
-          console.log("Polygon datum:", d);
-        })
         .attr("fill", (d: any) =>
           d.type === "COMMUNICATION" ? "#2ca02c" :
           d.type === "EVIDENCE_FOR" ? "#800080" :
