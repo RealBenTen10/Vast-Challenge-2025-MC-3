@@ -65,6 +65,8 @@ interface Props {
   graphHeight: number;
   commGraphData: GraphDataModified;
   setSelectedEventId: (id: string) => void;
+  setResetFilterPushed: (v: boolean) => void;
+  resetFilterPushed: boolean;
 }
 
 const GraphView: React.FC<Props> = ({
@@ -98,7 +100,9 @@ const GraphView: React.FC<Props> = ({
   relevantEvents,
   setrelevantEvents,
   commGraphData,
-  setSelectedEventId
+  setSelectedEventId,
+  setResetFilterPushed,
+  resetFilterPushed
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isInAnimation, setIsInAnimation] = useState(false);
@@ -153,6 +157,15 @@ const GraphView: React.FC<Props> = ({
       return DEFAULT_RADIUS + commCount * 0.2;
 
     };
+
+  useEffect(() => {
+    if (resetFilterPushed) {
+    setIsPlaying(false); 
+    setIsInAnimation(false); 
+    setCurrentAnimationTime(animationStartTime);
+    setResetFilterPushed(false);
+  }
+  }, [resetFilterPushed])
 
   // Parse prop timestamps for initial animation range
   useEffect(() => {
@@ -650,6 +663,7 @@ const GraphView: React.FC<Props> = ({
       }
       return true;
     });
+    console.log
 
     // Update counts based on currently visible nodes and links
     const subtypeCounts: Record<string, number> = {};

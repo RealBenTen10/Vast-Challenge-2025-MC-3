@@ -72,11 +72,12 @@ export default function Home() {
   const [msvData, setMsvData] = useState<any[]>([]);
   const [msvLoading, setMsvLoading] = useState(false);
   const [msvError, setMsvError] = useState<string | null>(null);
+  const [resetFilterPushed, setResetFilterPushed] = useState(false);
 
   useEffect(() => {
     console.log("SelectedInfo: ", selectedInfo);
   }, [selectedInfo]); 
-  
+
   // Resizing logic
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -237,58 +238,59 @@ export default function Home() {
     <div className="flex flex-row flex-1 w-full">
       {/* Sidebar: FilterPanel */}
       {showFilterPanel && (
-        <div className="fixed top-0 left-0 w-[320px] h-screen bg-white shadow-lg border-r z-40 flex flex-col">
-          <div className="h-full overflow-y-auto">
-            <FilterPanel
-              graphData={graphData}
-              setGraphData={setGraphData}
-              callApi={callApi}
-              setSelectedEventTypes={setSelectedEventTypes}
-              setSubtypeCounts={setSubtypeCounts}
-              setEdgeTypeCounts={setEdgeTypeCounts}
-              setEdgeCount={setEdgeCount}
-              setSelectedInfo={setSelectedInfo}
-              setHighlightedMessageId={setHighlightedMessageId}
-              setShowInfoPanel={setShowInfoPanel}
-              setShowFilterPanel={setShowFilterPanel}
-              filterEntityId={filterEntityId}
-              setFilterEntityId={setFilterEntityId}
-              filterDepth={filterDepth}
-              setFilterDepth={setFilterDepth}
-              filterMode={filterMode}
-              setFilterMode={setFilterMode}
-              selectedTimestamp={selectedTimestamp}
-              setSelectedTimestamp={setSelectedTimestamp}
-              filterDate={filterDate}
-              setFilterDate={setFilterDate}
-              filterContent={filterContent}
-              setFilterContent={setFilterContent}
-              highlightedMessageId={highlightedMessageId}
-              filterSender={filterSender}
-              setFilterSender={setFilterSender}
-              filterReceiver={filterReceiver}
-              setFilterReceiver={setFilterReceiver}
-              timestampFilterStart={timestampFilterStart}
-              timestampFilterEnd={timestampFilterEnd}
-              setTimestampFilterStart={setTimestampFilterStart}
-              setTimestampFilterEnd={setTimestampFilterEnd}
-              statusMsg={statusMsg}
-              relevantEvents={relevantEvents}
-              setrelevantEvents={setrelevantEvents}
-              msvStartDate={msvStartDate}
-              setMsvStartDate={setMsvStartDate}
-              msvEndDate={msvEndDate}
-              setMsvEndDate={setMsvEndDate}
-              msvEntityFilter={msvEntityFilter}
-              setMsvEntityFilter={setMsvEntityFilter}
-              msvKeyword={msvKeyword}
-              setMsvKeyword={setMsvKeyword}
-              loadMSV={loadMSV}
-              allEntities={allEntities}
-            />
-          </div>
-        </div>
-      )}
+  <div className="fixed top-0 left-0 w-[320px] h-screen bg-white shadow-lg border-r z-40 flex flex-col">
+    <div className="h-full overflow-y-auto">
+      <FilterPanel
+        graphData={graphData}
+        setGraphData={setGraphData}
+        callApi={callApi}
+        setSelectedEventTypes={setSelectedEventTypes}
+        setSubtypeCounts={setSubtypeCounts}
+        setEdgeTypeCounts={setEdgeTypeCounts}
+        setEdgeCount={setEdgeCount}
+        setSelectedInfo={setSelectedInfo}
+        setHighlightedMessageId={setHighlightedMessageId}
+        setShowInfoPanel={setShowInfoPanel}
+        setShowFilterPanel={setShowFilterPanel}
+        filterEntityId={filterEntityId}
+        setFilterEntityId={setFilterEntityId}
+        filterDepth={filterDepth}
+        setFilterDepth={setFilterDepth}
+        filterMode={filterMode}
+        setFilterMode={setFilterMode}
+        selectedTimestamp={selectedTimestamp}
+        setSelectedTimestamp={setSelectedTimestamp}
+        filterDate={filterDate}
+        setFilterDate={setFilterDate}
+        filterContent={filterContent}
+        setFilterContent={setFilterContent}
+        highlightedMessageId={highlightedMessageId}
+        filterSender={filterSender}
+        setFilterSender={setFilterSender}
+        filterReceiver={filterReceiver}
+        setFilterReceiver={setFilterReceiver}
+        timestampFilterStart={timestampFilterStart}
+        timestampFilterEnd={timestampFilterEnd}
+        setTimestampFilterStart={setTimestampFilterStart}
+        setTimestampFilterEnd={setTimestampFilterEnd}
+        statusMsg={statusMsg}
+        relevantEvents={relevantEvents}
+        setrelevantEvents={setrelevantEvents}
+        msvStartDate={msvStartDate}
+        setMsvStartDate={setMsvStartDate}
+        msvEndDate={msvEndDate}
+        setMsvEndDate={setMsvEndDate}
+        msvEntityFilter={msvEntityFilter}
+        setMsvEntityFilter={setMsvEntityFilter}
+        msvKeyword={msvKeyword}
+        setMsvKeyword={setMsvKeyword}
+        loadMSV={loadMSV}
+        allEntities={allEntities}
+        setResetFilterPushed={setResetFilterPushed}
+      />
+    </div>
+  </div>
+)}
 
       <div
         className="flex-1 flex flex-col overflow-hidden"
@@ -336,6 +338,8 @@ export default function Home() {
             setrelevantEvents={setrelevantEvents}
             commGraphData={commGraphData}
             setSelectedEventId={setSelectedEventId}
+            setResetFilterPushed={setResetFilterPushed}
+            resetFilterPushed={resetFilterPushed}
           />
           {/* Resizable Drag Handle */}
           <div
