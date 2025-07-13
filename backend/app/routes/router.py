@@ -817,7 +817,7 @@ async def event_entities(event_ids: List[str]):
     print("Event entities fetched successfully")
     return {"success": True, "data": result_map}
 
-'''
+
 
 ###
 # Here the Similarity Search starts
@@ -859,9 +859,11 @@ def calculate_similarity_between_all_messages():
 async def similarity_search(
     query: str = Query(..., description="Text query for semantic message similarity"),
     top_k: int = Query(50, description="Number of top similar messages to return"),
-    score_threshold: float = Query(0.5, description="Minimum similarity score to consider a match"),
+    score_threshold: float = Query(0.7, description="Minimum similarity score to consider a match"),
     order_by_time: bool = Query(False)
     ):
+    if query == "":
+        return {"success": True, "data": []} 
     try:
         
         if not query.strip():
@@ -972,4 +974,3 @@ async def similarity_search_events(
     except Exception as e:
         print("Error in similarity search for events:", str(e))
         return {"success": False, "error": str(e)}
-'''

@@ -93,6 +93,7 @@ export default function CommunicationView({
   const [similarityResults, setSimilarityResults] = useState<MSVItem[]>([]);
   const [evidenceResults, setEvidenceResults] = useState<MSVItem[]>([]);
   const [queryInput, setQueryInput] = useState<string>(""); 
+  const [previousQueryInput, setPreviousQueryInput] = useState<string>(""); 
   const [similarityThreshold, setSimilarityThreshold] = useState<number>(0.7)
   const [prevSimilarityThreshold, setPrevSimilarityThreshold] = useState<number>(0.7)
   const [topK, setTopK] = useState<number>(50);
@@ -129,11 +130,12 @@ export default function CommunicationView({
 
   const handleSimilaritySearch = async (query?: string) => {
     const searchQuery = query ?? similarityQuery;
-    if (!searchQuery) return;
+    //if (!searchQuery) return;
     try {
       setLoading(true);
       // set input box to "" if message was clicked instead of user input
-      if (query) setSimilarityQuery("");
+      if (query) setSimilarityQuery(query);
+      
       const res = await fetch(`/api/similarity-search?query=${encodeURIComponent(searchQuery)}&top_k=${topK}&order_by_time=${byTime}`);
       const data = await res.json();
       if (data.success) {
@@ -147,6 +149,7 @@ export default function CommunicationView({
     } finally {
       setLoading(false);
       setFilterModeMessages("similarity")
+      
     }
   };
 
