@@ -32,13 +32,31 @@ const LegendPanel: React.FC = () => {
               </ul>
             </div>
             <div className="border rounded-lg p-4" style={{ marginTop: 0, paddingTop: 0 }}>
-              <h5 className="text-md font-semibold mb-2" style={{ marginTop: 0 }}>Edge Legend (Relationships)</h5>
-              <ul className="text-sm space-y-1">
-                <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#d62728" }}></span>Negative</li>
-          <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>Social</li>
-          <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#1f77b4" }}></span>Institutional </li>
-                <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#ff7f0e" }}></span>Operational </li>
-              </ul>
+              <h5 className="text-md font-semibold mb-2" style={{ marginTop: 0 }}>Edge Legend</h5>
+              <div className="mb-2">
+                <div className="font-semibold text-sm mb-1">Relationship Edges</div>
+                <ul className="text-sm space-y-1">
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#d62728" }}></span>Negative</li>
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>Social</li>
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#1f77b4" }}></span>Institutional</li>
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#ff7f0e" }}></span>Operational</li>
+                </ul>
+              </div>
+              <div>
+                <div className="font-semibold text-sm mb-1">Event Edges</div>
+                <ul className="text-sm space-y-1">
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#bcbd22" }}></span>Monitoring</li>
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#ff7f0e" }}></span>Assessment</li>
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#2ca02c" }}></span>VesselMovement</li>
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#d62728" }}></span>Enforcement</li>
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#9467bd" }}></span>TourActivity</li>
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#8c564b" }}></span>Collaborate</li>
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#17becf" }}></span>TransponderPing</li>
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#17becf" }}></span>HarborReport</li>
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#e377c2" }}></span>Criticize</li>
+                  <li><span className="inline-block w-4 h-1 mr-2 align-middle" style={{ backgroundColor: "#999999" }}></span>Other</li>
+                </ul>
+              </div>
             </div>
           </div>
           <button
