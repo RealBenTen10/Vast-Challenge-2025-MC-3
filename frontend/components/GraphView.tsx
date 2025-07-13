@@ -900,19 +900,12 @@ const GraphView: React.FC<Props> = ({
                           : d.id === highlightedMessageId
                             ? "#ff00ff"
                             : "#999"
-                  );
+                    );
 
           group.append("text")
             .attr("text-anchor", "middle")
             .attr("dy", ".35em")
             .attr("fill", "black")
-            .text(d =>
-              d.type === "Entity"
-                ? d.id
-                : d.sub_type === "Communication"
-                ? ""
-                : d.sub_type
-            )
             .style("font-size", d =>
               `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
             );
@@ -1168,15 +1161,13 @@ const GraphView: React.FC<Props> = ({
           return `translate(${point.x},${point.y}) rotate(${angle})`;
         });
 
-
+      
       // === Labels ===
       update.select("text")
         .text(d =>
           d.type === "Entity"
             ? d.id
-            : d.sub_type === "Communication"
-            ? "Comm"
-            : d.sub_type
+            : ""
         )
         .style("font-size", d =>
           `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
