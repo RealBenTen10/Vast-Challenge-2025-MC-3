@@ -80,6 +80,37 @@ const renderEvent = (data: any) => (
   </div>
 );
 
+const renderCommunication = (data: any) => (
+  <div className="space-y-1">
+    <p><span className="font-medium">Type:</span> {data.type}</p>
+    <p><span className="font-medium">Sub-Type:</span> {data.sub_type}</p>
+    {Array.isArray(data.event_ids) && Array.isArray(data.timestamps) && Array.isArray(data.contents) && (
+      <div className="mt-2 space-y-2">
+        <p className="font-medium"> {data.count} Associated Communications:</p>
+        {data.event_ids.map((id: string, idx: number) => (
+          <div key={`comm-event-${id}-${idx}`} className="ml-2 border-l pl-2 border-gray-300">
+            <p><span className="font-semibold">{id}</span></p>
+            {data.timestamps[idx] && (
+              <p><span className="font-medium">At:</span> {new Date(data.timestamps[idx]).toLocaleString()}</p>
+            )}
+            {data.contents[idx] && (
+              <p><span className="font-medium">Content:</span> {data.contents[idx]}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    )}
+    {(data.source.id && data.target.id) &&(
+      <p><span> This is the edge for {data.target.id}. </span> </p>
+    )}
+    {(data.source.id && data.target.id) &&(
+      <p><span> Please click the node for further information </span> </p>
+    )}
+    
+  </div>
+);
+
+
 const renderRelationship = (data: any) => (
   <div className="space-y-1">
     {(data.source.id && data.target.id) &&(
@@ -147,6 +178,22 @@ const renderRelationship = (data: any) => (
 
 
 
+const renderExtraFields = (data: any) => {
+  const additionalFields = Object.entries(data).filter(([key]) => !irrelevantKeys.has(key) && key !== "id");
+  return (
+    <div className="mt-2 space-y-1">
+      <p> This is a non-relationship edge. Please click on the node of this edge to display further information. </p>
+      <p className="font-semibold">Nonetheless some Info:</p>
+      {additionalFields.map(([key, value]) => {
+        if (["type", "sub_type", "label", "name", "timestamp", "content"].includes(key)) return null;
+        return (
+          <p key={key}><span className="font-medium">{key}:</span> {typeof value === "object" ? JSON.stringify(value) : value?.toString()}</p>
+        );
+      })}
+    </div>
+  );
+};
+
 const SelectedInfoPanel: React.FC<SelectedInfoPanelProps> = ({ selectedInfo }) => {
   const data = selectedInfo?.data;
 
@@ -157,9 +204,10 @@ const SelectedInfoPanel: React.FC<SelectedInfoPanelProps> = ({ selectedInfo }) =
         <div className="text-sm">
           <h5 className="text-xl font-bold break-all mb-2">{data.id}</h5>
           {data.type === "Entity" && renderEntity(data)}
-          {data.type === "Event" && renderEvent(data)}
+          {data.type === "Event" && data.sub_type !== "Communication" && renderEvent(data)}
+          {data.sub_type === "Communication" && renderCommunication(data)}
           {data.type === "Relationship" && renderRelationship(data)}
-          
+          {data.type !== "Entity" && data.type !== "Event" && data.type !== "Relationship" && renderExtraFields(data)}
         </div>
       ) : (
         <p className="text-gray-500 italic">Click a node or edge to view details</p>
