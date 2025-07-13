@@ -122,9 +122,13 @@ const GraphView: React.FC<Props> = ({
   const [animationEndTime, setAnimationEndTime] = useState<number>(defaultEndDate);
   const [currentAnimationTime, setCurrentAnimationTime] = useState<number>(defaultStartDate);
 
+  const [ShowEventNames, setShowEventNames] = useState(false);
+
 
   const DEFAULT_RADIUS = 20;
   const HIGHLIGHT_RADIUS = 30;
+
+  const DEFAULT_EDGE_WIDTH = 1.5; 
 
   const EVENT_COLOR_MAP: Record<string, string> = {
     Monitoring: "#bcbd22 ",       // blue
@@ -251,40 +255,52 @@ const GraphView: React.FC<Props> = ({
   }, [stepMS, animationStartTime, animationEndTime]);
 
   const controls = (
-    <div className="flex flex-col items-center">
-      <div className="flex flex-row gap-2 mb-2">
-        <button onClick={() => { setIsPlaying(true); setIsInAnimation(true)}}>▶ Play</button>
-        <button onClick={() => setIsPlaying(false)}>⏸ Pause</button>
-        <button onClick={() => { setIsPlaying(false); setIsInAnimation(false); setCurrentAnimationTime(animationStartTime); }}>⏹ Stop</button>
-        <button onClick={() => handleStep('backward')}>◀ Step Back</button>
-        <button onClick={() => handleStep('forward')}>Step ▶</button>
-        <select value={stepMS / 60000} onChange={e => setStepMS(+e.target.value * 60000)}>
-          <option value={1}>1 min</option>
-          <option value={5}>5 min</option>
-          <option value={15}>15 min</option>
-          <option value={30}>30 min</option>
-          <option value={60}>1 h</option>
-          <option value={3 * 60}>3 h</option>
-          <option value={6 * 60}>6 h</option>
-          <option value={12 * 60}>12 h</option>
-          <option value={24 * 60}>1 day</option>
-        </select>
+    <div>
+      <div className="flex flex-col items-center">
+        <div className="flex flex-row gap-2 mb-2">
+          <button onClick={() => { setIsPlaying(true); setIsInAnimation(true)}}>▶ Play</button>
+          <button onClick={() => setIsPlaying(false)}>⏸ Pause</button>
+          <button onClick={() => { setIsPlaying(false); setIsInAnimation(false); setCurrentAnimationTime(animationStartTime); }}>⏹ Stop</button>
+          <button onClick={() => handleStep('backward')}>◀ Step Back</button>
+          <button onClick={() => handleStep('forward')}>Step ▶</button>
+          <select value={stepMS / 60000} onChange={e => setStepMS(+e.target.value * 60000)}>
+            <option value={1}>1 min</option>
+            <option value={5}>5 min</option>
+            <option value={15}>15 min</option>
+            <option value={30}>30 min</option>
+            <option value={60}>1 h</option>
+            <option value={3 * 60}>3 h</option>
+            <option value={6 * 60}>6 h</option>
+            <option value={12 * 60}>12 h</option>
+            <option value={24 * 60}>1 day</option>
+          </select>
+        </div>
+        {isPlaying || isInAnimation ? (
+          <div className="mt-2 text-center">
+            <strong>Currently showing animation for:</strong>{" "}
+            {new Date(currentAnimationTime).toLocaleString()} <strong>–</strong>{" "}
+            {new Date(currentAnimationTime + stepMS).toLocaleString()}
+          </div>
+        ) : (
+          <div className="mt-1 text-sm text-gray-700 text-center">
+            Showing Communications from{" "}
+            <span className="font-semibold">{new Date(animationStartTime).toLocaleString()}</span>{" "}
+            to{" "}
+            <span className="font-semibold">{new Date(animationEndTime).toLocaleString()}</span>
+            <div className="text-sm mt-1">Press Play to start animation</div>
+          </div>
+        )}
       </div>
-      {isPlaying || isInAnimation ? (
-        <div className="mt-2 text-center">
-          <strong>Currently showing animation for:</strong>{" "}
-          {new Date(currentAnimationTime).toLocaleString()} <strong>–</strong>{" "}
-          {new Date(currentAnimationTime + stepMS).toLocaleString()}
-        </div>
-      ) : (
-        <div className="mt-1 text-sm text-gray-700 text-center">
-          Showing Communications from{" "}
-          <span className="font-semibold">{new Date(animationStartTime).toLocaleString()}</span>{" "}
-          to{" "}
-          <span className="font-semibold">{new Date(animationEndTime).toLocaleString()}</span>
-          <div className="text-sm mt-1">Press Play to start animation</div>
-        </div>
-      )}
+      <div className="flex flex-row gap-2 mb-2">
+        <span>Show:</span>
+        <button
+          onClick={() => setShowEventNames(prev => !prev)}
+          className="px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded"
+        >
+          {ShowEventNames ? "Hide Event Labels" : "Show Event Labels"}
+        </button>
+      </div>
+
     </div>
   );
 
@@ -726,7 +742,7 @@ const GraphView: React.FC<Props> = ({
         .enter().append("path")
         .attr("stroke", d => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
         .attr("stroke-opacity", 0.6)
-        .attr("stroke-width", 1)
+        .attr("stroke-width", DEFAULT_EDGE_WIDTH)
         .on("click", (event: any, d: any) => setSelectedInfo({ type: "link", data: d }));
 
       simulation.on("tick", () => {
@@ -811,12 +827,10 @@ const GraphView: React.FC<Props> = ({
 
           .attr("stroke-opacity", 0.6)
           .attr("stroke-width", d => {
-              console.log("width: ", d);
-              const defaultWidth = 1; 
               if (d.evidence_count != null && typeof d.evidence_count === 'number' && d.evidence_count > 0) {
-                  return defaultWidth + Math.log(d.evidence_count + 1); 
+                  return DEFAULT_EDGE_WIDTH + Math.log(d.evidence_count + 1); 
               } else {
-                  return defaultWidth;
+                  return DEFAULT_EDGE_WIDTH;
               }
           })
           .attr("fill", "none")
@@ -1163,15 +1177,24 @@ const GraphView: React.FC<Props> = ({
 
       
       // === Labels ===
-      update.select("text")
-        .text(d =>
+    update.select("text")
+      .text(d =>
+        d.type === "Entity"
+          ? d.id
+          : ShowEventNames && d.sub_type
+            ? d.sub_type
+            : ""
+      )
+      .style("font-size", d => {
+        const label =
           d.type === "Entity"
             ? d.id
-            : ""
-        )
-        .style("font-size", d =>
-          `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
-        );
+            : ShowEventNames && d.sub_type
+              ? d.sub_type
+              : "";
+        return `${Math.max(8, 12 - Math.max(0, label.length - 10))}px`;
+      });
+
 
             return update;
 
