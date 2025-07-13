@@ -128,7 +128,7 @@ export default function EventsView({
                   >
                     <td className="p-2">{event.timestamp || "Unknown"}</td>
                     <td className="p-2">
-                      <Badge color="blue">{event.sub_type}</Badge>
+                      {event.sub_type}
                     </td>
                     <td className="p-2 text-blue-600">
                       {source}
