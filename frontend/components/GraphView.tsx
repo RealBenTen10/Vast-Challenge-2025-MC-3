@@ -793,7 +793,15 @@ const GraphView: React.FC<Props> = ({
           })
 
           .attr("stroke-opacity", 0.6)
-          .attr("stroke-width", 1)
+          .attr("stroke-width", d => {
+              console.log("width: ", d);
+              const defaultWidth = 1; 
+              if (d.evidence_count != null && typeof d.evidence_count === 'number' && d.evidence_count > 0) {
+                  return defaultWidth + Math.log(d.evidence_count + 1); 
+              } else {
+                  return defaultWidth;
+              }
+          })
           .attr("fill", "none")
           .attr("d", arcPath)
           .on("click", (event, d) => setSelectedInfo({ type: "link", data: d })),
