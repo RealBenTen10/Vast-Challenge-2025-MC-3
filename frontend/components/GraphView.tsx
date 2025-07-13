@@ -857,8 +857,12 @@ const GraphView: React.FC<Props> = ({
                       const count = d.count;
                       return baseSize + count;  // Maybe stärker steigen lassen und dafür logarithmisch amchen
                     }
-                    return DEFAULT_RADIUS;
-                  })
+                    if (d.type === "Event") {
+                        const count = d.count ?? 1;
+                        return DEFAULT_RADIUS + (count - 1); // count=1 → DEFAULT_RADIUS, count=2 → DEFAULT_RADIUS+1, usw.
+                      }
+                      return DEFAULT_RADIUS;
+                    })
                   .attr("fill", (d: any) =>
   d.type === "Entity"
     ? "#999"
