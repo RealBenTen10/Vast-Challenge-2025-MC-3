@@ -118,7 +118,7 @@ export default function Sankey({
     // The more nodes, the less padding. Set a min padding.
     const numberOfNodes = nodes.length;
     // Example: starts at 20, decreases with more nodes, min 5.
-    const dynamicNodePadding = Math.max(5, 20 - (numberOfNodes/4));
+    const dynamicNodePadding = Math.max(6, 20 - (numberOfNodes));
 
 
     const sankey = d3Sankey()
