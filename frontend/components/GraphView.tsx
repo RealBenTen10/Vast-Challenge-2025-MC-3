@@ -122,7 +122,7 @@ const GraphView: React.FC<Props> = ({
   const HIGHLIGHT_RADIUS = 30;
 
   const EVENT_COLOR_MAP: Record<string, string> = {
-    Monitoring: "#1f77b4",        // blue
+    Monitoring: "#000",             // black
     Assessment: "#ff7f0e",        // orange
     VesselMovement: "#2ca02c",    // green
     Enforcement: "#d62728",       // red
@@ -225,7 +225,7 @@ const GraphView: React.FC<Props> = ({
   const controls = (
     <div className="flex flex-col items-center">
       <div className="flex flex-row gap-2 mb-2">
-        <button onClick={() => setIsPlaying(true)}>▶ Play</button>
+        <button onClick={() => { setIsPlaying(true); setIsInAnimation(true)}}>▶ Play</button>
         <button onClick={() => setIsPlaying(false)}>⏸ Pause</button>
         <button onClick={() => { setIsPlaying(false); setIsInAnimation(false); setCurrentAnimationTime(animationStartTime); }}>⏹ Stop</button>
         <button onClick={() => handleStep('backward')}>◀ Step Back</button>
@@ -818,26 +818,40 @@ const GraphView: React.FC<Props> = ({
                   .attr("r", (d: any) => {
                     if (d.type === "Entity") return getEntityRadius(d.id);
                     if (d.type === "Event" && d.sub_type === "Communication") {
-                      const baseSize = DEFAULT_RADIUS;
+                      const baseSize = DEFAULT_RADIUS-10;
                       const count = d.count;
                       return baseSize + count;  // Maybe stärker steigen lassen und dafür logarithmisch amchen
                     }
                     return DEFAULT_RADIUS;
                   })
                   .attr("fill", (d: any) =>
-                    d.type === "Entity" ? "#999" :
-                      d.sub_type === "Communication" ? "#1f77b4" :
-                        d.type === "Event" ? "#ff7f0e" :
-                          d.type === "Relationship" ? "#d62728" :
-                            d.id === highlightedMessageId ? "#ff00ff" : "#999"
-                  );
+  d.type === "Entity"
+    ? "#999"
+    : d.type === "Event"
+      ? (d.sub_type === "Communication"
+          ? "#000"
+          : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
+      : d.type === "Relationship"
+        ? "#d62728"
+        : d.id === highlightedMessageId
+          ? "#ff00ff"
+          : "#999"
+);
 
           group.append("text")
             .attr("text-anchor", "middle")
             .attr("dy", ".35em")
             .attr("fill", "black")
-            .text(d => d.type === "Entity" ? d.id : d.sub_type)
-            .style("font-size", d => `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`);
+            .text(d =>
+              d.type === "Entity"
+                ? d.id
+                : d.sub_type === "Communication"
+                ? ""
+                : d.sub_type
+            )
+            .style("font-size", d =>
+              `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
+            );
             
           return group;
         },
@@ -952,15 +966,15 @@ const GraphView: React.FC<Props> = ({
   // === Visuals for animated or normal state ===
     if (isPlaying || isInAnimation) {
       update.select("circle")
-        .attr("fill", d =>
-          d.type === "Entity"
-            ? "#999"
-            : d.sub_type === "Communication"
-            ? "#1f77b4"
-            : d.type === "Event"
-            ? "#ff7f0e"
-            : "#999"
-        )
+  .attr("fill", d =>
+    d.type === "Entity"
+      ? "#999"
+      : d.type === "Event"
+        ? (d.sub_type === "Communication"
+            ? "#000"
+            : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
+        : "#999"
+  )
         //.attr("stroke", d => (isActiveEvent(d) ? "red" : "none")) // Do we still need this?
         .attr("stroke-width", d => (isActiveEvent(d) ? 3 : 0))
         .attr("opacity", d => {
@@ -984,15 +998,15 @@ const GraphView: React.FC<Props> = ({
     } else {
       // This block executes when animation is NOT playing
       update.select("circle")
-        .attr("fill", d =>
-          d.type === "Entity"
-            ? "#999"
-            : d.sub_type === "Communication"
-            ? "#1f77b4"
-            : d.type === "Event"
-            ? "#ff7f0e"
-            : "#999"
-        )
+  .attr("fill", d =>
+    d.type === "Entity"
+      ? "#999"
+      : d.type === "Event"
+        ? (d.sub_type === "Communication"
+            ? "#000"
+            : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
+        : "#999"
+  )
         .attr("stroke", "none")
         .attr("stroke-width", 0)
         .attr("opacity", 1); // Ensure circles are fully opaque
@@ -1020,6 +1034,9 @@ const GraphView: React.FC<Props> = ({
         .attr("class", "link-arrow")
         .attr("points", "-7,-5 8,0 -7,5")
         .merge(linkFlow as any)
+        .each(function(d: any) {
+          console.log("Polygon datum:", d);
+        })
         .attr("fill", (d: any) =>
           d.type === "COMMUNICATION" ? "#2ca02c" :
           d.type === "EVIDENCE_FOR" ? "#800080" :
@@ -1036,12 +1053,19 @@ const GraphView: React.FC<Props> = ({
           return `translate(${arrowX},${arrowY}) rotate(${angle})`;
         });
 
+
       // === Labels ===
       update.select("text")
-        .text(d => (d.type === "Entity" ? d.id : d.sub_type))
-        .style("font-size", d =>
-          `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
-        );
+  .text(d =>
+    d.type === "Entity"
+      ? d.id
+      : d.sub_type === "Communication"
+      ? ""
+      : d.sub_type
+  )
+  .style("font-size", d =>
+    `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
+  );
 
       return update;
 

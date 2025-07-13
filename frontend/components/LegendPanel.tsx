@@ -20,7 +20,7 @@ const LegendPanel: React.FC = () => {
               <ul className="text-sm space-y-1">
                 <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#999" }}></span>Entity</li>
                 <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#ff7f0e" }}></span>Event</li>
-                <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#1f77b4" }}></span>Communication</li>
+                <li><span className="inline-block w-4 h-4 mr-2 rounded-full" style={{ backgroundColor: "#000" }}></span>Communication</li>
               </ul>
             </div>
             <div className="border rounded-lg p-4" style={{ marginTop: 0, paddingTop: 0 }}>
