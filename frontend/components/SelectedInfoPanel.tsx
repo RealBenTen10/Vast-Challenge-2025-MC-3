@@ -84,6 +84,7 @@ const renderCommunication = (data: any) => (
   <div className="space-y-1">
     <p><span className="font-medium">Type:</span> {data.type}</p>
     <p><span className="font-medium">Sub-Type:</span> {data.sub_type}</p>
+    <p>Filter sender to {data.source} and receiver to {data.target} to display Communications in Communication View at "Sender to Receiver" for better readability.</p>
     {Array.isArray(data.event_ids) && Array.isArray(data.timestamps) && Array.isArray(data.contents) && (
       <div className="mt-2 space-y-2">
         <p className="font-medium"> {data.count} Associated Communications:</p>
