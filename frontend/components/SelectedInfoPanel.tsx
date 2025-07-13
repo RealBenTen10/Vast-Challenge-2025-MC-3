@@ -147,33 +147,20 @@ const renderRelationship = (data: any) => (
     {data.friendship_type && (
       <p><span className="font-medium">Friendship Type:</span> {data.friendship_type}</p>
     )}
-    {data.evidence_count && (
-      
-      <p><span className="font-medium">Found {data.evidence_count} {(data.evidence_count < 2) ? "evidence" : "evidences"} for this Relationship:</span></p>
-    )}
-    {Array.isArray(data.CommIDs) && data.CommIDs.length > 0 && (
-    <div>
-      <p className="font-medium">Communication IDs of evidence:</p>
-      <ul className="list-disc list-inside ml-2">
+    
+    {Array.isArray(data.CommIDs) && Array.isArray(data.evidence_contents) && data.CommIDs.length > 0 && (
+      <div className="mt-2 space-y-2">
+        <p className="font-medium">Found {data.evidence_count} {(data.evidence_count < 2) ? "evidence" : "evidences"} for this Relationship:</p>
         {data.CommIDs.map((id: string, idx: number) => (
-          <li key={`commid-${idx}`}>{id}</li>
+          <div key={`evidence-pair-${idx}`} className="ml-2 border-l pl-2 border-gray-300">
+            <p><span className="font-semibold">{id}</span></p>
+            {data.evidence_contents[idx] && (
+              <p><span className="font-medium">Content:</span> {data.evidence_contents[idx]}</p>
+            )}
+          </div>
         ))}
-      </ul>
-    </div>
-    )}
-    {Array.isArray(data.evidence_contents) && data.evidence_contents.length > 0 && (
-      <div className="mt-2">
-        <p className="font-medium">Communication content of evidence:</p>
-        <ul className="list-disc list-inside ml-2">
-          {data.evidence_contents.map((content: string, idx: number) => (
-            <li key={`evidence-${idx}`}>{content}</li>
-          ))}
-        </ul>
       </div>
     )}
-
-    <p>{data.directed ? "This Relationship is directed" : "This Relationship is undirected"}</p>
-
   </div>
 );
 
