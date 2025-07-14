@@ -13,38 +13,38 @@ const relationshipGroups: Record<
 > = {
   Negative: {
     label: "Negative",
-    color: "#d62728",
+    color: "#d62728", // red
     types: ["Suspicious", "Unfriendly"],
   },
   Social: {
     label: "Social",
-    color: "#2ca02c",
-    types: ["Colleagues", "Friends", "Collaborate"],
+    color: "#2ca02c", // purple
+    types: ["Colleagues", "Friends", "Collaborate", "Reports"],
   },
   Institutional: {
     label: "Institutional",
-    color: "#1f77b4",
+    color: "#7f7f7f", // gray
     types: ["Jurisdiction", "AccessPermission"],
   },
   Operational: {
     label: "Operational",
-    color: "#ff7f0e",
+    color: "#17becf", // cyan
     types: ["Operates", "Coordinates"],
   },
 };
 
 const EVENT_COLOR_MAP: Record<string, string> = {
-  Assessment: "#ff7f0e",
-  Monitoring: "#bcbd22",
-  VesselMovement: "#2ca02c",
-  Enforcement: "#d62728",
-  TourActivity: "#9467bd",
-  Collaborate: "#8c564b",
-  TransponderPing: "#17becf",
-  HarborReport: "#17becf",
-  Criticize: "#17becf",
-  Communication: "#000",
-};
+    Monitoring: "#ff7f0e ",       // orange
+    Assessment: "#e377c2",        // pink
+    VesselMovement: "#8c564b",    // brown
+    Enforcement: "#d62728",       // red
+    TourActivity: "#9467bd",      // purple
+    Collaborate: "#2ca02c",       // green
+    TransponderPing: "#bcbd22",   // olive
+    HarborReport: "#bcbd22",      // olive
+    Criticize: "#bcbd22",         // olive
+    Communication: "#1f77b4"     // blue
+  };
 
 const getNodeColor = (type: string): string => {
   return EVENT_COLOR_MAP[type] || "#999999";
@@ -85,7 +85,7 @@ const LegendPanel: React.FC<Props> = ({
     });
   };
 
-  // NEW HANDLER: Enable all nodes and edges
+  // Enable all nodes and edges
   const handleEnableAll = () => {
     // Enable all event types (nodes), except "Communication"
     const allEventTypesEnabled: Record<string, boolean> = {};
