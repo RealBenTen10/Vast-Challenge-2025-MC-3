@@ -982,6 +982,10 @@ const GraphView: React.FC<Props> = ({
       d3.select(event.currentTarget).select("circle").attr("stroke", "none")
     )
     .on("click", (event, d) => {
+      if (d.type === "Event" && d.sub_type !== "Communication") {
+        setSelectedEventId(d.id);
+      }
+
       if (d.type === "Entity") 
               {
         if (filterSender == d.id && !filterReceiver) {
