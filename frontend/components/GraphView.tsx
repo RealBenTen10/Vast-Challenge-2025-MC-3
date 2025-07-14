@@ -155,6 +155,7 @@ const GraphView: React.FC<Props> = ({
   const HIGHLIGHT_RADIUS = 30;
 
   const DEFAULT_EDGE_WIDTH = 1.5; 
+  const DEFAULT_EDGE_WIDTH_DASHED = 3; 
 
   const EVENT_COLOR_MAP: Record<string, string> = {
     Monitoring: "#bcbd22 ",       // yellow
@@ -932,8 +933,11 @@ const GraphView: React.FC<Props> = ({
             return "#999";
           })
 
-          .attr("stroke-opacity", 0.6)
+          .attr("stroke-opacity", 0.7)
           .attr("stroke-width", d => {
+              if (!d.sub_type) {
+                return DEFAULT_EDGE_WIDTH_DASHED; 
+              }
               if (d.evidence_count != null && typeof d.evidence_count === 'number' && d.evidence_count > 0) {
                   return DEFAULT_EDGE_WIDTH + Math.log(d.evidence_count + 1); 
               } else {
