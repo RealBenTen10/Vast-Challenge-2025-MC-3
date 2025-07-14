@@ -415,9 +415,6 @@ export default function Home() {
     const panelDefs = [
       { show: showCommunicationView, key: "comm", component: (
         <CommunicationView
-          msvData={msvData}
-          msvLoading={msvLoading}
-          msvError={msvError}
           filterSender={filterSender}
           setFilterSender={setFilterSender}
           filterReceiver={filterReceiver}
@@ -451,8 +448,6 @@ export default function Home() {
       )},
       { show: showSankey, key: "sankey", component: (
         <Sankey
-          entityId={filterEntityId}
-          selectedDate={selectedTimestamp}
           height={sankeyHeight}
           filterSender={filterSender}
           setFilterSender={setFilterSender}
