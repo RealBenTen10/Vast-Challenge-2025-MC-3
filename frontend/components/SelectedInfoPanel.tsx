@@ -13,14 +13,15 @@ const renderEntity = (data: any) => (
     <p><span className="font-medium">Name:</span> {data.name}</p>
     <p><span className="font-medium">Type:</span> {data.type}</p>
     <p><span className="font-medium">Sub-Type:</span> {data.sub_type}</p>
-    {data.outgoingCommunicationCount && (
-      <p><span className="font-medium">Outgoing Communication edges:</span> {new Date(data.outgoingCommunicationCount).toLocaleString()}</p>
+    {data.hasOwnProperty("outgoingCommunicationCount") && (
+      <p><span className="font-medium">Outgoing Communication edges:</span> {data.outgoingCommunicationCount}</p>
     )}
-    {data.incomingCommunicationCount && (
-      <p><span className="font-medium">Incoming Communication edges:</span> {new Date(data.incomingCommunicationCount).toLocaleString()}</p>
+    {data.hasOwnProperty("incomingCommunicationCount") && (
+      <p><span className="font-medium">Incoming Communication edges:</span> {data.incomingCommunicationCount}</p>
     )}
   </div>
 );
+
 
 const renderEvent = (data: any) => (
   <div className="space-y-1">

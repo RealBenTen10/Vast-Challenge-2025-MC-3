@@ -849,7 +849,7 @@ const GraphView: React.FC<Props> = ({
             .on("mouseover", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4))
             .on("mouseout", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "none"))
             .on("click", (event: any, d: any) => {
-              setSelectedInfo({ type: "node", data: d });
+              
               if (d.type === "Entity") 
               {
                 if (filterSender == d.id && !filterReceiver) {
@@ -865,12 +865,12 @@ const GraphView: React.FC<Props> = ({
                 const tgt = typeof link.target === "string" ? link.target : link.target.id;
                 if (tgt === d.id) 
                 {
-                  const srcNode = commGraphData.nodes.find((n: any) => n.id === src && n.type === "Event");
+                  const srcNode = commGraphData.nodes.find((n: any) => n.id === src && n.sub_type === "Communication");
                   if (srcNode) incomingComm++;
                 }
                 if (src === d.id) 
                 {
-                  const tgtNode = commGraphData.nodes.find((n: any) => n.id === tgt && n.type === "Event");
+                  const tgtNode = commGraphData.nodes.find((n: any) => n.id === tgt && n.sub_type === "Communication");
                   if (tgtNode) outgoingComm++;
                 }
               }
@@ -939,18 +939,38 @@ const GraphView: React.FC<Props> = ({
       d3.select(event.currentTarget).select("circle").attr("stroke", "none")
     )
     .on("click", (event, d) => {
-      setSelectedInfo({ type: "node", data: d });
-      if (d.type === "Entity") {
+      if (d.type === "Entity") 
+              {
         if (filterSender == d.id && !filterReceiver) {
           setFilterSender("")
         } else {
           setFilterSender(d.id);
         }
+        
+        let incomingComm = 0;
+        let outgoingComm = 0;
+        commGraphData.links.forEach((link: any) => {
+        const src = typeof link.source === "string" ? link.source : link.source.id;
+        const tgt = typeof link.target === "string" ? link.target : link.target.id;
+        if (tgt === d.id) 
+        {
+          const srcNode = commGraphData.nodes.find((n: any) => n.id === src && n.sub_type === "Communication");
+          if (srcNode) incomingComm++;
+        }
+        if (src === d.id) 
+        {
+          const tgtNode = commGraphData.nodes.find((n: any) => n.id === tgt && n.sub_type === "Communication");
+          if (tgtNode) outgoingComm++;
+        }
       }
-      // Get glicked Event for EventView and CommView (Evidence_for)
-      if (d.type === "Event" && d.sub_type !== "Communication") {
-        setSelectedEventId(d.id);
-      }
+    );
+      setSelectedInfo({ type: "node", data: { ...d, incomingCommunicationCount: incomingComm, outgoingCommunicationCount: outgoingComm } });
+    } else 
+    {
+      setSelectedInfo({ type: "node", data: d });
+    }
+      
+      
     });
 
   // --- Data Transformation ---
