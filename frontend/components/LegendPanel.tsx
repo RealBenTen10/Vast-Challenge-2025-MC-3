@@ -57,7 +57,7 @@ const LegendPanel: React.FC<Props> = ({
   enabledRelationshipTypes,
   setEnabledRelationshipTypes,
 }) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   const handleEventToggle = (eventType: string) => {
     if (eventType === "Communication") return;
@@ -208,15 +208,18 @@ const LegendPanel: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Hide button inside scroll area */}
-          <button
-            className="bg-gray-200 hover:bg-gray-300 rounded px-3 py-1 text-xs font-semibold z-20 mt-4"
-            onClick={() => setCollapsed(true)}
-            style={{ minWidth: 45 }}
-          >
-            Hide
-          </button>
+          
         </div>
+      )}
+      {/* Hide button conditionally rendered outside the scrollable content */}
+      {!collapsed && (
+        <button
+          className="bg-gray-200 hover:bg-gray-300 rounded px-3 py-1 text-xs font-semibold z-20 whitespace-nowrap"
+          onClick={() => setCollapsed(true)}
+          style={{ position: "absolute", right: 8, top: 8, minWidth: 45 }}
+        >
+          Hide
+        </button>
       )}
     </div>
   );
