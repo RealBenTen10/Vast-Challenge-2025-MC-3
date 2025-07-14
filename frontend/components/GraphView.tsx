@@ -158,31 +158,30 @@ const GraphView: React.FC<Props> = ({
   const DEFAULT_EDGE_WIDTH_DASHED = 3; 
 
   const EVENT_COLOR_MAP: Record<string, string> = {
-    Monitoring: "#bcbd22 ",       // yellow
-    Assessment: "#ff7f0e",        // orange
-    VesselMovement: "#2ca02c",    // green
+    Monitoring: "#ff7f0e ",       // orange
+    Assessment: "#e377c2",        // pink
+    VesselMovement: "#8c564b",    // brown
     Enforcement: "#d62728",       // red
-    TourActivity: "#9467bd",      // violet
-    Collaborate: "#8c564b",       // brown
-    TransponderPing: "#17becf",   // turquoise
-    HarborReport: "#17becf",      // turquoise
-    Criticize: "#17becf",         // turquoise
-    Communication: "#000",        // black
-    Unknown: "#999999"            // grey
+    TourActivity: "#9467bd",      // purple
+    Collaborate: "#2ca02c",       // green
+    TransponderPing: "#bcbd22",   // olive
+    HarborReport: "#bcbd22",      // olive
+    Criticize: "#bcbd22",         // olive
+    Communication: "#1f77b4"     // blue
   };
 
   const RELATIONSHIP_COLOR_MAP: Record<string, string> = {
-    Suspicious: "#d62728 ",
-    Unfriendly: "#d62728",
-    Reports: "#2ca02c",
-    Colleagues: "#2ca02c",
-    Friends: "#2ca02c",
-    Collaborate: "#2ca02c",
-    Jurisdiction: "#1f77b4",
-    AccessPermission: "#1f77b4",
-    Operates: "#ff7f0e",
-    Coordinates: "#ff7f0e",
-    Other: "#ff7f0e"
+    Suspicious: "#d62728 ",     // red
+    Unfriendly: "#d62728",      // red
+    Reports: "#2ca02c",         // purple
+    Colleagues: "#2ca02c",      // purple
+    Friends: "#2ca02c",         // purple
+    Collaborate: "#2ca02c",     // purple
+    Jurisdiction: "#7f7f7f",    // gray
+    AccessPermission: "#7f7f7f",// gray
+    Operates: "#17becf",        // cyan
+    Coordinates: "#17becf",     // cyan
+    Other: "#999999"            //
   };
 
 
@@ -919,7 +918,7 @@ const GraphView: React.FC<Props> = ({
 
             
             if (sourceNode?.sub_type === "Communication" || targetNode?.sub_type === "Communication") {
-              return "#000"; 
+              return "#1f77b4"; 
             }
             if (sourceNode?.type === "Event") {
               return EVENT_COLOR_MAP[sourceNode.sub_type ?? "Unknown"] || "#999";
@@ -1028,7 +1027,7 @@ const GraphView: React.FC<Props> = ({
                       ? "#999"
                       : d.type === "Event"
                         ? (d.sub_type === "Communication"
-                            ? "#000"
+                            ? "#1f77b4"
                             : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
                         : d.type === "Relationship"
                           ? "#d62728"
@@ -1206,7 +1205,7 @@ const GraphView: React.FC<Props> = ({
             ? "#999"
             : d.type === "Event"
               ? (d.sub_type === "Communication"
-                  ? "#000"
+                  ? "#1f77b4"
                   : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
               : "#999"
         )
@@ -1237,7 +1236,7 @@ const GraphView: React.FC<Props> = ({
             ? "#999"
             : d.type === "Event"
               ? (d.sub_type === "Communication"
-                  ? "#000"
+                  ? "#1f77b4"
                   : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
               : "#999"
         )
@@ -1270,9 +1269,7 @@ const GraphView: React.FC<Props> = ({
             const targetNode = typeof d.linkDetails.target === "object" ? d.linkDetails.target : commGraphData.nodes.find(n => n.id === d.linkDetails.target);
 
             
-            if (sourceNode?.sub_type === "Communication" || targetNode?.sub_type === "Communication") {
-              return "#000"; 
-            }
+            
             if (sourceNode?.type === "Event") {
               return EVENT_COLOR_MAP[sourceNode.sub_type ?? "Unknown"] || "#999";
             }
