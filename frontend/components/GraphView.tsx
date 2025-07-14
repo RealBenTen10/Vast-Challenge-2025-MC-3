@@ -175,7 +175,6 @@ const GraphView: React.FC<Props> = ({
           if (srcNode) commCount++;
         }
       });
-      console.log(`Entity ${id} has ${commCount} CommunicationAggregate connections.`);
       return DEFAULT_RADIUS + commCount * 0.2;
 
     };
@@ -201,6 +200,22 @@ const GraphView: React.FC<Props> = ({
 
  useEffect(() => {
   if (isPlaying) {
+    
+    const start = new Date(currentAnimationTime);
+    const end = new Date(currentAnimationTime + stepMS);
+    const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+
+    const startHour = start.getHours();
+    const endHour = end.getHours();
+
+    // If start is after 15:00, end is before 08:00, and duration is less than 12h → fix start time
+    if (startHour >= 15 && (endHour < 8 || endHour >= 15) && durationHours <= 12) {
+      const corrected = new Date(end);
+      corrected.setHours(7, 30, 0, 0);
+      setCurrentAnimationTime(corrected.getTime());
+      return; // skip setting up the animation until next render
+    }
+
     // Force first frame render if needed
     if (currentAnimationTime === animationStartTime) {
       setCurrentAnimationTime(animationStartTime - 1);
@@ -233,6 +248,7 @@ const GraphView: React.FC<Props> = ({
     }
   };
 }, [isPlaying, stepMS, animationStartTime, animationEndTime, currentAnimationTime]);
+
 
 
   useEffect(() => {
@@ -537,7 +553,6 @@ const GraphView: React.FC<Props> = ({
       return visible1;
     };
     const notUsed = getVisibleNodeIds();
-    console.log("NotUsed: ", notUsed)
   }
     
     
@@ -654,7 +669,6 @@ const GraphView: React.FC<Props> = ({
       
       // Step 2: Content similarity filter (relevantEvents are original event_ids)
       if (filterContent.trim()) {
-        console.log("Applying filter:", relevantEvents);
         visible = new Set(
           Array.from(visible).filter(id => {
             const node = commGraphData.nodes.find(n => n.id === id);
@@ -703,14 +717,12 @@ const GraphView: React.FC<Props> = ({
     };
 
     const visibleIds = getVisibleNodeIdsForCommunication();
-    console.log("VisibleIds: ", visibleIds)
 
 
     // Create a mutable copy of nodes to allow D3 to set x/y
     let nodesToRender: GraphNode[] = commGraphData.nodes
         .filter(d => visibleIds.has(d.id))
         .map(d => ({ ...d })); // Deep copy to ensure D3 can modify x, y
-    console.log("Nodes to render: ", nodesToRender)
 
     let linksToRender: GraphLink[] = commGraphData.links.filter(link => {
       const src = typeof link.source === "string" ? link.source : link.source.id;
@@ -731,7 +743,6 @@ const GraphView: React.FC<Props> = ({
       }
       return true;
     });
-    console.log("linksToRender: ", linksToRender)
     function arcPath(d: any) {
       const source = typeof d.source === "object" ? d.source : nodePositions[d.source];
       const target = typeof d.target === "object" ? d.target : nodePositions[d.target];
@@ -872,7 +883,7 @@ const GraphView: React.FC<Props> = ({
           })
           .attr("fill", "none")
           .attr("d", arcPath)
-          .on("click", (event: any, d: any) => {setSelectedInfo({ type: "link", data: d }); console.log("Selected Info 2: ", d)}),
+          .on("click", (event: any, d: any) => {setSelectedInfo({ type: "link", data: d }); }),
         update => update,
         exit => exit.remove()
       );
@@ -1029,7 +1040,6 @@ const GraphView: React.FC<Props> = ({
     // Polygon near the target, positioned at 85% along the path
     { id: `${link.source}-${link.target}-target`, linkDetails: link, ratio: 0.8, isTarget: true },
   ]);
-  console.log("PolygonDate", polygonData)
 
   // === Precompute active events and links for use in both branches ===
   const animationWindowEnd = currentAnimationTime + stepMS;
@@ -1092,8 +1102,6 @@ const GraphView: React.FC<Props> = ({
 
   const activeEventIdsForCommView = getActiveEventIdsForCommView(nodesToRender);
   setCommunicationEventsAfterTimeFilter(activeEventIdsForCommView);
-  console.log("Nodes to render: ", nodesToRender)
-  console.log("For Animation: ", activeEventIdsForCommView)
   }
 
   const isActiveLink = (l) => {
@@ -1145,7 +1153,6 @@ const GraphView: React.FC<Props> = ({
       d3.select(svgRef.current)
         .selectAll("path.link")
         .attr("opacity", d => {
-          //console.log("for d: ", d)
           return isActiveLink(d) ? 1 : 0.1;
         });
       
