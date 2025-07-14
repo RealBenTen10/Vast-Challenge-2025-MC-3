@@ -691,7 +691,6 @@ const GraphView: React.FC<Props> = ({
         }
       });
 
-      console.log("Enabled: ", enabledEventTypes, enabledRelationshipTypes)
       const allowedSubtypes = new Set(
         Object.entries(enabledEventTypes)
           .filter(([_, enabled]) => enabled)
@@ -702,6 +701,7 @@ const GraphView: React.FC<Props> = ({
         if (
           visible.has(node.id) &&
           node.type === "Event" &&
+          node.sub_type !== "Communication" &&
           (!node.sub_type || !allowedSubtypes.has(node.sub_type))
         ) {
           visible.delete(node.id);
@@ -939,6 +939,16 @@ const GraphView: React.FC<Props> = ({
               } else {
                   return DEFAULT_EDGE_WIDTH;
               }
+          })
+          .attr("stroke-dasharray", d => {
+              // Example: Apply dashed lines based on a condition, e.g., link label
+              if (d.sub_type
+              ) { // Or any other condition
+                  return "0"; // 5 units on, 5 units off
+              }
+              // You could also base it on evidence_count, or a new property in your GraphLink
+              // if (d.isDashed) return "5 5";
+              return "5,2"; // No dash (solid line) for other links
           })
           .attr("fill", "none")
           .attr("d", arcPath)
@@ -1274,7 +1284,7 @@ const GraphView: React.FC<Props> = ({
           if (isPlaying || isInAnimation) {
             return isActiveLink(d.linkDetails) ? 0.5 : 0.2;
           } else {
-            return 1; // Fully opaque when not playing or animating
+            return 0.8; // Fully opaque when not playing or animating
           }
         })
         .attr("transform", (d) => {

@@ -34,8 +34,8 @@ const relationshipGroups: Record<
 };
 
 const EVENT_COLOR_MAP: Record<string, string> = {
-  Monitoring: "#bcbd22",
   Assessment: "#ff7f0e",
+  Monitoring: "#bcbd22",
   VesselMovement: "#2ca02c",
   Enforcement: "#d62728",
   TourActivity: "#9467bd",
@@ -44,7 +44,6 @@ const EVENT_COLOR_MAP: Record<string, string> = {
   HarborReport: "#17becf",
   Criticize: "#17becf",
   Communication: "#000",
-  Unknown: "#999999",
 };
 
 const getNodeColor = (type: string): string => {
@@ -85,6 +84,44 @@ const LegendPanel: React.FC<Props> = ({
       return updated;
     });
   };
+
+  // NEW HANDLER: Enable all nodes and edges
+  const handleEnableAll = () => {
+    // Enable all event types (nodes), except "Communication"
+    const allEventTypesEnabled: Record<string, boolean> = {};
+    Object.keys(EVENT_COLOR_MAP).forEach(type => {
+      allEventTypesEnabled[type] = true;
+    });
+    setEnabledEventTypes(allEventTypesEnabled);
+
+    // Enable all relationship types
+    const allRelationshipTypesEnabled: Record<string, boolean> = {};
+    Object.values(relationshipGroups).forEach(group => {
+      group.types.forEach(type => {
+        allRelationshipTypesEnabled[type] = true;
+      });
+    });
+    setEnabledRelationshipTypes(allRelationshipTypesEnabled);
+  };
+
+  const handleDisableAll = () => {
+    // Enable all event types (nodes), except "Communication"
+    const allEventTypesEnabled: Record<string, boolean> = {};
+    Object.keys(EVENT_COLOR_MAP).forEach(type => {
+      allEventTypesEnabled[type] = (type == "Communication" || type == "Entity");
+    });
+    setEnabledEventTypes(allEventTypesEnabled);
+
+    // Enable all relationship types
+    const allRelationshipTypesEnabled: Record<string, boolean> = {};
+    Object.values(relationshipGroups).forEach(group => {
+      group.types.forEach(type => {
+        allRelationshipTypesEnabled[type] = false;
+      });
+    });
+    setEnabledRelationshipTypes(allRelationshipTypesEnabled);
+  };
+
 
   return (
     <div className="relative" style={{ minHeight: 40, marginTop: 0, paddingTop: 0 }}>
@@ -188,38 +225,67 @@ const LegendPanel: React.FC<Props> = ({
                   {Object.entries(EVENT_COLOR_MAP).map(([eventType, color]) => {
                     if (eventType === "Unknown") return null;
                     const isEnabled = enabledEventTypes[eventType];
+                    const isCommunication = eventType === "Communication";
+
                     return (
                       <li
                         key={eventType}
                         onClick={() => handleEventToggle(eventType)}
-                        className="cursor-pointer"
+                        className="cursor-pointer flex items-center space-x-2"
                         style={{ opacity: isEnabled ? 1 : 0.3 }}
                       >
-                        <span
-                          className="inline-block w-4 h-1 mr-2 align-middle"
-                          style={{ backgroundColor: color }}
-                        ></span>
-                        {eventType}
+                        <svg
+                          width="24"
+                          height="5"
+                          className="flex-shrink-0"
+                        >
+                          <line
+                            x1="0"
+                            y1="3"
+                            x2="24"
+                            y2="3"
+                            stroke={color}
+                            strokeWidth="4"
+                            strokeDasharray={isCommunication ? "0" : "4,4,4"} // 3 dashes
+                          />
+                        </svg>
+                        <span>{eventType}</span>
                       </li>
                     );
                   })}
                 </ul>
               </div>
+
+
             </div>
           </div>
-
-          
         </div>
       )}
-      {/* Hide button conditionally rendered outside the scrollable content */}
+      {/* Buttons at the bottom, outside the scrollable area */}
       {!collapsed && (
-        <button
-          className="bg-gray-200 hover:bg-gray-300 rounded px-3 py-1 text-xs font-semibold z-20 whitespace-nowrap"
-          onClick={() => setCollapsed(true)}
-          style={{ position: "absolute", right: 8, top: 8, minWidth: 45 }}
-        >
-          Hide
-        </button>
+        <div className="flex justify-between items-center mt-2 px-4 pb-2">
+            <button
+                className="bg-gray-200 hover:bg-gray-300 rounded px-3 py-1 text-xs font-semibold whitespace-nowrap"
+                onClick={handleEnableAll}
+                style={{ minWidth: 45 }}
+            >
+                Enable All
+            </button>
+            <button
+                className="bg-gray-200 hover:bg-gray-300 rounded px-3 py-1 text-xs font-semibold whitespace-nowrap"
+                onClick={handleDisableAll}
+                style={{ minWidth: 45 }}
+            >
+                Disable All
+            </button>
+            <button
+                className="bg-gray-200 hover:bg-gray-300 rounded px-3 py-1 text-xs font-semibold whitespace-nowrap"
+                onClick={() => setCollapsed(true)}
+                style={{ minWidth: 45 }}
+            >
+                Hide
+            </button>
+        </div>
       )}
     </div>
   );
