@@ -437,7 +437,25 @@ const GraphView: React.FC<Props> = ({
       } else {
         graphData.nodes.forEach(n => visible1.add(n.id));
       }
+      // After all visible events have been added, include their connected entity nodes
+      graphData.links.forEach(link => {
+        const srcId = typeof link.source === "string" ? link.source : link.source.id;
+        const tgtId = typeof link.target === "string" ? link.target : link.target.id;
 
+        // If one end is a visible Event, add the other end if it's an Entity
+        if (visible1.has(srcId)) {
+          const tgtNode = graphData.nodes.find(n => n.id === tgtId);
+          if (tgtNode && tgtNode.type === "Entity") {
+            visible1.add(tgtId);
+          }
+        }
+        if (visible1.has(tgtId)) {
+          const srcNode = graphData.nodes.find(n => n.id === srcId);
+          if (srcNode && srcNode.type === "Entity") {
+            visible1.add(srcId);
+          }
+        }
+      });
       if (filterContent.trim()) {
         console.log("Applying filter:", relevantEvents);
         visible1 = new Set(
@@ -608,6 +626,21 @@ const GraphView: React.FC<Props> = ({
         // No entity filter → include all nodes
         commGraphData.nodes.forEach(n => visible.add(n.id));
       }
+
+      commGraphData.links.forEach(link => {
+        const srcId = typeof link.source === "string" ? link.source : link.source.id;
+        const tgtId = typeof link.target === "string" ? link.target : link.target.id;
+
+        const srcNode = commGraphData.nodes.find(n => n.id === srcId);
+        const tgtNode = commGraphData.nodes.find(n => n.id === tgtId);
+
+        // If one side is a visible Event and the other is an Entity, add the Entity
+        if (visible.has(srcId) && srcNode?.type === "Event" && tgtNode?.type === "Entity") {
+          visible.add(tgtId);
+        } else if (visible.has(tgtId) && tgtNode?.type === "Event" && srcNode?.type === "Entity") {
+          visible.add(srcId);
+        }
+      });
 
       // Step 2: Content similarity filter (relevantEvents are original event_ids)
       if (filterContent.trim()) {
