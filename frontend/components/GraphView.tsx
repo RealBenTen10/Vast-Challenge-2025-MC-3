@@ -170,6 +170,20 @@ const GraphView: React.FC<Props> = ({
     Communication: "#1f77b4"     // blue
   };
 
+  const EventMap: Record<string, string> = {
+  Monitoring: "🔍",        // radar or surveillance
+  Assessment: "📋",        // clipboard representing evaluations or reports
+  VesselMovement: "🚢",    // ship representing vessel motion
+  Enforcement: "👮",       // police officer for law enforcement
+  TourActivity: "📸",      // compass for tour-related movements or exploration
+  Collaborate: "🤝",       // handshake for cooperation or collaboration
+  TransponderPing: "📡",   // signal bars for electronic signal transmission
+  HarborReport: "⚓",      // anchor representing harbor or docking activity
+  Criticize: "🗯️",         // speech balloon for comments or criticism
+  Communication: "📨"     // envelope for messages or communication
+};
+
+
   const RELATIONSHIP_COLOR_MAP: Record<string, string> = {
     Suspicious: "#d62728 ",     // red
     Unfriendly: "#d62728",      // red
@@ -1044,7 +1058,7 @@ const GraphView: React.FC<Props> = ({
               d.type === "Entity"
                 ? d.id
                 : d.sub_type === "Communication"
-                ? ""
+                ? "Comm"
                 : d.sub_type
             )
             .style("font-size", d =>
@@ -1103,85 +1117,85 @@ const GraphView: React.FC<Props> = ({
       
     });
 
-  // --- Data Transformation ---
-  // Create a new array that has two entries for each link: one for the source-side
-  // polygon and one for the target-side.
-  const polygonData = linksToRender.flatMap((link) => [
-    // Polygon near the source, positioned at 15% along the path
-    { id: `${link.source}-${link.target}-source`, linkDetails: link, ratio: 0.2, isTarget: false },
-    // Polygon near the target, positioned at 85% along the path
-    { id: `${link.source}-${link.target}-target`, linkDetails: link, ratio: 0.8, isTarget: true },
-  ]);
+    // --- Data Transformation ---
+    // Create a new array that has two entries for each link: one for the source-side
+    // polygon and one for the target-side.
+    const polygonData = linksToRender.flatMap((link) => [
+      // Polygon near the source, positioned at 15% along the path
+      { id: `${link.source}-${link.target}-source`, linkDetails: link, ratio: 0.2, isTarget: false },
+      // Polygon near the target, positioned at 85% along the path
+      { id: `${link.source}-${link.target}-target`, linkDetails: link, ratio: 0.8, isTarget: true },
+    ]);
 
-  // === Precompute active events and links for use in both branches ===
-  const animationWindowEnd = currentAnimationTime + stepMS;
+    // === Precompute active events and links for use in both branches ===
+    const animationWindowEnd = currentAnimationTime + stepMS;
 
-  const isActiveEvent = (d) => {
-    if (d.type === "Event") {
-      if (Array.isArray(d.timestamps)) {
-        return d.timestamps.some(ts => {
-          const time = new Date(ts).getTime();
-          return time >= currentAnimationTime && time < animationWindowEnd;
-        });
-      } else if (d.timestamp) {
-        const eventTime = new Date(d.timestamp).getTime();
-        return eventTime >= currentAnimationTime && eventTime < animationWindowEnd;
+    const isActiveEvent = (d) => {
+      if (d.type === "Event") {
+        if (Array.isArray(d.timestamps)) {
+          return d.timestamps.some(ts => {
+            const time = new Date(ts).getTime();
+            return time >= currentAnimationTime && time < animationWindowEnd;
+          });
+        } else if (d.timestamp) {
+          const eventTime = new Date(d.timestamp).getTime();
+          return eventTime >= currentAnimationTime && eventTime < animationWindowEnd;
+        }
       }
-    }
-    return false;
-  };
-  
-  const activeEventIds = new Set(
-    nodesToRender
-      .filter(d => isActiveEvent(d))
-      .map(d => d.id)
-  );
-  
-  if (isPlaying || isInAnimation) {
-  const getActiveEventIdsForCommView = (nodes: any[]) => {
-    const activeIds = new Set<string>();
+      return false;
+    };
+    
+    const activeEventIds = new Set(
+      nodesToRender
+        .filter(d => isActiveEvent(d))
+        .map(d => d.id)
+    );
+    
+    if (isPlaying || isInAnimation) {
+    const getActiveEventIdsForCommView = (nodes: any[]) => {
+      const activeIds = new Set<string>();
 
-    nodes.forEach((d) => {
-      if (
-        d.sub_type === "Communication" &&
-        Array.isArray(d.timestamps) &&
-        Array.isArray(d.event_ids)
-      ) {
-        // Ensure matching lengths to avoid index mismatches
-        const minLen = Math.min(d.timestamps.length, d.event_ids.length);
+      nodes.forEach((d) => {
+        if (
+          d.sub_type === "Communication" &&
+          Array.isArray(d.timestamps) &&
+          Array.isArray(d.event_ids)
+        ) {
+          // Ensure matching lengths to avoid index mismatches
+          const minLen = Math.min(d.timestamps.length, d.event_ids.length);
 
-        for (let i = 0; i < minLen; i++) {
-          const ts = new Date(d.timestamps[i]).getTime();
+          for (let i = 0; i < minLen; i++) {
+            const ts = new Date(d.timestamps[i]).getTime();
+            if (ts >= currentAnimationTime && ts < animationWindowEnd) {
+              activeIds.add(d.event_ids[i]);
+            }
+          }
+        } else if (
+          d.sub_type === "Communication" &&
+          d.timestamp &&
+          d.id
+        ) {
+          // Fallback for single timestamp + single id (non-aggregated case)
+          const ts = new Date(d.timestamp).getTime();
           if (ts >= currentAnimationTime && ts < animationWindowEnd) {
-            activeIds.add(d.event_ids[i]);
+            activeIds.add(d.id);
           }
         }
-      } else if (
-        d.sub_type === "Communication" &&
-        d.timestamp &&
-        d.id
-      ) {
-        // Fallback for single timestamp + single id (non-aggregated case)
-        const ts = new Date(d.timestamp).getTime();
-        if (ts >= currentAnimationTime && ts < animationWindowEnd) {
-          activeIds.add(d.id);
-        }
-      }
-    });
+      });
 
-    return Array.from(activeIds); // Convert Set<string> to string[]
-  };
+      return Array.from(activeIds); // Convert Set<string> to string[]
+    };
 
-  const activeEventIdsForCommView = getActiveEventIdsForCommView(nodesToRender);
-  setCommunicationEventsAfterTimeFilter(activeEventIdsForCommView);
-  }
+    const activeEventIdsForCommView = getActiveEventIdsForCommView(nodesToRender);
+    setCommunicationEventsAfterTimeFilter(activeEventIdsForCommView);
+    }
 
-  const isActiveLink = (l) => {
-    const src = typeof l.source === "string" ? l.source : l.source.id;
-    const tgt = typeof l.target === "string" ? l.target : l.target.id;
-    return activeEventIds.has(src) || activeEventIds.has(tgt);
-  };
- // Identify entities connected to active events via links
+    const isActiveLink = (l) => {
+      const src = typeof l.source === "string" ? l.source : l.source.id;
+      const tgt = typeof l.target === "string" ? l.target : l.target.id;
+      return activeEventIds.has(src) || activeEventIds.has(tgt);
+    };
+  // Identify entities connected to active events via links
   const connectedEntities = new Set();
 
   linksToRender.forEach(link => {
@@ -1322,24 +1336,29 @@ const GraphView: React.FC<Props> = ({
         });
 
       
-      // === Labels ===
-    update.select("text")
-      .text(d =>
-        d.type === "Entity"
-          ? d.id
-          : d.sub_type !== "Communication"
-            ? d.sub_type
-            : ""
-      )
-      .style("font-size", d => {
-        const label =
-          d.type === "Entity"
-            ? d.id
-            : d.sub_type !== "Communication"
-              ? d.sub_type
-              : "";
-        return `${Math.max(8, 12 - Math.max(0, label.length - 10))}px`;
-      });
+        // === Labels ===
+        update.select("text")
+          .text(d =>
+            d.type === "Entity"
+              ? d.id
+              : EventMap[d.sub_type] ?? d.sub_type
+          )
+          .style("font-size", d => {
+            if (d.type === "Entity") {
+              const label = d.id;
+              return `${Math.max(8, 12 - Math.max(0, label.length - 10))}px`;
+            } else {
+              // Scale font-size for events using d.count between 1–30 → font-size 12–24px
+              const minFont = 12;
+              const maxFont = 24;
+              const count = Math.max(1, Math.min(30, d.count ?? 1)); // clamp to [1, 30]
+              const scale = (count) / 15; // normalize to [0, 1]
+              const fontSize = minFont + scale * (maxFont - minFont);
+              return `${fontSize}px`;
+            }
+          });
+
+
 
 
             return update;
