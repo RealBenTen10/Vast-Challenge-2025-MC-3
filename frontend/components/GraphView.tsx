@@ -1057,13 +1057,23 @@ const GraphView: React.FC<Props> = ({
             .text(d =>
               d.type === "Entity"
                 ? d.id
-                : d.sub_type === "Communication"
-                ? "Comm"
-                : d.sub_type
+                : EventMap[d.sub_type] ?? d.sub_type
             )
-            .style("font-size", d =>
-              `${Math.max(8, 12 - ((d.type === "Entity" ? d.id : d.sub_type)?.length || 0 - 10))}px`
-            );
+            .style("font-size", d => {
+              if (d.type === "Entity") {
+                const label = d.id;
+                return `${Math.max(8, 12 - Math.max(0, label.length - 10))}px`;
+              } else {
+                // Scale font size for events using d.count between 1–30
+                const minFont = 12;
+                const maxFont = 24;
+                const count = Math.max(1, Math.min(30, d.count ?? 1)); // clamp to [1, 30]
+                const scale = (count) / 15;
+                const fontSize = minFont + scale * (maxFont - minFont);
+                return `${fontSize}px`;
+              }
+            });
+
 
             
           return group;
