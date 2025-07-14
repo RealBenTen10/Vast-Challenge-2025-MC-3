@@ -42,7 +42,7 @@ const EVENT_COLOR_MAP: Record<string, string> = {
   Collaborate: "#8c564b",
   TransponderPing: "#17becf",
   HarborReport: "#17becf",
-  Criticize: "#e377c2",
+  Criticize: "#17becf",
   Communication: "#000",
   Unknown: "#999999",
 };

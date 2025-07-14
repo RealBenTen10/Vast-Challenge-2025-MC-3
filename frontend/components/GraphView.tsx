@@ -165,7 +165,7 @@ const GraphView: React.FC<Props> = ({
     Collaborate: "#8c564b",       // brown
     TransponderPing: "#17becf",   // turquoise
     HarborReport: "#17becf",      // turquoise
-    Criticize: "#e377c2",         // pink
+    Criticize: "#17becf",         // turquoise
     Communication: "#000",        // black
     Unknown: "#999999"            // grey
   };
