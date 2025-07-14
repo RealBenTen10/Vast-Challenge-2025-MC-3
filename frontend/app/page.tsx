@@ -17,6 +17,7 @@ import CommunicationView from "@/components/CommunicationView";
 import FilterPanel from "@/components/FilterPanel";
 import GraphView from "@/components/GraphView";
 import TimeBarChart from "@/components/TimeBarChart";
+// import Split from "react-split";
 
 export default function Home() {
   const [statusMsg, setStatusMsg] = useState<string>("");
