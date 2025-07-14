@@ -206,7 +206,7 @@ const SelectedInfoPanel: React.FC<SelectedInfoPanelProps> = ({ selectedInfo }) =
           {data.sub_type === "Communication" && data.is_edge !== "Y" && renderCommunication(data)}
           {data.type === "Relationship" && renderRelationship(data)}
           {data.type !== "Entity" && data.type !== "Event" && data.type !== "Relationship" && renderExtraFields(data)}
-          
+          {data.is_edge === "Y" && renderExtraFields(data)}
         </div>
       ) : (
         <p className="text-gray-500 italic">Click a node or edge to view details</p>
