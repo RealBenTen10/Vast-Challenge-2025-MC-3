@@ -132,15 +132,16 @@ const GraphView: React.FC<Props> = ({
   const DEFAULT_EDGE_WIDTH = 1.5; 
 
   const EVENT_COLOR_MAP: Record<string, string> = {
-    Monitoring: "#bcbd22 ",       // blue
+    Monitoring: "#bcbd22 ",       // yellow
     Assessment: "#ff7f0e",        // orange
     VesselMovement: "#2ca02c",    // green
     Enforcement: "#d62728",       // red
     TourActivity: "#9467bd",      // violet
     Collaborate: "#8c564b",       // brown
     TransponderPing: "#17becf",   // turquoise
-    HarborReport: "#17becf",      // yellow
+    HarborReport: "#17becf",      // turquoise
     Criticize: "#e377c2",         // pink
+    Communication: "#000",        // black
     Unknown: "#999999"            // grey
   };
 
@@ -733,7 +734,7 @@ const GraphView: React.FC<Props> = ({
         .selectAll("path")
         .data(linksToRender)
         .enter().append("path")
-        .attr("stroke", d => d.type === "COMMUNICATION" ? "#2ca02c" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
+        .attr("stroke", d => d.type === "COMMUNICATION" ? "#000" : d.type === "EVIDENCE_FOR" ? "#800080" : "#999")
         .attr("stroke-opacity", 0.6)
         .attr("stroke-width", DEFAULT_EDGE_WIDTH);
 
@@ -804,7 +805,7 @@ const GraphView: React.FC<Props> = ({
 
             
             if (sourceNode?.sub_type === "Communication" || targetNode?.sub_type === "Communication") {
-              return "#1f77b4"; 
+              return "#000"; 
             }
             if (sourceNode?.type === "Event") {
               return EVENT_COLOR_MAP[sourceNode.sub_type ?? "Unknown"] || "#999";
@@ -1123,7 +1124,7 @@ const GraphView: React.FC<Props> = ({
 
             
             if (sourceNode?.sub_type === "Communication" || targetNode?.sub_type === "Communication") {
-              return "#1f77b4"; 
+              return "#000"; 
             }
             if (sourceNode?.type === "Event") {
               return EVENT_COLOR_MAP[sourceNode.sub_type ?? "Unknown"] || "#999";
