@@ -331,19 +331,104 @@ export default function CommunicationView({
       )}
 
       {filterModeMessages !== "evidence" && filterModeMessages !== "similarity" && (
-        <div className="mt-2 flex flex-wrap gap-1 text-sm">
-          <span className="ml-4">Filters:</span>
-          {filterSender && <Badge color="blue">Sender: {filterSender}</Badge>}
-          {filterReceiver && <Badge color="green">Receiver: {filterReceiver}</Badge>}
-          {filterContent && <Badge color="purple">Keyword: {filterContent}</Badge>}
-          {timestampFilterStart && timestampFilterEnd && (
-            <Badge color="gray">
-              {new Date(timestampFilterStart).toLocaleString()} –{" "}
-              {new Date(timestampFilterEnd).toLocaleString()}
-            </Badge>
+        <div className="mt-2 flex flex-wrap gap-1 text-sm ml-4">
+          {filterModeMessages === "all" && (
+            <span>
+              Showing all communications
+              {filterContent && <span> with <Badge color="purple">{filterContent}</Badge></span>}
+              {(timestampFilterStart || timestampFilterEnd) && (
+                <span>
+                  {timestampFilterStart && timestampFilterEnd && (
+                    <> in timeframe <Badge color="gray">
+                      {new Date(timestampFilterStart).toLocaleString()} – {new Date(timestampFilterEnd).toLocaleString()}
+                    </Badge></>
+                  )}
+                  {timestampFilterStart && !timestampFilterEnd && (
+                    <> from <Badge color="gray">{new Date(timestampFilterStart).toLocaleString()}</Badge></>
+                  )}
+                  {!timestampFilterStart && timestampFilterEnd && (
+                    <> until <Badge color="gray">{new Date(timestampFilterEnd).toLocaleString()}</Badge></>
+                  )}
+                </span>
+              )}
+            </span>
+          )}
+
+          {filterModeMessages === "filtered" && (
+            <span>
+              Showing communications
+              {filterSender && <span> from <Badge color="blue">{filterSender}</Badge></span>}
+              {filterReceiver && <span> to <Badge color="green">{filterReceiver}</Badge></span>}
+              {filterContent && <span> with <Badge color="purple">{filterContent}</Badge></span>}
+              {(timestampFilterStart || timestampFilterEnd) && (
+                <span>
+                  {timestampFilterStart && timestampFilterEnd && (
+                    <> in timeframe <Badge color="gray">
+                      {new Date(timestampFilterStart).toLocaleString()} – {new Date(timestampFilterEnd).toLocaleString()}
+                    </Badge></>
+                  )}
+                  {timestampFilterStart && !timestampFilterEnd && (
+                    <> from <Badge color="gray">{new Date(timestampFilterStart).toLocaleString()}</Badge></>
+                  )}
+                  {!timestampFilterStart && timestampFilterEnd && (
+                    <> until <Badge color="gray">{new Date(timestampFilterEnd).toLocaleString()}</Badge></>
+                  )}
+                </span>
+              )}
+            </span>
+          )}
+
+          {filterModeMessages === "direct" && (
+            <span>
+              Showing all communications between
+              {filterSender && <span> <Badge color="blue">{filterSender}</Badge></span>}
+              {filterSender && filterReceiver && <span> and </span>}
+              {filterReceiver && <span> <Badge color="green">{filterReceiver}</Badge></span>}
+              {filterContent && <span> with <Badge color="purple">{filterContent}</Badge></span>}
+              {(timestampFilterStart || timestampFilterEnd) && (
+                <span>
+                  {timestampFilterStart && timestampFilterEnd && (
+                    <> in timeframe <Badge color="gray">
+                      {new Date(timestampFilterStart).toLocaleString()} – {new Date(timestampFilterEnd).toLocaleString()}
+                    </Badge></>
+                  )}
+                  {timestampFilterStart && !timestampFilterEnd && (
+                    <> from <Badge color="gray">{new Date(timestampFilterStart).toLocaleString()}</Badge></>
+                  )}
+                  {!timestampFilterStart && timestampFilterEnd && (
+                    <> until <Badge color="gray">{new Date(timestampFilterEnd).toLocaleString()}</Badge></>
+                  )}
+                </span>
+              )}
+            </span>
+          )}
+
+          {filterModeMessages === "directed" && (
+            <span>
+              Showing all communications from
+              {filterSender && <span> <Badge color="blue">{filterSender}</Badge></span>}
+              {filterReceiver && <span> to <Badge color="green">{filterReceiver}</Badge></span>}
+              {filterContent && <span> with <Badge color="purple">{filterContent}</Badge></span>}
+              {(timestampFilterStart || timestampFilterEnd) && (
+                <span>
+                  {timestampFilterStart && timestampFilterEnd && (
+                    <> in timeframe <Badge color="gray">
+                      {new Date(timestampFilterStart).toLocaleString()} – {new Date(timestampFilterEnd).toLocaleString()}
+                    </Badge></>
+                  )}
+                  {timestampFilterStart && !timestampFilterEnd && (
+                    <> from <Badge color="gray">{new Date(timestampFilterStart).toLocaleString()}</Badge></>
+                  )}
+                  {!timestampFilterStart && timestampFilterEnd && (
+                    <> until <Badge color="gray">{new Date(timestampFilterEnd).toLocaleString()}</Badge></>
+                  )}
+                </span>
+              )}
+            </span>
           )}
         </div>
       )}
+
       {filterModeMessages === "evidence" && (
         <div className="mt-2 flex flex-col gap-1 text-sm ml-4">
 
