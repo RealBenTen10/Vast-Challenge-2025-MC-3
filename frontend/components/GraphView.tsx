@@ -725,10 +725,10 @@ const GraphView: React.FC<Props> = ({
     if (!nodePositions) {
       console.log("Running force simulation...");
       const simulation = d3.forceSimulation<GraphNode, GraphLink>(nodesToRender)
-        .force("link", d3.forceLink<GraphNode, GraphLink>(linksToRender).id((d: any) => d.id).distance(200))
-        .force("charge", d3.forceManyBody().strength(-400))
+        .force("link", d3.forceLink<GraphNode, GraphLink>(linksToRender).id((d: any) => d.id).distance(240))
+        .force("charge", d3.forceManyBody().strength(-100))
         .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("collide", d3.forceCollide(50));
+        .force("collide", d3.forceCollide(60));
 
       const link = g.append("g")
         .selectAll("path")
