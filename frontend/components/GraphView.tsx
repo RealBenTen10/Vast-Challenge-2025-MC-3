@@ -126,6 +126,7 @@ const GraphView: React.FC<Props> = ({
 
 
 
+
   const DEFAULT_RADIUS = 20;
   const HIGHLIGHT_RADIUS = 30;
 
@@ -198,33 +199,41 @@ const GraphView: React.FC<Props> = ({
   }, [propTimestampFilterStart, propTimestampFilterEnd]);
 
 
-  // Effect for animation loop
-  useEffect(() => {
-    if (isPlaying) {
-      intervalRef.current = window.setInterval(() => {
-        setCurrentAnimationTime(prevTime => {
-          const nextTime = prevTime + stepMS;
-          if (nextTime > animationEndTime) {
-            setIsPlaying(false); 
-            setIsInAnimation(false); 
-            return animationStartTime; 
-          }
-          return nextTime;
-        });
-      }, 1500); 
-    } else {
-      if (intervalRef.current) {
-        window.clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+ useEffect(() => {
+  if (isPlaying) {
+    // Force first frame render if needed
+    if (currentAnimationTime === animationStartTime) {
+      setCurrentAnimationTime(animationStartTime - 1);
+      setTimeout(() => {
+        setCurrentAnimationTime(animationStartTime);
+      }, 1);
     }
-    // Cleanup on unmount or when dependencies change
-    return () => {
-      if (intervalRef.current) {
-        window.clearInterval(intervalRef.current);
-      }
-    };
-  }, [isPlaying, stepMS, animationStartTime, animationEndTime]);
+
+    intervalRef.current = window.setInterval(() => {
+      setCurrentAnimationTime(prevTime => {
+        const nextTime = prevTime + stepMS;
+        if (nextTime > animationEndTime) {
+          setIsPlaying(false);
+          setIsInAnimation(false);
+          return animationStartTime;
+        }
+        return nextTime;
+      });
+    }, 2000);
+  } else {
+    if (intervalRef.current) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }
+
+  return () => {
+    if (intervalRef.current) {
+      window.clearInterval(intervalRef.current);
+    }
+  };
+}, [isPlaying, stepMS, animationStartTime, animationEndTime, currentAnimationTime]);
+
 
   useEffect(() => {
       if (!svgRef.current || !graphContainerRef.current) return;
@@ -275,12 +284,13 @@ const GraphView: React.FC<Props> = ({
             <option value={6 * 60}>6 h</option>
             <option value={12 * 60}>12 h</option>
             <option value={24 * 60}>1 day</option>
+            <option value={24 * 60 * 7}>1 week</option>
           </select>
         </div>
         {isPlaying || isInAnimation ? (
           <div className="mt-2 text-center">
-            <strong>Currently showing animation for:</strong>{" "}
-            {new Date(currentAnimationTime).toLocaleString()} <strong>–</strong>{" "}
+            <strong>Currently showing communications from:</strong>{" "}
+            {new Date(currentAnimationTime).toLocaleString()} <strong>–</strong>{" to "}
             {new Date(currentAnimationTime + stepMS).toLocaleString()}
           </div>
         ) : (
@@ -641,7 +651,7 @@ const GraphView: React.FC<Props> = ({
           visible.add(srcId);
         }
       });
-
+      
       // Step 2: Content similarity filter (relevantEvents are original event_ids)
       if (filterContent.trim()) {
         console.log("Applying filter:", relevantEvents);
