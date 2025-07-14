@@ -124,7 +124,31 @@ const GraphView: React.FC<Props> = ({
   const [currentAnimationTime, setCurrentAnimationTime] = useState<number>(defaultStartDate);
 
 
-
+  const [enabledEventTypes, setEnabledEventTypes] = useState<Record<string, boolean>>({
+    Assessment: true,
+    Monitoring: true,
+    VesselMovement: true,
+    Enforcement: true,
+    TourActivity: true,
+    Collaborate: true,
+    TransponderPing: true,
+    HarborReport: true,
+    Criticize: true,
+    Communication: true,
+  });
+  
+  const [enabledRelationshipTypes, setEnabledRelationshipTypes] = useState<Record<string, boolean>>({
+    Suspicious: true,
+    Unfriendly: true,
+    Reports: true,
+    Colleagues: true,
+    Friends: true,
+    Collaborate: true,
+    Jurisdiction: true,
+    AccessPermission: true,
+    Operates: true,
+    Coordinates: true,
+  });
 
 
   const DEFAULT_RADIUS = 20;
@@ -149,7 +173,7 @@ const GraphView: React.FC<Props> = ({
   const RELATIONSHIP_COLOR_MAP: Record<string, string> = {
     Suspicious: "#d62728 ",
     Unfriendly: "#d62728",
-    Reports: "#d62728",
+    Reports: "#2ca02c",
     Colleagues: "#2ca02c",
     Friends: "#2ca02c",
     Collaborate: "#2ca02c",
@@ -666,6 +690,24 @@ const GraphView: React.FC<Props> = ({
           visible.add(srcId);
         }
       });
+
+      console.log("Enabled: ", enabledEventTypes, enabledRelationshipTypes)
+      const allowedSubtypes = new Set(
+        Object.entries(enabledEventTypes)
+          .filter(([_, enabled]) => enabled)
+          .map(([subtype]) => subtype)
+      );
+
+      commGraphData.nodes.forEach(node => {
+        if (
+          visible.has(node.id) &&
+          node.type === "Event" &&
+          (!node.sub_type || !allowedSubtypes.has(node.sub_type))
+        ) {
+          visible.delete(node.id);
+        }
+      });
+
       
       // Step 2: Content similarity filter (relevantEvents are original event_ids)
       if (filterContent.trim()) {
@@ -731,18 +773,35 @@ const GraphView: React.FC<Props> = ({
 
       if (!isVisible) return false;
 
-      //Kommt warhscheinlich weg - 
-      // Link visibility also depends on the static time filter
+      // Filter out if link is outside of timestamp range
       if (link.timestamp) {
         const ts = new Date(link.timestamp).getTime();
         const start = propTimestampFilterStart ? new Date(propTimestampFilterStart).getTime() : -Infinity;
         const end = propTimestampFilterEnd ? new Date(propTimestampFilterEnd).getTime() : Infinity;
-        if (!(ts >= start && ts <= end)) {
-          return false;
-        }
+        if (ts < start || ts > end) return false;
       }
+
+      // Filter based on relationship type toggles
+      const relType = link.sub_type;
+      const isRelationshipEdge =
+        relType === "Suspicious" ||
+        relType === "Unfriendly" ||
+        relType === "Reports" ||
+        relType === "Colleagues" ||
+        relType === "Friends" ||
+        relType === "Collaborate" ||
+        relType === "Jurisdiction" ||
+        relType === "AccessPermission" ||
+        relType === "Operates" ||
+        relType === "Coordinates";
+
+      if (isRelationshipEdge && enabledRelationshipTypes && !enabledRelationshipTypes[relType]) {
+        return false;
+      }
+
       return true;
     });
+
     function arcPath(d: any) {
       const source = typeof d.source === "object" ? d.source : nodePositions[d.source];
       const target = typeof d.target === "object" ? d.target : nodePositions[d.target];
@@ -1307,7 +1366,9 @@ const GraphView: React.FC<Props> = ({
     currentAnimationTime,
     setSelectedInfo,
     setFilterSender,
-    commGraphData
+    commGraphData,
+    enabledEventTypes,
+    enabledRelationshipTypes
   ]);
 
   return (
@@ -1316,7 +1377,12 @@ const GraphView: React.FC<Props> = ({
       <svg ref={svgRef} className="w-full h-full"></svg>
       <div style={{ position: "absolute", right: 16, bottom: 16, zIndex: 10, background: "white", borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
         {/* LegendPanel */}
-        <LegendPanel />
+        <LegendPanel 
+        enabledEventTypes={enabledEventTypes}
+        setEnabledEventTypes={setEnabledEventTypes}
+        enabledRelationshipTypes={enabledRelationshipTypes}
+        setEnabledRelationshipTypes={setEnabledRelationshipTypes}
+        />
       </div>
     </div>
     <div className="flex justify-center mt-2">

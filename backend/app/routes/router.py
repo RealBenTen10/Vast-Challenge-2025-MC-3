@@ -821,7 +821,7 @@ async def event_entities(event_ids: List[str]):
     print("Event entities fetched successfully")
     return {"success": True, "data": result_map}
 
-
+'''
 
 ###
 # Here the Similarity Search starts
@@ -978,3 +978,4 @@ async def similarity_search_events(
     except Exception as e:
         print("Error in similarity search for events:", str(e))
         return {"success": False, "error": str(e)}
+'''
