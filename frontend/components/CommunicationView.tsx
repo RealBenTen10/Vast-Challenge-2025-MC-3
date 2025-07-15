@@ -102,10 +102,12 @@ export default function CommunicationView({
   const [prevByTime, setPrevByTime] = useState(false); 
   const [infoText, setInfoText] = useState<EventInfo[]>([]);
   const [eventInfo, setEventInfo] = useState<EventInfoResponse | null>(null);
+  const [previousSelectedEventID, setPreviousSelectedEventID] = useState<string>(""); 
 
 
   useEffect(() => {
   const fetchEvidence = async () => {
+    if (previousSelectedEventID == "") return;
     try {
       setLoading(true);
       const res = await fetch(`/api/evidence-for-event?event_id=${selectedEventId}`);
@@ -121,6 +123,7 @@ export default function CommunicationView({
     } finally {
       setLoading(false);
       setFilterModeMessages("evidence");
+      setPreviousSelectedEventID(selectedEventId)
     }
   };
   fetchEvidence();
