@@ -324,10 +324,14 @@ const GraphView: React.FC<Props> = ({
       <div className="flex flex-col items-center">
         <div className="flex flex-row gap-2 mb-2">
           <button onClick={() => { setIsPlaying(true); setIsInAnimation(true)}}>▶ Play</button>
+          <span>|</span>
           <button onClick={() => setIsPlaying(false)}>⏸ Pause</button>
+          <span>|</span>
           <button onClick={() => { setIsPlaying(false); setIsInAnimation(false); setCurrentAnimationTime(animationStartTime); }}>⏹ Stop</button>
-          <button onClick={() => handleStep('backward')}>◀ Step Back</button>
-          <button onClick={() => handleStep('forward')}>Step ▶</button>
+          <span>|</span>
+          <button onClick={() => handleStep('backward')}> ⬅ Step Back</button>
+          <span>|</span>
+          <button onClick={() => handleStep('forward')}>Step Forward ➡ </button>
           <select value={stepMS / 60000} onChange={e => setStepMS(+e.target.value * 60000)}>
             <option value={1}>1 min</option>
             <option value={5}>5 min</option>
@@ -1054,28 +1058,37 @@ const GraphView: React.FC<Props> = ({
                     );
 
           group.append("text")
-            .attr("text-anchor", "middle")
-            .attr("dy", ".35em")
-            .attr("fill", "black")
-            .text(d =>
-              d.type === "Entity"
-                ? d.id
-                : EventMap[d.sub_type] ?? d.sub_type
-            )
-            .style("font-size", d => {
-              if (d.type === "Entity") {
-                const label = d.id;
-                return `${Math.max(8, 12 - Math.max(0, label.length - 10))}px`;
-              } else {
-                // Scale font size for events using d.count between 1–30
-                const minFont = 12;
-                const maxFont = 24;
-                const count = Math.max(1, Math.min(30, d.count ?? 1)); // clamp to [1, 30]
-                const scale = (count) / 15;
-                const fontSize = minFont + scale * (maxFont - minFont);
-                return `${fontSize}px`;
-              }
-            });
+          .attr("text-anchor", "middle")
+          .attr("dy", ".35em")
+          .attr("fill", "black")
+          .each(function (d) {
+            const text = d3.select(this);
+            if (d.type === "Entity") {
+              const words = d.id.split(/\s+/); // split by whitespace
+              const baseFontSize = Math.max(8, 12 - Math.max(0, d.id.length - 10));
+              words.forEach((word, i) => {
+                text.append("tspan")
+                  .text(word)
+                  .attr("x", 0)
+                  .attr("dy", i === 0 ? "0" : "1.2em") // space between lines
+                  .style("font-size", `${baseFontSize}px`);
+              });
+            } else {
+              const symbol = EventMap[d.sub_type] ?? d.sub_type;
+              const minFont = 12;
+              const maxFont = 24;
+              const count = Math.max(1, Math.min(30, d.count ?? 1));
+              const scale = count / 15;
+              const fontSize = minFont + scale * (maxFont - minFont);
+
+              text.append("tspan")
+                .text(symbol)
+                .attr("x", 0)
+                .attr("dy", "0") // single line
+                .style("font-size", `${fontSize}px`);
+            }
+          });
+
 
 
             
