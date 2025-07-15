@@ -19,14 +19,21 @@ const GraphSummary: React.FC<GraphSummaryProps> = ({ edgeCount, edgeTypeCounts, 
       <h4 className="text-md font-semibold mb-2">Graph Summary</h4>
       <h5 className="text-sm font-semibold mb-2">Edge Summary</h5>
       <p className="text-sm mb-2"><span className="font-medium">Total Edges:</span> {edgeCount}</p>
-      <p className="text-sm mb-2"><span className="font-medium">Keyword Appearances:</span> {keywordEdgeTypes.reduce((sum, [, count]) => sum + (typeof count === 'number' ? count : 0), 0)}</p>
+      <p className="text-sm mb-2"><span className="font-medium">Communication and Relationship edges:</span> {keywordEdgeTypes.reduce((sum, [, count]) => sum + (typeof count === 'number' ? count : 0), 0)}</p>
+      
       <ul className="list-disc list-inside text-sm space-y-1">
-        {keywordEdgeTypes.sort((a, b) => b[1] - a[1]).map(([type, count]) => (
-          <li key={type}><span className="font-medium">{type}</span>: {count}</li>
-        ))}
+        {keywordEdgeTypes.sort((a, b) => b[1] - a[1]).map(([type, count]) => {
+          const label = type === "Event" ? "Communication" : type;
+          return (
+            <li key={label}>
+              <span className="font-medium">{label}</span>: {count}
+            </li>
+          );
+        })}
       </ul>
+
       <div className="my-2" />
-      <p className="text-sm mb-2"><span className="font-medium">Edge Types:</span> </p>
+      <p className="text-sm mb-2"><span className="font-medium">Additional edge Types:</span> </p>
       <ul className="list-disc list-inside text-sm space-y-1">
         {onlySpecialEdges.map(([type, count]) => (
           <li key={type}><span className="font-medium">{type}</span>: {count}</li>
