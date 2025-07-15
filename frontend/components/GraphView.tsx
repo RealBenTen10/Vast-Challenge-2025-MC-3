@@ -989,6 +989,9 @@ const GraphView: React.FC<Props> = ({
             .on("mouseover", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4))
             .on("mouseout", (event, d) => d3.select(event.currentTarget).select("circle").attr("stroke", "none"))
             .on("click", (event: any, d: any) => {
+              if (d.type === "Event" && d.sub_type !== "Communication") {
+                setSelectedEventId(d.id);
+              }
               
               if (d.type === "Entity") 
               {
