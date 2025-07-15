@@ -435,18 +435,16 @@ async def read_db_graph():
             result = session.run("""
                 MATCH (a)-[r]->(b)
                 WHERE NOT (type(r) = 'COMMUNICATION' AND a:Entity AND b:Entity)
-                RETURN a.id AS source, b.id AS target, r, r.id AS rel_id, r.type AS rel_type
+                RETURN a.id AS source, b.id AS target, r, r.id AS rel_id, type(r) AS rel_type
             """)
 
             for record in result:
                 r = record["r"]
                 edge_data = dict(r.items())  # includes all properties
-
                 edge_data["source"] = record["source"]
                 edge_data["target"] = record["target"]
                 edge_data["id"] = record["rel_id"]  
                 edge_data["type"] = record["rel_type"]  
-
                 edges.append(edge_data)
 
             print("Got aggregated Graphdata")
@@ -454,7 +452,6 @@ async def read_db_graph():
             
             all_nodes = nodes.copy() + comm_agg_nodes.copy()
             all_edges = edges.copy() + comm_agg_edges.copy()
-
 
             # Origin read
             nodes = []
@@ -472,7 +469,7 @@ async def read_db_graph():
                 edge_data = dict(r.items())
                 edge_data["source"] = record["source"]
                 edge_data["target"] = record["target"]
-                edge_data["type"] = r.type if hasattr(r, "type") else r.get("type", "")
+                edge_data["type"] = r.type if hasattr(r, "type") else r.get("type", "Test")
                 edges.append(edge_data)
 
     except Exception as e:
