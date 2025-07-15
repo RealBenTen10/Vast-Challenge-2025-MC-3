@@ -14,8 +14,8 @@ interface Node {
   outcome?: string;
   participants?: number;
   sub_type: string;
-  source?: string;
-  target?: string;
+  sources?: string[];  // updated to list
+  targets?: string[];  // updated to list
   monitoring_type?: string;
   assessment_type?: string;
   enforcement_type?: string;
@@ -97,16 +97,24 @@ export default function EventsView({
               <tr>
                 <th className="p-2 w-32">Timestamp</th>
                 <th className="p-2 w-24">Subtype</th>
-                <th className="p-2 w-24">Entity 1</th>
-                <th className="p-2 w-24">Entity 2</th>
+                <th className="p-2 w-24">Sources</th>
+                <th className="p-2 w-24">Targets</th>
                 <th className="p-2">Details</th>
               </tr>
             </thead>
             <tbody>
               {eventsAfterTimeFilter.map((event) => {
+                console.log("EventView: ", event)
                 const entities = eventEntitiesMap[event.id] || {};
-                const source = entities.source ?? event.source ?? "–";
-                const target = entities.target ?? event.target ?? "–";
+
+                // Use entity data from the eventEntitiesMap first, fallback to static event object
+                const sources: string[] = entities.sources ?? event.sources ?? [];
+                const targets: string[] = entities.targets ?? event.targets ?? [];
+                console.log("Sources", sources)
+
+                // Format for display (e.g., comma-separated, or joined with "→")
+                const sourceDisplay = sources.length > 0 ? sources.join(", ") : "–";
+                const targetDisplay = targets.length > 0 ? targets.join(", ") : "–";
 
                 // Accumulate all possible event details
                 const detailParts: string[] = [];
@@ -140,11 +148,11 @@ export default function EventsView({
                     <td className="p-2">
                       {event.sub_type}
                     </td>
-                    <td className="p-2 text-blue-600">
-                      {source}
+                    <td className="p-2">
+                      {sourceDisplay}
                     </td>
-                    <td className="p-2 text-green-600">
-                      {target}
+                    <td className="p-2">
+                      {targetDisplay}
                     </td>
                     <td className="p-2 whitespace-pre-wrap break-words">
                       {detail}

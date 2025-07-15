@@ -6,7 +6,7 @@ import { fontSans } from "@/config/fonts";
 
 export const metadata: Metadata = {
   title: {
-    default: "AVA Template",
+    default: "",
     template: "AVA Template",
   },
   description: "AVA Template",

@@ -791,22 +791,22 @@ async def event_entities(event_ids: List[str]):
         with driver.session() as session:
             query = """
             UNWIND $event_ids AS eid
-            MATCH (ev:Event {id: eid})--(entity:Entity)
-            RETURN eid AS event_id, COLLECT(DISTINCT entity.id) AS connected_entities
+            MATCH (e:Event {id: eid})
+            OPTIONAL MATCH (source:Entity)-[]->(e)
+            OPTIONAL MATCH (e)-[]->(target:Entity)
+            RETURN eid AS event_id,
+                   COLLECT(DISTINCT source.id) AS sources,
+                   COLLECT(DISTINCT target.id) AS targets
             """
             records = session.run(query, event_ids=event_ids)
             for record in records:
                 event_id = record["event_id"]
-                entities = record["connected_entities"] or []
+                sources = record["sources"] or []
+                targets = record["targets"] or []
 
-                
-                sorted_entities = sorted(entities)
-                source = sorted_entities[0]
-                target = sorted_entities[1]
-                
                 result_map[event_id] = {
-                    "source": source,
-                    "target": target
+                    "sources": sorted(sources),
+                    "targets": sorted(targets)
                 }
 
     except Exception as e:
@@ -815,8 +815,9 @@ async def event_entities(event_ids: List[str]):
     finally:
         driver.close()
 
-    print("Event entities fetched successfully")
+    print("Event entities fetched successfully: ", result_map)
     return {"success": True, "data": result_map}
+
 
 
 ###
