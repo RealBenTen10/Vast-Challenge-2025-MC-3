@@ -16,6 +16,11 @@ interface Node {
   sub_type: string;
   source?: string;
   target?: string;
+  monitoring_type?: string;
+  assessment_type?: string;
+  enforcement_type?: string;
+  activity_type?: string;
+  reference?: string;
 }
 
 interface EventsViewProps {
@@ -102,21 +107,26 @@ export default function EventsView({
                 const entities = eventEntitiesMap[event.id] || {};
                 const source = entities.source ?? event.source ?? "–";
                 const target = entities.target ?? event.target ?? "–";
-                const detail =
-                  event.findings ||
-                  event.results ||
-                  event.content ||
-                  (event.destination !== undefined
-                        ? `Destination: ${event.destination}`
-                        : "") ||
-                  (event.movement_type !== undefined
-                        ? ` Movement_type: ${event.movement_type}`
-                        : "") ||
-                  event.outcome ||
-                  (event.participants !== undefined
-                    ? `Participants: ${event.participants}`
-                    : null) ||
-                  "No details available.";
+
+                // Accumulate all possible event details
+                const detailParts: string[] = [];
+
+                if (event.findings) detailParts.push(event.findings);
+                if (event.results) detailParts.push(event.results);
+                if (event.content) detailParts.push(event.content);
+                if (event.destination !== undefined) detailParts.push(`Destination: ${event.destination}`);
+                if (event.outcome) detailParts.push(event.outcome);
+                if (event.participants !== undefined) detailParts.push(`Participants: ${event.participants}`);
+                if (event.movement_type !== undefined) detailParts.push(`${event.movement_type}`);
+                if (event.monitoring_type !== undefined) detailParts.push(`${event.monitoring_type}`);
+                if (event.assessment_type !== undefined) detailParts.push(`${event.assessment_type}`);
+                if (event.enforcement_type !== undefined) detailParts.push(`${event.enforcement_type}`);
+                if (event.activity_type !== undefined) detailParts.push(`${event.activity_type}`);
+                if (event.reference !== undefined) detailParts.push(`Reference: ${event.reference}`);
+
+                const detail = detailParts.length > 0 ? detailParts.join(" | ") : "No details available.";
+
+
 
                 return (
                   <tr
