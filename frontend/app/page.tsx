@@ -398,7 +398,7 @@ export default function Home() {
               onChange={(e) => setShowEventsView(e.target.checked)}
               className="mr-2"
             />
-            <label htmlFor="toggle-eventsview" className="select-none">Event Communication View</label>
+            <label htmlFor="toggle-eventsview" className="select-none">Event View</label>
           </div>
         </div>
 

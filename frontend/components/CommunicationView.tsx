@@ -107,7 +107,10 @@ export default function CommunicationView({
 
   useEffect(() => {
   const fetchEvidence = async () => {
-    if (previousSelectedEventID == "") return;
+    if (previousSelectedEventID == "") {
+      setPreviousSelectedEventID(selectedEventId);
+      return;
+    } 
     try {
       setLoading(true);
       const res = await fetch(`/api/evidence-for-event?event_id=${selectedEventId}`);
@@ -123,7 +126,6 @@ export default function CommunicationView({
     } finally {
       setLoading(false);
       setFilterModeMessages("evidence");
-      setPreviousSelectedEventID(selectedEventId)
     }
   };
   fetchEvidence();
@@ -391,7 +393,7 @@ export default function CommunicationView({
                   <strong> {filterReceiver} </strong>
 
                   {filterContent && (
-                    <> about <strong>{filterContent}</strong></>
+                    <> with <strong>{filterContent}</strong></>
                   )}
 
                   {(timestampFilterStart || timestampFilterEnd) && (
@@ -427,7 +429,7 @@ export default function CommunicationView({
                 <>
                   Showing all communications from <strong>{filterSender}</strong> to <strong>{filterReceiver}</strong>
                   {filterContent && (
-                    <span> with <strong>{filterContent}</strong></span>
+                    <span> about <strong>{filterContent}</strong></span>
                   )}
                   {(timestampFilterStart || timestampFilterEnd) && (
                     <span>
@@ -444,46 +446,45 @@ export default function CommunicationView({
                   )}
                 </>
               ) : (
-                <>Please select a <strong>Sender</strong> AND <strong>Receiver</strong> to display Information</>
+                <>Please select a <strong>Sender</strong> and <strong>Receiver</strong> to display Information</>
               )}
             </span>
           )}
-
 
         </div>
       )}
 
       {filterModeMessages === "evidence" && (
-        <div className="mt-2 flex flex-col gap-1 text-sm ml-4">
-          {eventInfo?.event ? (
-            <div className="mt-1">
-              Evidence for <span className="font-semibold">{eventInfo.event.sub_type}</span>
-              {eventInfo.sources.length === 1 && eventInfo.targets.length === 1 ? (
-                <>
-                  {" "}of <span className="font-semibold">{eventInfo.targets[0].id}</span> by{" "}
-                  <span className="font-semibold">{eventInfo.sources[0].id}</span>
-                </>
-              ) : (
-                <>
-                  {" "}between{" "}
-                  {[...eventInfo.sources.map(e => e.id), ...eventInfo.targets.map(e => e.id)]
-                    .filter(Boolean)
-                    .map((id, idx, arr) => (
-                      <React.Fragment key={id}>
-                        <span className="font-semibold">{id}</span>
-                        {idx < arr.length - 1 && <span> and </span>}
-                      </React.Fragment>
-                    ))}
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="mt-1">
-              Please select an <strong>Event</strong> from the Graph or "Event View" to display Information
-            </div>
-          )}
-        </div>
-      )}
+  <div className="mt-2 flex flex-col gap-1 text-sm ml-4">
+    {eventInfo?.event ? (
+      <div className="mt-1">
+        Evidence for <span className="font-semibold">{eventInfo.event.sub_type}</span>
+        {eventInfo.sources.length === 1 && eventInfo.targets.length === 1 ? (
+          <>
+            {" "}of <span className="font-semibold">{eventInfo.targets[0].id}</span> by{" "}
+            <span className="font-semibold">{eventInfo.sources[0].id}</span>
+          </>
+        ) : (
+          <>
+            {" "}between{" "}
+            {[...eventInfo.sources.map(e => e.id), ...eventInfo.targets.map(e => e.id)]
+              .filter(Boolean)
+              .map((id, idx, arr) => (
+                <React.Fragment key={id}>
+                  <span className="font-semibold">{id}</span>
+                  {idx < arr.length - 1 && <span> and </span>}
+                </React.Fragment>
+              ))}
+          </>
+        )}
+      </div>
+    ) : (
+      <div className="mt-1">
+        Please select an <strong>Event</strong> (e.g. Assessment) from the Graph or "Event View" to display Information
+      </div>
+    )}
+  </div>
+)}
 
 
 
