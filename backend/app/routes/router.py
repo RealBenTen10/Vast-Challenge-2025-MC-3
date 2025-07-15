@@ -818,7 +818,6 @@ async def event_entities(event_ids: List[str]):
     print("Event entities fetched successfully")
     return {"success": True, "data": result_map}
 
-'''
 
 ###
 # Here the Similarity Search starts
@@ -909,11 +908,7 @@ async def similarity_search(
                 
                 records = session.run(cypher_query, ids=event_ids)
                 if order_by_time:
-                    print("Here")
                     for row in records:
-                        print("Row", row)
-                        print(row["event_id"])
-                        print()
                         event_id = row["event_id"]
                         result.append({
                             "event_id": row["event_id"],
@@ -975,4 +970,3 @@ async def similarity_search_events(
     except Exception as e:
         print("Error in similarity search for events:", str(e))
         return {"success": False, "error": str(e)}
-'''
