@@ -40,7 +40,7 @@ const GraphSummary: React.FC<GraphSummaryProps> = ({ edgeCount, edgeTypeCounts, 
         ))}
       </ul>
       <div className="border-t border-gray-300 my-4" />
-      <h5 className="text-sm font-semibold mb-2">Entities</h5>
+      <h5 className="text-sm font-semibold mb-2">List of all entities</h5>
       <ul className="list-disc list-inside text-sm space-y-1">
         {entities && entities.length > 0 ? (
           entities.map((entity) => (
