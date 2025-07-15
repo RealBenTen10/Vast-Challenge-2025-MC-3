@@ -383,65 +383,84 @@ export default function CommunicationView({
 
           {filterModeMessages === "direct" && (
             <span>
-              Showing all communications between
-              {filterSender && <span> <Badge color="blue">{filterSender}</Badge></span>}
-              {filterSender && filterReceiver && <span> and </span>}
-              {filterReceiver && <span> <Badge color="green">{filterReceiver}</Badge></span>}
-              {filterContent && <span> with <Badge color="purple">{filterContent}</Badge></span>}
-              {(timestampFilterStart || timestampFilterEnd) && (
-                <span>
-                  {timestampFilterStart && timestampFilterEnd && (
-                    <> in timeframe <Badge color="gray">
-                      {new Date(timestampFilterStart).toLocaleString()} – {new Date(timestampFilterEnd).toLocaleString()}
-                    </Badge></>
+              {filterSender && filterReceiver ? (
+                <>
+                  Showing all communications between
+                  <strong> {filterSender} </strong>
+                  and
+                  <strong> {filterReceiver} </strong>
+
+                  {filterContent && (
+                    <> about <strong>{filterContent}</strong></>
                   )}
-                  {timestampFilterStart && !timestampFilterEnd && (
-                    <> from <Badge color="gray">{new Date(timestampFilterStart).toLocaleString()}</Badge></>
+
+                  {(timestampFilterStart || timestampFilterEnd) && (
+                    <span>
+                      {timestampFilterStart && timestampFilterEnd && (
+                        <> in timeframe <strong>
+                          {new Date(timestampFilterStart).toLocaleString()} – {new Date(timestampFilterEnd).toLocaleString()}
+                        </strong></>
+                      )}
+                      {timestampFilterStart && !timestampFilterEnd && (
+                        <> from <strong>
+                          {new Date(timestampFilterStart).toLocaleString()}
+                        </strong></>
+                      )}
+                      {!timestampFilterStart && timestampFilterEnd && (
+                        <> until <strong>
+                          {new Date(timestampFilterEnd).toLocaleString()}
+                        </strong></>
+                      )}
+                    </span>
                   )}
-                  {!timestampFilterStart && timestampFilterEnd && (
-                    <> until <Badge color="gray">{new Date(timestampFilterEnd).toLocaleString()}</Badge></>
-                  )}
-                </span>
+                </>
+              ) : (
+                <>Please select a <strong>Sender</strong> and <strong>Receiver</strong> to display Information</>
               )}
             </span>
           )}
 
+
           {filterModeMessages === "directed" && (
             <span>
-              Showing all communications from
-              {filterSender && <span> <Badge color="blue">{filterSender}</Badge></span>}
-              {filterReceiver && <span> to <Badge color="green">{filterReceiver}</Badge></span>}
-              {filterContent && <span> with <Badge color="purple">{filterContent}</Badge></span>}
-              {(timestampFilterStart || timestampFilterEnd) && (
-                <span>
-                  {timestampFilterStart && timestampFilterEnd && (
-                    <> in timeframe <Badge color="gray">
-                      {new Date(timestampFilterStart).toLocaleString()} – {new Date(timestampFilterEnd).toLocaleString()}
-                    </Badge></>
+              {filterSender && filterReceiver ? (
+                <>
+                  Showing all communications from <strong>{filterSender}</strong> to <strong>{filterReceiver}</strong>
+                  {filterContent && (
+                    <span> with <strong>{filterContent}</strong></span>
                   )}
-                  {timestampFilterStart && !timestampFilterEnd && (
-                    <> from <Badge color="gray">{new Date(timestampFilterStart).toLocaleString()}</Badge></>
+                  {(timestampFilterStart || timestampFilterEnd) && (
+                    <span>
+                      {timestampFilterStart && timestampFilterEnd && (
+                        <> in timeframe <strong>{new Date(timestampFilterStart).toLocaleString()} – {new Date(timestampFilterEnd).toLocaleString()}</strong></>
+                      )}
+                      {timestampFilterStart && !timestampFilterEnd && (
+                        <> from <strong>{new Date(timestampFilterStart).toLocaleString()}</strong></>
+                      )}
+                      {!timestampFilterStart && timestampFilterEnd && (
+                        <> until <strong>{new Date(timestampFilterEnd).toLocaleString()}</strong></>
+                      )}
+                    </span>
                   )}
-                  {!timestampFilterStart && timestampFilterEnd && (
-                    <> until <Badge color="gray">{new Date(timestampFilterEnd).toLocaleString()}</Badge></>
-                  )}
-                </span>
+                </>
+              ) : (
+                <>Please select a <strong>Sender</strong> AND <strong>Receiver</strong> to display Information</>
               )}
             </span>
           )}
+
+
         </div>
       )}
 
       {filterModeMessages === "evidence" && (
         <div className="mt-2 flex flex-col gap-1 text-sm ml-4">
-
-          {eventInfo?.event && (
+          {eventInfo?.event ? (
             <div className="mt-1">
               Evidence for <span className="font-semibold">{eventInfo.event.sub_type}</span>
               {eventInfo.sources.length === 1 && eventInfo.targets.length === 1 ? (
                 <>
-                  {" "}
-                  of <span className="font-semibold">{eventInfo.targets[0].id}</span> by{" "}
+                  {" "}of <span className="font-semibold">{eventInfo.targets[0].id}</span> by{" "}
                   <span className="font-semibold">{eventInfo.sources[0].id}</span>
                 </>
               ) : (
@@ -458,9 +477,14 @@ export default function CommunicationView({
                 </>
               )}
             </div>
+          ) : (
+            <div className="mt-1">
+              Please select an <strong>Event</strong> from the Graph or "Event View" to display Information
+            </div>
           )}
         </div>
       )}
+
 
 
 
