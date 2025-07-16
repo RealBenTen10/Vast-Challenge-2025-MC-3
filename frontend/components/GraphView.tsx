@@ -1424,7 +1424,8 @@ const GraphView: React.FC<Props> = ({
     setFilterSender,
     commGraphData,
     enabledEventTypes,
-    enabledRelationshipTypes
+    enabledRelationshipTypes,
+    isInAnimation
   ]);
 
   return (
