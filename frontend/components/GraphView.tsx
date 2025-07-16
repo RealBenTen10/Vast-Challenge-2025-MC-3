@@ -238,7 +238,6 @@ const GraphView: React.FC<Props> = ({
 
  useEffect(() => {
   if (isPlaying) {
-    
     const start = new Date(currentAnimationTime);
     const end = new Date(currentAnimationTime + stepMS);
     const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
@@ -246,9 +245,19 @@ const GraphView: React.FC<Props> = ({
     const startHour = start.getHours();
     const endHour = end.getHours();
 
-    // If start is after 15:00, end is before 08:00, and duration is less than 12h → fix start time
-    if ( ((startHour >= 15 && (endHour < 8 || endHour >= 15)) || (startHour < 8 && endHour < 8)) && durationHours <= 12) {
+    const crossesNightGap =
+      ((startHour >= 15 && (endHour < 8 || endHour >= 15)) ||
+        (startHour < 8 && endHour < 8)) &&
+      durationHours <= 12;
+
+    if (crossesNightGap) {
       const corrected = new Date(end);
+
+      if (startHour >= 15) {
+        // move to next day before setting 07:30
+        corrected.setDate(corrected.getDate() + 1);
+      }
+
       corrected.setHours(7, 30, 0, 0);
       setCurrentAnimationTime(corrected.getTime());
       return; // skip setting up the animation until next render
@@ -286,6 +295,7 @@ const GraphView: React.FC<Props> = ({
     }
   };
 }, [isPlaying, stepMS, animationStartTime, animationEndTime, currentAnimationTime]);
+
 
 
 
@@ -1059,21 +1069,34 @@ const GraphView: React.FC<Props> = ({
 
           group.append("text")
           .attr("text-anchor", "middle")
-          .attr("dy", ".35em")
+          .attr("dy", ".35em") // still applied to <text>, individual <tspan> values matter more
           .attr("fill", "black")
           .each(function (d) {
             const text = d3.select(this);
+
             if (d.type === "Entity") {
               const words = d.id.split(/\s+/); // split by whitespace
               const baseFontSize = Math.max(8, 12 - Math.max(0, d.id.length - 10));
-              words.forEach((word, i) => {
+
+              if (words.length === 1) {
+                // Single-word: vertically center the label
                 text.append("tspan")
-                  .text(word)
+                  .text(words[0])
                   .attr("x", 0)
-                  .attr("dy", i === 0 ? "0" : "1.2em") // space between lines
+                  .attr("dy", "0.35em")
                   .style("font-size", `${baseFontSize}px`);
-              });
-            } else {
+              } else {
+                // Multi-word: stack lines
+                words.forEach((word, i) => {
+                  text.append("tspan")
+                    .text(word)
+                    .attr("x", 0)
+                    .attr("dy", i === 0 ? "0" : "1.2em") // vertical offset
+                    .style("font-size", `${baseFontSize}px`);
+                });
+              }
+
+            } else if (d.type === "Event") {
               const symbol = EventMap[d.sub_type] ?? d.sub_type;
               const minFont = 12;
               const maxFont = 24;
@@ -1081,13 +1104,15 @@ const GraphView: React.FC<Props> = ({
               const scale = count / 15;
               const fontSize = minFont + scale * (maxFont - minFont);
 
+              // Vertically center the emoji/symbol
               text.append("tspan")
                 .text(symbol)
                 .attr("x", 0)
-                .attr("dy", "0") // single line
+                .attr("dy", "0.35em")
                 .style("font-size", `${fontSize}px`);
             }
           });
+
 
 
 
@@ -1364,49 +1389,61 @@ const GraphView: React.FC<Props> = ({
       
         // === Labels ===
         update.select("text")
-        .each(function (d) {
-          const text = d3.select(this);
-          text.text(null); // Clear text content
-          text.selectAll("tspan").remove(); // Remove previous tspans
+          .each(function (d) {
+            const text = d3.select(this);
+            text.text(null); // Clear text content
+            text.selectAll("tspan").remove(); // Remove previous tspans
 
-          if (d.type === "Entity") {
-            const words = d.id.split(/\s+/);
-            const baseFontSize = Math.max(8, 12 - Math.max(0, d.id.length - 10));
-            words.forEach((word, i) => {
+            if (d.type === "Entity") {
+              const words = d.id.split(/\s+/);
+              const baseFontSize = Math.max(8, 12 - Math.max(0, d.id.length - 10));
+
+              if (words.length === 1) {
+                // Single-word label, center it vertically
+                text.append("tspan")
+                  .text(words[0])
+                  .attr("x", 0)
+                  .attr("dy", "0.35em") // Adjust for vertical centering
+                  .style("font-size", `${baseFontSize}px`);
+              } else {
+                // Multi-word label, stack lines
+                words.forEach((word, i) => {
+                  text.append("tspan")
+                    .text(word)
+                    .attr("x", 0)
+                    .attr("dy", i === 0 ? "0" : "1.2em")
+                    .style("font-size", `${baseFontSize}px`);
+                });
+              }
+            } else if (d.type === "Event") {
+              const emoji = EventMap[d.sub_type] ?? d.sub_type;
+              const minFont = 12;
+              const maxFont = 24;
+              const count = Math.max(1, Math.min(30, d.count ?? 1));
+              const scale = count / 15;
+              const fontSize = minFont + scale * (maxFont - minFont);
+
               text.append("tspan")
-                .text(word)
+                .text(emoji)
                 .attr("x", 0)
-                .attr("dy", i === 0 ? "0" : "1.2em")
-                .style("font-size", `${baseFontSize}px`);
-            });
-          } else if (d.type === "Event") {
-            const emoji = EventMap[d.sub_type] ?? d.sub_type;
-            const minFont = 12;
-            const maxFont = 24;
-            const count = Math.max(1, Math.min(30, d.count ?? 1));
-            const scale = count / 15;
-            const fontSize = minFont + scale * (maxFont - minFont);
+                .attr("dy", "0.35em") // Center the emoji
+                .style("font-size", `${fontSize}px`);
+            }
+          })
+          .attr("opacity", d => {
+            if (d.type === "Event") {
+              return (isPlaying || isInAnimation)
+                ? (isActiveEvent(d) ? 1 : 0.15)
+                : 1;
+            }
+            if (d.type === "Entity") {
+              return (isPlaying || isInAnimation)
+                ? (connectedEntities.has(d.id) ? 1 : 0.2)
+                : 1;
+            }
+            return 1;
+          });
 
-            text.append("tspan")
-              .text(emoji)
-              .attr("x", 0)
-              .attr("dy", "0")
-              .style("font-size", `${fontSize}px`);
-          }
-        })
-        .attr("opacity", d => {
-          if (d.type === "Event") {
-            return (isPlaying || isInAnimation)
-              ? (isActiveEvent(d) ? 1 : 0.15)
-              : 1;
-          }
-          if (d.type === "Entity") {
-            return (isPlaying || isInAnimation)
-              ? (connectedEntities.has(d.id) ? 1 : 0.2)
-              : 1;
-          }
-          return 1;
-        });
 
 
             return update;
