@@ -247,7 +247,7 @@ const GraphView: React.FC<Props> = ({
     const endHour = end.getHours();
 
     // If start is after 15:00, end is before 08:00, and duration is less than 12h → fix start time
-    if (startHour >= 15 && (endHour < 8 || endHour >= 15) && durationHours <= 12) {
+    if ( ((startHour >= 15 && (endHour < 8 || endHour >= 15)) || (startHour < 8 && endHour < 8)) && durationHours <= 12) {
       const corrected = new Date(end);
       corrected.setHours(7, 30, 0, 0);
       setCurrentAnimationTime(corrected.getTime());
@@ -1364,27 +1364,49 @@ const GraphView: React.FC<Props> = ({
       
         // === Labels ===
         update.select("text")
-          .text(d =>
-            d.type === "Entity"
-              ? d.id
-              : EventMap[d.sub_type] ?? d.sub_type
-          )
-          .style("font-size", d => {
-            if (d.type === "Entity") {
-              const label = d.id;
-              return `${Math.max(8, 12 - Math.max(0, label.length - 10))}px`;
-            } else {
-              // Scale font-size for events using d.count between 1–30 → font-size 12–24px
-              const minFont = 12;
-              const maxFont = 24;
-              const count = Math.max(1, Math.min(30, d.count ?? 1)); // clamp to [1, 30]
-              const scale = (count) / 15; // normalize to [0, 1]
-              const fontSize = minFont + scale * (maxFont - minFont);
-              return `${fontSize}px`;
-            }
-          });
+        .each(function (d) {
+          const text = d3.select(this);
+          text.text(null); // Clear text content
+          text.selectAll("tspan").remove(); // Remove previous tspans
 
+          if (d.type === "Entity") {
+            const words = d.id.split(/\s+/);
+            const baseFontSize = Math.max(8, 12 - Math.max(0, d.id.length - 10));
+            words.forEach((word, i) => {
+              text.append("tspan")
+                .text(word)
+                .attr("x", 0)
+                .attr("dy", i === 0 ? "0" : "1.2em")
+                .style("font-size", `${baseFontSize}px`);
+            });
+          } else if (d.type === "Event") {
+            const emoji = EventMap[d.sub_type] ?? d.sub_type;
+            const minFont = 12;
+            const maxFont = 24;
+            const count = Math.max(1, Math.min(30, d.count ?? 1));
+            const scale = count / 15;
+            const fontSize = minFont + scale * (maxFont - minFont);
 
+            text.append("tspan")
+              .text(emoji)
+              .attr("x", 0)
+              .attr("dy", "0")
+              .style("font-size", `${fontSize}px`);
+          }
+        })
+        .attr("opacity", d => {
+          if (d.type === "Event") {
+            return (isPlaying || isInAnimation)
+              ? (isActiveEvent(d) ? 1 : 0.15)
+              : 1;
+          }
+          if (d.type === "Entity") {
+            return (isPlaying || isInAnimation)
+              ? (connectedEntities.has(d.id) ? 1 : 0.2)
+              : 1;
+          }
+          return 1;
+        });
 
 
             return update;
