@@ -258,7 +258,7 @@ const GraphView: React.FC<Props> = ({
         corrected.setDate(corrected.getDate() + 1);
       }
 
-      corrected.setHours(7, 30, 0, 0);
+      corrected.setHours(8, 0, 0, 0);
       setCurrentAnimationTime(corrected.getTime());
       return; // skip setting up the animation until next render
     }
@@ -1491,7 +1491,7 @@ const GraphView: React.FC<Props> = ({
     <>
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <svg ref={svgRef} className="w-full h-full"></svg>
-      <div style={{ position: "absolute", right: 16, bottom: 16, zIndex: 10, background: "white", borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+      <div style={{ position: "absolute", right: 16, bottom: 16, zIndex: 10, background: "#F0F0F0", borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
         {/* LegendPanel */}
         <LegendPanel 
         enabledEventTypes={enabledEventTypes}
