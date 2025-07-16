@@ -2378,14 +2378,6 @@
             "type": "Event",
             "sub_type": "Communication",
             "label": "Communication",
-            "timestamp": "2040-10-04 10:21:00",
-            "content": "Mrs. Money, this is Middleman. I've redirected Council's attention to other areas. Meeting with Boss tonight at 9PM to discuss new focus. Have you secured those alternative funding channels you mentioned? Need status update.",
-            "id": "Event_Communication_279"
-        },
-        {
-            "type": "Event",
-            "sub_type": "Communication",
-            "label": "Communication",
             "timestamp": "2040-10-04 10:22:00",
             "content": "Boss, Mrs. Money here. Alternative funding channels secured through V. Miesel Shipping. I've erased our financial trail to Nemo Reef operations and implemented full contingency protocols. Will attend your 9PM meeting with The Middleman to discuss next steps.",
             "id": "Event_Communication_280"
@@ -4898,14 +4890,6 @@
             "type": "Event",
             "sub_type": "Communication",
             "label": "Communication",
-            "timestamp": "2040-10-12 09:24:00",
-            "content": "Rodriguez, Davis here. Maintain current position with Mako at Nemo Reef. Security team arriving at 0600. Continue operating under permit #CR-7844 and keep tourism appearance. I'll update after meeting with Nadia tonight.",
-            "id": "Event_Communication_805"
-        },
-        {
-            "type": "Event",
-            "sub_type": "Communication",
-            "label": "Communication",
             "timestamp": "2040-10-12 09:39:00",
             "content": "Mako, Osprey here. Just confirming our 0800 departure tomorrow from Himark. My tourists are excited about the bay tour, but disappointed about Nemo Reef. Any alternative scenic spots you'd recommend since that area is off-limits?",
             "id": "Event_Communication_808"
@@ -5106,14 +5090,6 @@
             "type": "Event",
             "sub_type": "Communication",
             "label": "Communication",
-            "timestamp": "2040-10-12 11:14:00",
-            "content": "Davis here to V. Miesel Shipping. Crew reallocation from Remora to Neptune underway as requested. Will maintain confidentiality regarding permit #CR-7844. Security team arrives 0600 tomorrow. Meeting Nadia tonight to finalize documentation.",
-            "id": "Event_Communication_845"
-        },
-        {
-            "type": "Event",
-            "sub_type": "Communication",
-            "label": "Communication",
             "timestamp": "2040-10-12 11:17:00",
             "content": "V. Miesel HQ to Nadia. Need your immediate confirmation that all documentation for permit #CR-7844 is finalized before tomorrow's 0600 Nemo Reef closure. Davis mentioned meeting you tonight. Any complications we should be aware of?",
             "id": "Event_Communication_846"
@@ -5221,14 +5197,6 @@
             "timestamp": "2040-10-13 08:19:00",
             "content": "Boss, The Accountant here. Conservation vessels deploying underwater microphones around Nemo Reef. Meeting V. Miesel management at 10AM tomorrow. The Middleman confirms our 0500 meeting with enhanced encryption. Southwest clearance urgent after council pressure increased.",
             "id": "Event_Communication_866"
-        },
-        {
-            "type": "Event",
-            "sub_type": "Communication",
-            "label": "Communication",
-            "timestamp": "2040-10-13 08:19:00",
-            "content": "Boss, The Accountant here. Conservation vessels deploying underwater microphones around Nemo Reef. Meeting V. Miesel management at 10AM tomorrow. The Middleman confirms our 0500 meeting with enhanced encryption. Southwest clearance urgent after council pressure increased.",
-            "id": "Event_Communication_867"
         },
         {
             "type": "Event",
@@ -6860,13 +6828,10 @@
         },
         {
             "type": "Event",
-            "sub_type": "Fishing",
-            "label": "Fishing",
-            "thing_collected": {
-                "type": "Commodity",
-                "name": "fish"
-            },
-            "id": "Event_Fishing_49"
+            "sub_type": "Criticize",
+            "label": "Criticize",
+            "reference": "new regulations",
+            "id": "Event_Criticize_49"
         },
         {
             "type": "Event",
@@ -9990,13 +9955,6 @@
             "target": "Event_Communication_844"
         },
         {
-            "id": "140",
-            "type": "sent",
-            "is_inferred": false,
-            "source": "Davis",
-            "target": "Event_Communication_845"
-        },
-        {
             "id": "142",
             "is_inferred": true,
             "source": "Davis",
@@ -10209,13 +10167,6 @@
             "is_inferred": false,
             "source": "Davis",
             "target": "Event_Communication_804"
-        },
-        {
-            "id": "185",
-            "type": "sent",
-            "is_inferred": false,
-            "source": "Davis",
-            "target": "Event_Communication_805"
         },
         {
             "id": "187",
@@ -11505,13 +11456,6 @@
             "target": "Event_Communication_278"
         },
         {
-            "id": "435",
-            "type": "sent",
-            "is_inferred": false,
-            "source": "The Middleman",
-            "target": "Event_Communication_279"
-        },
-        {
             "id": "436",
             "type": "sent",
             "is_inferred": false,
@@ -11543,13 +11487,6 @@
             "is_inferred": false,
             "source": "The Middleman",
             "target": "Event_Communication_796"
-        },
-        {
-            "id": "442",
-            "type": "sent",
-            "is_inferred": false,
-            "source": "The Accountant",
-            "target": "Event_Communication_867"
         },
         {
             "id": "445",
@@ -13497,7 +13434,7 @@
             "id": "910",
             "is_inferred": true,
             "source": "Marlin",
-            "target": "Event_Fishing_49"
+            "target": "Event_Criticize_49"
         },
         {
             "id": "911",
@@ -17666,7 +17603,7 @@
             "type": "evidence_for",
             "is_inferred": true,
             "source": "Event_Communication_50",
-            "target": "Event_Fishing_49"
+            "target": "Event_Criticize_49"
         },
         {
             "id": "1791",
@@ -20008,27 +19945,6 @@
             "type": "evidence_for",
             "is_inferred": true,
             "source": "Event_Communication_278",
-            "target": "Relationship_Colleagues_158"
-        },
-        {
-            "id": "2356",
-            "type": "received",
-            "is_inferred": false,
-            "source": "Event_Communication_279",
-            "target": "Boss"
-        },
-        {
-            "id": "2358",
-            "type": "evidence_for",
-            "is_inferred": true,
-            "source": "Event_Communication_279",
-            "target": "Relationship_Colleagues_11"
-        },
-        {
-            "id": "2357",
-            "type": "evidence_for",
-            "is_inferred": true,
-            "source": "Event_Communication_279",
             "target": "Relationship_Colleagues_158"
         },
         {
@@ -26113,34 +26029,6 @@
             "target": "Relationship_Colleagues_619"
         },
         {
-            "id": "3765",
-            "type": "received",
-            "is_inferred": false,
-            "source": "Event_Communication_805",
-            "target": "Rodriguez"
-        },
-        {
-            "id": "3766",
-            "type": "evidence_for",
-            "is_inferred": true,
-            "source": "Event_Communication_805",
-            "target": "Event_Monitoring_803"
-        },
-        {
-            "id": "3767",
-            "type": "evidence_for",
-            "is_inferred": true,
-            "source": "Event_Communication_805",
-            "target": "Relationship_AccessPermission_243"
-        },
-        {
-            "id": "3768",
-            "type": "evidence_for",
-            "is_inferred": true,
-            "source": "Event_Communication_805",
-            "target": "Relationship_Colleagues_619"
-        },
-        {
             "id": "3772",
             "type": "received",
             "is_inferred": false,
@@ -26680,34 +26568,6 @@
             "target": "Relationship_Colleagues_551"
         },
         {
-            "id": "3900",
-            "type": "received",
-            "is_inferred": false,
-            "source": "Event_Communication_845",
-            "target": "Nadia Conti"
-        },
-        {
-            "id": "3901",
-            "type": "evidence_for",
-            "is_inferred": true,
-            "source": "Event_Communication_845",
-            "target": "Event_VesselMovement_843"
-        },
-        {
-            "id": "3902",
-            "type": "evidence_for",
-            "is_inferred": true,
-            "source": "Event_Communication_845",
-            "target": "Relationship_Operates_538"
-        },
-        {
-            "id": "3903",
-            "type": "evidence_for",
-            "is_inferred": true,
-            "source": "Event_Communication_845",
-            "target": "Relationship_Colleagues_551"
-        },
-        {
             "id": "3906",
             "type": "received",
             "is_inferred": false,
@@ -26929,27 +26789,6 @@
             "type": "evidence_for",
             "is_inferred": true,
             "source": "Event_Communication_866",
-            "target": "Event_Monitoring_722"
-        },
-        {
-            "id": "3955",
-            "type": "received",
-            "is_inferred": false,
-            "source": "Event_Communication_867",
-            "target": "Boss"
-        },
-        {
-            "id": "3957",
-            "type": "evidence_for",
-            "is_inferred": true,
-            "source": "Event_Communication_867",
-            "target": "Relationship_Coordinates_550"
-        },
-        {
-            "id": "3956",
-            "type": "evidence_for",
-            "is_inferred": true,
-            "source": "Event_Communication_867",
             "target": "Event_Monitoring_722"
         },
         {
@@ -29124,7 +28963,7 @@
         {
             "id": "1788",
             "is_inferred": true,
-            "source": "Event_Fishing_49",
+            "source": "Event_Criticize_49",
             "target": "Himark Harbor"
         },
         {

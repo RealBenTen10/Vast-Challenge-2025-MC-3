@@ -815,7 +815,6 @@ async def event_entities(event_ids: List[str]):
     finally:
         driver.close()
 
-    print("Event entities fetched successfully: ", result_map)
     return {"success": True, "data": result_map}
 
 
