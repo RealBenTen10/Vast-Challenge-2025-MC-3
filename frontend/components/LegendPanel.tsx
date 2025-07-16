@@ -46,6 +46,19 @@ const EVENT_COLOR_MAP: Record<string, string> = {
     Communication: "#1f77b4"     // blue
   };
 
+    const EventMap: Record<string, string> = {
+  Monitoring: "🔍",        // radar or surveillance
+  Assessment: "📋",        // clipboard representing evaluations or reports
+  VesselMovement: "🚢",    // ship representing vessel motion
+  Enforcement: "👮",       // police officer for law enforcement
+  TourActivity: "📸",      // compass for tour-related movements or exploration
+  Collaborate: "🤝",       // handshake for cooperation or collaboration
+  TransponderPing: "📡",   // signal bars for electronic signal transmission
+  HarborReport: "⚓",      // anchor representing harbor or docking activity
+  Criticize: "🗯️",         // speech balloon for comments or criticism
+  Communication: "📨"     // envelope for messages or communication
+};
+
 const getNodeColor = (type: string): string => {
   return EVENT_COLOR_MAP[type] || "#999999";
 };
@@ -169,6 +182,7 @@ const LegendPanel: React.FC<Props> = ({
                       style={{ backgroundColor: getNodeColor(type) }}
                     ></span>
                     {type}
+                    <span className="mr-1">({EventMap[type]})</span>
                   </li>
                 ))}
               </ul>
