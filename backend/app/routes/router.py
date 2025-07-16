@@ -435,7 +435,7 @@ async def read_db_graph():
             result = session.run("""
                 MATCH (a)-[r]->(b)
                 WHERE NOT (type(r) = 'COMMUNICATION' AND a:Entity AND b:Entity)
-                RETURN a.id AS source, b.id AS target, r, r.id AS rel_id, type(r) AS rel_type
+                RETURN a.id AS source, b.id AS target, r, r.id AS rel_id, r.type AS rel_type
             """)
 
             for record in result:
@@ -469,7 +469,7 @@ async def read_db_graph():
                 edge_data = dict(r.items())
                 edge_data["source"] = record["source"]
                 edge_data["target"] = record["target"]
-                edge_data["type"] = r.type if hasattr(r, "type") else r.get("type", "Test")
+                #edge_data["type"] = r.type if hasattr(r, "type") else r.get("type", "Test")
                 edges.append(edge_data)
 
     except Exception as e:

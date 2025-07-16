@@ -202,6 +202,7 @@ const SelectedInfoPanel: React.FC<SelectedInfoPanelProps> = ({ selectedInfo }) =
       {data ? (
         <div className="text-sm">
           <h5 className="text-xl font-bold break-all mb-2">{data.id}</h5>
+          {console.log(data)}
           {data.type === "Entity" && renderEntity(data)}
           {data.type === "Event" && data.sub_type !== "Communication" && renderEvent(data)}
           {data.sub_type === "Communication" && data.is_edge !== "Y" && renderCommunication(data)}
