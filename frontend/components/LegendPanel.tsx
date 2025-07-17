@@ -28,7 +28,7 @@ const relationshipGroups: Record<
   },
   Operational: {
     label: "Operational",
-    color: "#17becf", // cyan
+    color: "#9467bd", // purple
     types: ["Operates", "Coordinates"],
   },
 };
