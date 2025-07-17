@@ -218,6 +218,11 @@ export default function Home() {
 
   return (
     <section className="flex flex-col h-screen">
+      <div className="w-full py-6 bg-white border-b shadow-md z-40">
+        <h1 className="text-3xl font-bold text-center text-blue-800 tracking-wide">
+          OVA - Oceanus Visual Analytics
+        </h1>
+      </div>
     {/* Toggle Buttons */}
     <div className="fixed top-0 left-0 z-50">
       <button
