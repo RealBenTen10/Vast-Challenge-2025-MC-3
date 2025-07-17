@@ -6,10 +6,10 @@ import { fontSans } from "@/config/fonts";
 
 export const metadata: Metadata = {
   title: {
-    default: "",
-    template: "AVA Template",
+    default: "OVA - Oceanus Visual Analytics",
+    template: "OVA – Oceanus Visual Analytics",
   },
-  description: "AVA Template",
+  description: "OV – Oceanus Visual Analytics",
   icons: {
     icon: "/favicon.ico",
   },
