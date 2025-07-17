@@ -67,7 +67,7 @@ interface CommunicationViewProps {
   timestampFilterEnd: string;
   visibleEntities: { id: string; sub_type?: string }[];
   communicationEventsAfterTimeFilter: string[];
-  filterModeMessages: "all" | "filtered" | "direct" | "directed" | "evidence" | "similarity";
+  filterModeMessages: "all" | "filtered" | "either" | "direct" | "directed" | "evidence" | "similarity";
   setFilterModeMessages: (mode: CommunicationViewProps["filterModeMessages"]) => void;
   selectedEventId: string | null;
 }
@@ -224,6 +224,12 @@ export default function CommunicationView({
           (filterReceiver && item.target === filterReceiver)
         );
       }
+      if (filterModeMessages === "either") {
+      return (
+        (filterSender && (item.source === filterSender || item.target === filterSender)) ||
+        (filterReceiver && (item.source === filterReceiver || item.target === filterReceiver))
+      );
+    }
       if (filterModeMessages === "direct") {
         return (
           (filterSender &&
@@ -262,9 +268,10 @@ export default function CommunicationView({
               onClick={() => setFilterModeMessages(mode as CommunicationViewProps["filterModeMessages"])}
             >
               {mode === "all" && "All"}
-              {mode === "filtered" && "Sender or Receiver"}
-              {mode === "direct" && "Sender and Receiver"}
-              {mode === "directed" && "Sender to Receiver"}
+              {mode === "filtered" && "Sender➡️ or Receiver⬅️"}
+              {mode === "either" && "Sender↔️ or Receiver↔️"}
+              {mode === "direct" && "Sender ↔️ Receiver"}
+              {mode === "directed" && "Sender ➡️ Receiver"}
               {mode === "evidence" && "Evidence for Events"}
               {mode === "similarity" && "Similar Message Search"}
             </button>
@@ -363,6 +370,7 @@ export default function CommunicationView({
             <span>
               Showing communications
               {filterSender && <span> from <Badge color="blue">{filterSender}</Badge></span>}
+              {(filterSender && filterReceiver) && <span> and Communications</span>}
               {filterReceiver && <span> to <Badge color="green">{filterReceiver}</Badge></span>}
               {filterContent && <span> with <Badge color="purple">{filterContent}</Badge></span>}
               {(timestampFilterStart || timestampFilterEnd) && (
