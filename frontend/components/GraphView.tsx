@@ -143,7 +143,6 @@ const GraphView: React.FC<Props> = ({
     Reports: true,
     Colleagues: true,
     Friends: true,
-    Collaborate: true,
     Jurisdiction: true,
     AccessPermission: true,
     Operates: true,
@@ -190,7 +189,6 @@ const GraphView: React.FC<Props> = ({
     Reports: "#2ca02c",         // purple
     Colleagues: "#2ca02c",      // purple
     Friends: "#2ca02c",         // purple
-    Collaborate: "#2ca02c",     // purple
     Jurisdiction: "#7f7f7f",    // gray
     AccessPermission: "#7f7f7f",// gray
     Operates: "#17becf",        // cyan
@@ -817,7 +815,6 @@ const GraphView: React.FC<Props> = ({
         relType === "Reports" ||
         relType === "Colleagues" ||
         relType === "Friends" ||
-        relType === "Collaborate" ||
         relType === "Jurisdiction" ||
         relType === "AccessPermission" ||
         relType === "Operates" ||

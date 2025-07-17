@@ -19,7 +19,7 @@ const relationshipGroups: Record<
   Social: {
     label: "Social",
     color: "#2ca02c", // purple
-    types: ["Colleagues", "Friends", "Collaborate", "Reports"],
+    types: ["Colleagues", "Friends", "Reports"],
   },
   Institutional: {
     label: "Institutional",
