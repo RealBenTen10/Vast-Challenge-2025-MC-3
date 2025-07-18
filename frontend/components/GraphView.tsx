@@ -548,7 +548,27 @@ const GraphView: React.FC<Props> = ({
             });
           })
         );
+
+        // Additional logic: ensure all entities connected to visible Events are added
+        graphData.links.forEach(link => {
+          const srcId = typeof link.source === "string" ? link.source : link.source.id;
+          const tgtId = typeof link.target === "string" ? link.target : link.target.id;
+
+          const srcNode = graphData.nodes.find(n => n.id === srcId);
+          const tgtNode = graphData.nodes.find(n => n.id === tgtId);
+
+          if (srcNode && tgtNode) {
+            // If one side is a visible event, and the other is an entity, add the entity
+            if (srcNode.type === "Event" && visible1.has(srcId) && tgtNode.type !== "Event") {
+              visible1.add(tgtId);
+            }
+            if (tgtNode.type === "Event" && visible1.has(tgtId) && srcNode.type !== "Event") {
+              visible1.add(srcId);
+            }
+          }
+        });
       }
+
 
 
       const visibleSetBeforeTimeFilter = new Set(visible1);
@@ -755,7 +775,27 @@ const GraphView: React.FC<Props> = ({
             });
           })
         );
+
+        // Additional logic: ensure all entities connected to visible Events are added
+        commGraphData.links.forEach(link => {
+          const srcId = typeof link.source === "string" ? link.source : link.source.id;
+          const tgtId = typeof link.target === "string" ? link.target : link.target.id;
+
+          const srcNode = commGraphData.nodes.find(n => n.id === srcId);
+          const tgtNode = commGraphData.nodes.find(n => n.id === tgtId);
+
+          if (srcNode && tgtNode) {
+            // If one side is a visible event, and the other is not an Event, add the other node
+            if (srcNode.type === "Event" && visible.has(srcId) && tgtNode.type !== "Event") {
+              visible.add(tgtId);
+            }
+            if (tgtNode.type === "Event" && visible.has(tgtId) && srcNode.type !== "Event") {
+              visible.add(srcId);
+            }
+          }
+        });
       }
+
 
       // Step 3: Static timestamp filtering (filtering using any timestamp in the node's "timestamps" array)
       if (propTimestampFilterStart || propTimestampFilterEnd) {
