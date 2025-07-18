@@ -229,7 +229,7 @@ export default function CommunicationView({
         (filterSender && (item.source === filterSender || item.target === filterSender)) ||
         (filterReceiver && (item.source === filterReceiver || item.target === filterReceiver))
       );
-    }
+      }
       if (filterModeMessages === "direct") {
         return (
           (filterSender &&
@@ -259,7 +259,7 @@ export default function CommunicationView({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <h4 className="text-lg font-semibold">{filteredData.length} Messages</h4>
         <div className="flex gap-2 flex-wrap">
-          {["all", "filtered", "direct", "directed", "evidence", "similarity"].map((mode) => (
+          {["all", "filtered", "either", "direct", "directed", "evidence", "similarity"].map((mode) => (
             <button
               key={mode}
               className={`px-3 py-1 text-sm border rounded ${
