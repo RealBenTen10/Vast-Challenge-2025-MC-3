@@ -444,7 +444,8 @@ async def read_db_graph():
                 edge_data["source"] = record["source"]
                 edge_data["target"] = record["target"]
                 edge_data["id"] = record["rel_id"]  
-                edge_data["type"] = record["rel_type"]  
+                rel_type = record["rel_type"]
+                edge_data["type"] = rel_type if rel_type else "Event edges" 
                 edges.append(edge_data)
 
             print("Got aggregated Graphdata")

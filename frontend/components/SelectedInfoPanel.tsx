@@ -204,11 +204,11 @@ const SelectedInfoPanel: React.FC<SelectedInfoPanelProps> = ({ selectedInfo }) =
           <h5 className="text-xl font-bold break-all mb-2">{data.id}</h5>
           {console.log(data)}
           {data.type === "Entity" && renderEntity(data)}
-          {data.type === "Event" && data.sub_type !== "Communication" && renderEvent(data)}
+          {data.type === "Event" && data.sub_type && data.sub_type !== "Communication" && renderEvent(data)}
           {data.sub_type === "Communication" && data.is_edge !== "Y" && renderCommunication(data)}
           {data.type === "Relationship" && renderRelationship(data)}
           {data.type !== "Entity" && data.type !== "Event" && data.type !== "Relationship" && renderExtraFields(data)}
-          {data.is_edge === "Y" && renderExtraFields(data)}
+          {(data.is_edge === "Y" || !data.sub_type) && renderExtraFields(data)}
         </div>
       ) : (
         <p className="text-gray-500 italic">Click a node or edge to view details</p>

@@ -8,7 +8,7 @@ interface GraphSummaryProps {
 }
 
 const GraphSummary: React.FC<GraphSummaryProps> = ({ edgeCount, edgeTypeCounts, subtypeCounts, entities }) => {
-  const specialEdgeTypes = ["sent", "received", "RELATED_TO", "evidence_for"];
+  const specialEdgeTypes = ["sent", "received", "RELATED_TO", "evidence_for", "Event edges"];
   const keywordEdgeTypes = Object.entries(edgeTypeCounts)
     .filter(([type]) => !specialEdgeTypes.includes(type));
   const onlySpecialEdges = Object.entries(edgeTypeCounts)
@@ -19,7 +19,7 @@ const GraphSummary: React.FC<GraphSummaryProps> = ({ edgeCount, edgeTypeCounts, 
       <h4 className="text-md font-semibold mb-2">Graph Summary</h4>
       <h5 className="text-sm font-semibold mb-2">Edge Summary</h5>
       <p className="text-sm mb-2"><span className="font-medium">Total Edges:</span> {edgeCount}</p>
-      <p className="text-sm mb-2"><span className="font-medium">Communication and Relationship edges:</span> {keywordEdgeTypes.reduce((sum, [, count]) => sum + (typeof count === 'number' ? count : 0), 0)}</p>
+      <p className="text-sm mb-2"><span className="font-medium">Communication and Relationship edges:</span> </p>
       
       <ul className="list-disc list-inside text-sm space-y-1">
         {keywordEdgeTypes.sort((a, b) => b[1] - a[1]).map(([type, count]) => {
