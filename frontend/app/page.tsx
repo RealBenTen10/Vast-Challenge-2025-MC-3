@@ -425,13 +425,15 @@ export default function Home() {
                     filterReceiver={filterReceiver}
                     setFilterReceiver={setFilterReceiver}
                     filterContent={filterContent}
-                    timestampFilterStart={timestampFilterStart}
-                    timestampFilterEnd={timestampFilterEnd}
                     visibleEntities={visibleEntities}
                     communicationEventsAfterTimeFilter={communicationEventsAfterTimeFilter}
                     filterModeMessages={filterModeMessages}
                     setFilterModeMessages={setFilterModeMessages}
                     selectedEventId={selectedEventId}
+                    timestampFilterStart={timestampFilterStart}
+                    timestampFilterEnd={timestampFilterEnd}
+                    setTimestampFilterStart={setTimestampFilterStart}
+                    setTimestampFilterEnd={setTimestampFilterEnd}
                   />
                 )},
                 { show: showTimeBar, key: "timebar", component: (

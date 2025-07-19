@@ -63,13 +63,15 @@ interface CommunicationViewProps {
   filterReceiver: string;
   setFilterReceiver: (id: string) => void;
   filterContent: string;
-  timestampFilterStart: string;
-  timestampFilterEnd: string;
   visibleEntities: { id: string; sub_type?: string }[];
   communicationEventsAfterTimeFilter: string[];
   filterModeMessages: "all" | "filtered" | "either" | "direct" | "directed" | "evidence" | "similarity";
   setFilterModeMessages: (mode: CommunicationViewProps["filterModeMessages"]) => void;
   selectedEventId: string | null;
+  timestampFilterStart: string | null;
+  timestampFilterEnd: string | null;
+  setTimestampFilterStart: (start: string | null) => void;
+  setTimestampFilterEnd: (end: string | null) => void;
 }
 
 export default function CommunicationView({
@@ -78,13 +80,15 @@ export default function CommunicationView({
   filterReceiver,
   setFilterReceiver,
   filterContent,
-  timestampFilterStart,
-  timestampFilterEnd,
   visibleEntities,
   communicationEventsAfterTimeFilter,
   filterModeMessages,
   setFilterModeMessages,
   selectedEventId,
+  timestampFilterStart,
+  timestampFilterEnd,
+  setTimestampFilterStart,
+  setTimestampFilterEnd,
 }: CommunicationViewProps) {
   const [msvData, setMsvData] = useState<MSVItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -520,7 +524,18 @@ export default function CommunicationView({
                   key={item.event_id}
                   className="border-b hover:bg-gray-50 cursor-pointer"
                 >
-                  <td className="p-2">{item.timestamp}</td>
+                  <td
+                    className="p-2 text-gray-800 hover:underline cursor-pointer"
+                    onClick={() => {
+                      if (!item.timestamp) return;
+                      setTimestampFilterStart(item.timestamp);
+                      if (timestampFilterEnd && new Date(timestampFilterEnd) < new Date(item.timestamp)) {
+                        setTimestampFilterEnd(null);
+                      }
+                    }}
+                  >
+                    {item.timestamp}
+                  </td>
                   <td
                     className="p-2 text-blue-600 hover:underline cursor-pointer"
                     onClick={() => setFilterSender(item.source)}
