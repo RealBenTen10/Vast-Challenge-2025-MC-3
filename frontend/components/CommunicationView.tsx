@@ -259,7 +259,7 @@ export default function CommunicationView({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <h4 className="text-lg font-semibold">{filteredData.length} Messages</h4>
         <div className="flex gap-2 flex-wrap">
-          {["all", "filtered", "either", "direct", "directed", "evidence", "similarity"].map((mode) => (
+          {["all", "either", "filtered", "direct", "directed", "evidence", "similarity"].map((mode) => (
             <button
               key={mode}
               className={`px-3 py-1 text-sm border rounded ${
@@ -268,8 +268,8 @@ export default function CommunicationView({
               onClick={() => setFilterModeMessages(mode as CommunicationViewProps["filterModeMessages"])}
             >
               {mode === "all" && "All"}
-              {mode === "filtered" && "Sender➡️ or Receiver⬅️"}
               {mode === "either" && "Sender↔️ or Receiver↔️"}
+              {mode === "filtered" && "Sender➡️ or Receiver⬅️"}
               {mode === "direct" && "Sender ↔️ Receiver"}
               {mode === "directed" && "Sender ➡️ Receiver"}
               {mode === "evidence" && "Evidence for Events"}
