@@ -96,8 +96,8 @@ export default function CommunicationView({
   const [previousQueryInput, setPreviousQueryInput] = useState<string>(""); 
   const [similarityThreshold, setSimilarityThreshold] = useState<number>(0.7)
   const [prevSimilarityThreshold, setPrevSimilarityThreshold] = useState<number>(0.7)
-  const [topK, setTopK] = useState<number>(50);
-  const [prevTopK, setPrevTopK] = useState<number>(50);
+  const [topK, setTopK] = useState<number>(15);
+  const [prevTopK, setPrevTopK] = useState<number>(15);
   const [byTime, setByTime] = useState(false);
   const [prevByTime, setPrevByTime] = useState(false); 
   const [infoText, setInfoText] = useState<EventInfo[]>([]);
@@ -335,7 +335,7 @@ export default function CommunicationView({
 
           {queryInput !== "" && (
             <span className="text-sm text-gray-600">
-              Displaying top {prevTopK} similar messages with threshold {prevSimilarityThreshold.toFixed(3)} ordered by{" "}
+              Displaying top {prevTopK} similar messages ordered by{" "}
               <strong>{prevByTime ? "Timestamp" : "Similarity Score"}</strong> for: <strong>{queryInput}</strong>
             </span>
           )}
