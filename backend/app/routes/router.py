@@ -857,43 +857,44 @@ async def similarity_search(
     top_k: int = Query(50, description="Number of top similar messages to return"),
     score_threshold: float = Query(0.7, description="Minimum similarity score to consider a match"),
     order_by_time: bool = Query(False)
-    ):
-    if query == "":
-        return {"success": True, "data": []} 
-    try:
-        
-        if not query.strip():
-            return {"success": False, "error": "Empty query"}
+):
+    if not query.strip():
+        return {"success": False, "error": "Empty query"}
 
-        # Encode the query
+    try:
         encoded_query = embed_model.encode(
             "Represent those Keywords for searching relevant passages: " + query,
             convert_to_tensor=True
         )
-
-        # Compute cosine similarity
         scores = util.cos_sim(encoded_query, message_embs)[0]
         top_indices = torch.topk(scores, k=top_k).indices.cpu().numpy()
 
         filtered_indices = [i for i in top_indices if scores[i].item() >= score_threshold]
 
-        if not filtered_indices:
+        # Fallback content match if fewer than 10
+        if len(filtered_indices) < top_k:
+            content_matches = communication_events[
+                communication_events["content"].str.contains(query, case=False, na=False)
+            ]
+            additional_needed = top_k - len(filtered_indices)
+            additional_matches = content_matches[~content_matches.index.isin(filtered_indices)].head(additional_needed)
+            filtered_df = pd.concat([
+                communication_events.iloc[filtered_indices],
+                additional_matches
+            ]).drop_duplicates(subset=["id"])
+        else:
+            filtered_df = communication_events.iloc[filtered_indices]
+
+        if filtered_df.empty:
             return {"success": True, "data": []}
 
-        # Extract matching rows
-        results_df = communication_events.iloc[top_indices].copy()
-        results_df["similarity"] = scores[top_indices].cpu().numpy()
-        results_df.sort_values(by="similarity", ascending=False, inplace=True)
+        event_ids = filtered_df["id"].tolist()
 
-        event_ids = results_df["id"].tolist()
-
-        # Query Neo4j to get sender and receiver info
+        # Query Neo4j for communication metadata
         driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
         result = []
-
         try:
             with driver.session() as session:
-                
                 cypher_query = """
                 UNWIND $ids AS eid
                 MATCH (source:Entity)-[:sent]->(comm:Event {id: eid})-[:received]->(target:Entity)
@@ -901,11 +902,9 @@ async def similarity_search(
                        source.id AS source, target.id AS target
                 ORDER BY comm.timestamp
                 """
-                
                 records = session.run(cypher_query, ids=event_ids)
                 if order_by_time:
                     for row in records:
-                        event_id = row["event_id"]
                         result.append({
                             "event_id": row["event_id"],
                             "timestamp": row["timestamp"],
@@ -915,19 +914,17 @@ async def similarity_search(
                             "sub_type": "Communication"
                         })
                 else:
-                    result_map = {record["event_id"]: record for record in records}
-                    for _, row in results_df.iterrows():
-                        event_id = row["id"]
-                        record = result_map.get(event_id, {})
+                    result_map = {r["event_id"]: r for r in records}
+                    for _, row in filtered_df.iterrows():
+                        record = result_map.get(row["id"], {})
                         result.append({
-                            "event_id": event_id,
+                            "event_id": row["id"],
                             "timestamp": record.get("timestamp", ""),
                             "source": record.get("source", ""),
                             "target": record.get("target", ""),
-                            "content": record.get("content", ""),
+                            "content": record.get("content", row["content"]),
                             "sub_type": row.get("sub_type", "Communication")
                         })
-
         finally:
             driver.close()
 
@@ -936,6 +933,7 @@ async def similarity_search(
     except Exception as e:
         print("Error in similarity search:", str(e))
         return {"success": False, "error": str(e)}
+
 
 ###  
 # Load all events for similarity search using contentFilter
@@ -949,7 +947,7 @@ event_embeddings = embed_model.encode(event_texts, convert_to_tensor=True)
 async def similarity_search_events(
     query: str = Query(...),
     score_threshold: float = Query(0.5, description="Minimum similarity score to consider a match")
-    ):
+):
     print(f"Starting similarity search for events with query: {query} and threshold: {score_threshold}")
     try:
         encoded_query = embed_model.encode(
@@ -959,10 +957,26 @@ async def similarity_search_events(
 
         scores = util.cos_sim(encoded_query, event_embeddings)[0]
         top_indices = (scores > score_threshold).nonzero().flatten().cpu().numpy()
+        matched_df = Events.iloc[top_indices].copy()
+        matched_ids = matched_df["id"].tolist()
+        # Count how many of the matched results are communication events
+        comm_matches = matched_df[matched_df["sub_type"] == "Communication"]
+        num_comm_matches = len(comm_matches)
 
-        matched_ids = Events.iloc[top_indices]["id"].tolist()
-        print(f"Found {len(matched_ids)} matching event IDs with scores above {score_threshold}")
+        # Fallback if fewer than 10
+        if num_comm_matches < 15:
+            print("Getting direct matches")
+            content_matches = Events[
+                communication_events["content"].str.contains(query, case=False, na=False)
+            ]
+            additional_needed = 20 - num_comm_matches
+            additional_matches = content_matches[~content_matches["id"].isin(matched_ids)].head(additional_needed)
+            additional_ids = additional_matches["id"].tolist()
+            matched_ids = list(dict.fromkeys(matched_ids + additional_ids))  # de-duplicate while preserving order
+
+        print(f"Returning {len(matched_ids)} matched event IDs")
         return {"success": True, "event_ids": matched_ids}
+
     except Exception as e:
         print("Error in similarity search for events:", str(e))
         return {"success": False, "error": str(e)}
