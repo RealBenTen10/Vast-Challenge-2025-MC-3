@@ -112,7 +112,7 @@ export default function EventsView({
                 const targets: string[] = entities.targets ?? event.targets ?? [];
                 console.log("Sources", sources)
 
-                // Format for display (e.g., comma-separated, or joined with "→")
+                // Format for display 
                 const sourceDisplay = sources.length > 0 ? sources.join(", ") : "–";
                 const targetDisplay = targets.length > 0 ? targets.join(", ") : "–";
 

@@ -195,7 +195,7 @@ export default function CommunicationView({
         const res = await fetch(`/api/massive-sequence-view?${params.toString()}`);
         const text = await res.text();
         if (!text) throw new Error("Empty response from server");
-          // test
+          
         const data = JSON.parse(text);
         if (data.success) {
           allResults.push(...data.data);

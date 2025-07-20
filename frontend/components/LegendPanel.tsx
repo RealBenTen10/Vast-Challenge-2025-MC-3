@@ -47,16 +47,16 @@ const EVENT_COLOR_MAP: Record<string, string> = {
   };
 
     const EventMap: Record<string, string> = {
-  Monitoring: "🔍",        // radar or surveillance
-  Assessment: "📋",        // clipboard representing evaluations or reports
-  VesselMovement: "🚢",    // ship representing vessel motion
-  Enforcement: "👮",       // police officer for law enforcement
-  TourActivity: "📸",      // compass for tour-related movements or exploration
-  Collaborate: "🤝",       // handshake for cooperation or collaboration
-  TransponderPing: "📡",   // signal bars for electronic signal transmission
-  HarborReport: "⚓",      // anchor representing harbor or docking activity
-  Criticize: "🗯️",         // speech balloon for comments or criticism
-  Communication: "📨"     // envelope for messages or communication
+  Monitoring: "🔍",       
+  Assessment: "📋",      
+  VesselMovement: "🚢",  
+  Enforcement: "👮",     
+  TourActivity: "📸",    
+  Collaborate: "🤝",      
+  TransponderPing: "📡",   
+  HarborReport: "⚓",     
+  Criticize: "🗯️",       
+  Communication: "📨"   
 };
 
 const getNodeColor = (type: string): string => {

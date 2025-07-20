@@ -5,7 +5,6 @@ import * as d3 from "d3";
 import { GraphData, Node, Link } from "@/components/types";
 import LegendPanel from "./LegendPanel"; 
 
-// Extend Node type to include optional x, y, fx, fy for D3 simulation
 interface GraphNode extends d3.SimulationNodeDatum {
   id: string;
   type: string;
@@ -170,16 +169,16 @@ const GraphView: React.FC<Props> = ({
   };
 
   const EventMap: Record<string, string> = {
-  Monitoring: "🔍",        // radar or surveillance
-  Assessment: "📋",        // clipboard representing evaluations or reports
-  VesselMovement: "🚢",    // ship representing vessel motion
-  Enforcement: "👮",       // police officer for law enforcement
-  TourActivity: "📸",      // compass for tour-related movements or exploration
-  Collaborate: "🤝",       // handshake for cooperation or collaboration
-  TransponderPing: "📡",   // signal bars for electronic signal transmission
-  HarborReport: "⚓",      // anchor representing harbor or docking activity
-  Criticize: "🗯️",         // speech balloon for comments or criticism
-  Communication: "📨"     // envelope for messages or communication
+  Monitoring: "🔍",        
+  Assessment: "📋",        
+  VesselMovement: "🚢",   
+  Enforcement: "👮",      
+  TourActivity: "📸",    
+  Collaborate: "🤝",     
+  TransponderPing: "📡", 
+  HarborReport: "⚓",      
+  Criticize: "🗯️",        
+  Communication: "📨"    
 };
 
 
@@ -549,7 +548,7 @@ const GraphView: React.FC<Props> = ({
           })
         );
 
-        // Additional logic: ensure all entities connected to visible Events are added
+        // ensure all entities connected to visible Events are added
         graphData.links.forEach(link => {
           const srcId = typeof link.source === "string" ? link.source : link.source.id;
           const tgtId = typeof link.target === "string" ? link.target : link.target.id;
@@ -689,7 +688,7 @@ const GraphView: React.FC<Props> = ({
             level++;
           }
         }
-        // 🔽 Add non-communication events connected to two visible entities
+        // Add non-communication events connected to two visible entities
         commGraphData.nodes.forEach(node => {
           if (
             node.type === "Event" &&
@@ -776,7 +775,7 @@ const GraphView: React.FC<Props> = ({
           })
         );
 
-        // Additional logic: ensure all entities connected to visible Events are added
+        // ensure all entities connected to visible Events are added
         commGraphData.links.forEach(link => {
           const srcId = typeof link.source === "string" ? link.source : link.source.id;
           const tgtId = typeof link.target === "string" ? link.target : link.target.id;
@@ -1009,14 +1008,12 @@ const GraphView: React.FC<Props> = ({
               }
           })
           .attr("stroke-dasharray", d => {
-              // Example: Apply dashed lines based on a condition, e.g., link label
+              // Apply dashed lines 
               if (d.sub_type
-              ) { // Or any other condition
-                  return "0"; // 5 units on, 5 units off
+              ) { 
+                  return "0"; 
               }
-              // You could also base it on evidence_count, or a new property in your GraphLink
-              // if (d.isDashed) return "5 5";
-              return "5,2"; // No dash (solid line) for other links
+              return "5,2"; 
           })
           .attr("fill", "none")
           .attr("d", arcPath)
@@ -1106,7 +1103,7 @@ const GraphView: React.FC<Props> = ({
 
           group.append("text")
           .attr("text-anchor", "middle")
-          .attr("dy", ".35em") // still applied to <text>, individual <tspan> values matter more
+          .attr("dy", ".35em") 
           .attr("fill", "black")
           .each(function (d) {
             const text = d3.select(this);
@@ -1156,9 +1153,8 @@ const GraphView: React.FC<Props> = ({
             
           return group;
         },
-  // Mouse interaction handlers
+  // animation logic
   update => {
-  // === Interaction handlers ===
   update
     .on("mouseover", (event, d) =>
       d3.select(event.currentTarget).select("circle").attr("stroke", "purple").attr("stroke-width", 4)
@@ -1205,7 +1201,6 @@ const GraphView: React.FC<Props> = ({
       
     });
 
-    // --- Data Transformation ---
     // Create a new array that has two entries for each link: one for the source-side
     // polygon and one for the target-side.
     const polygonData = linksToRender.flatMap((link) => [
@@ -1215,7 +1210,6 @@ const GraphView: React.FC<Props> = ({
       { id: `${link.source}-${link.target}-target`, linkDetails: link, ratio: 0.8, isTarget: true },
     ]);
 
-    // === Precompute active events and links for use in both branches ===
     const animationWindowEnd = currentAnimationTime + stepMS;
 
     const isActiveEvent = (d) => {
@@ -1299,7 +1293,6 @@ const GraphView: React.FC<Props> = ({
       if (tgtNode?.type === "Entity") connectedEntities.add(tgt);
     }
   });
-  // === Visuals for animated or normal state ===
     if (isPlaying || isInAnimation) {
       update.select("circle")
         .attr("fill", d =>
@@ -1311,7 +1304,6 @@ const GraphView: React.FC<Props> = ({
                   : EVENT_COLOR_MAP[d.sub_type ?? "Unknown"] || "#ff7f0e")
               : "#999"
         )
-        //.attr("stroke", d => (isActiveEvent(d) ? "red" : "none")) // Do we still need this?
         .attr("stroke-width", d => (isActiveEvent(d) ? 3 : 0))
         .attr("opacity", d => {
           if (d.type === "Event") {
@@ -1352,7 +1344,6 @@ const GraphView: React.FC<Props> = ({
 
     }
 
-      // --- D3 Rendering ---
       const g = d3.select(svgRef.current).select("g");
 
       // Bind the newly created polygonData
@@ -1413,7 +1404,6 @@ const GraphView: React.FC<Props> = ({
           // Calculate the base angle of the curve at that point
           let angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x) * (180 / Math.PI);
 
-          // --- Rotation Logic ---
           // If the link is not directed and this is the target-side polygon, rotate it 180 degrees.
           if (d.linkDetails.directed === false && d.isTarget) {
             angle += 180;
@@ -1424,7 +1414,6 @@ const GraphView: React.FC<Props> = ({
         });
 
       
-        // === Labels ===
         update.select("text")
           .each(function (d) {
             const text = d3.select(this);
