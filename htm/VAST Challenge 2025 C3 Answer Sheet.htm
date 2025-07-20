@@ -1568,9 +1568,8 @@ mso-bidi-theme-font:minor-latin'><o:p>&nbsp;</o:p></span></h3>
 mso-fareast-font-family:"Times New Roman";mso-bidi-font-family:Calibri;
 mso-bidi-theme-font:minor-latin'>Team Members:<o:p></o:p></span></h3>
 
+<p>Benedict da Silva Ara&uacute;jo Finsterwalder, University of Konstanz, benedict.da-silva-ara&uacute;jo-finsterwalder@uni-konstanz.de PRIMARY<br>Pascal Le Hong, University of Konstanz, pascal.le-hong@uni-konstanz.de</p>
 
-Benedict da Silva Araujo Finsterwalder, University of Konstanz, benedict.da-silva-araujo-finsterwalder@uni-konstanz.de PRIMARY
-Pascal Le Hong, University of Konstanz, pascal.le-hong@uni-konstanz.de
 
 <p class=MsoNormal><b style='mso-bidi-font-weight:normal'><span
 style='font-size:11.0pt;font-family:"Source Sans Pro",sans-serif;mso-bidi-font-family:
@@ -1753,10 +1752,6 @@ over them.</p>
 
 <p class=MsoNormal style='margin-left:.25in;background:white'><span class=eop><o:p>&nbsp;</o:p></span></p>
 
-
-If we have a look at the weekly Communications we can already see some patterns. 
-The Bar Plot shows the Communication activity over the course of two weeks and indicates the patterns and the shift.
-
 <style>
   .video-container {
     display: flex;
@@ -1829,8 +1824,31 @@ The Bar Plot shows the Communication activity over the course of two weeks and i
     width: 1200px; 
     height: auto;
   }
+
+  .answer-block {
+  margin-top: 15px;
+  margin-bottom: 30px;
+  padding: 16px 20px;
+  border-left: 4px solid #4a90e2;
+  background-color: #fefefe;
+  box-shadow: 0px 2px 5px rgba(0,0,0,0.04);
+  border-radius: 8px;
+}
+
+.answer-block h3 {
+  margin-top: 0;
+  font-size: 18px;
+  color: #2e6da4;
+  margin-bottom: 12px;
+}
+
 </style>
 
+
+
+<h4>Answer: 1 a)</h4>
+<p>If we have a look at the weekly Communications we can already see some patterns. 
+The Bar Plot shows the Communication activity over the course of two weeks and indicates the patterns and the shift.</p>
 
 <div class="image-container">
   <div class="image-item">
@@ -1849,11 +1867,9 @@ The Bar Plot shows the Communication activity over the course of two weeks and i
   <div class="image-title">Overall Communication Activity (10.01.2040 till 10.14.2040)</div>
 </div>
 
-
-By comparing the two videos (they display the Communications exactly one week apart)
-we can see how the patterns change over the course of two weeks.
-
-
+<h4>Answer: 1 b)</h4>
+<p>By comparing the two videos (they display the Communications exactly one week apart)
+we can see how the patterns change over the course of two weeks.</p>
 
 <div class="video-container">
   <div class="video-item">
@@ -1867,22 +1883,22 @@ we can see how the patterns change over the course of two weeks.
   </div>
 </div>
 
-To find out who has influence over an Entity we can use our Sender and Receiver Filter to look at two Entities and then use the 
-Animation function to show the influence. 
+<h4>Answer: 1 c)</h4>
+<p>To find out who has influence over an Entity we can use our Sender and Receiver Filter to look at two Entities and then use the 
+Animation function to show the influence.</p>
 
 <div class="single-image">
   <img src="Influence Evidence/Influence Nadia -> Liam.png" alt="Evidence of influence from Nadia Conti over Liam" />
   <div class="image-title">Evidence of influence from Nadia Conti over Liam Thorne</div>
 </div>
 
-
 <div class="single-video">
   <video autoplay loop muted playsinline controls>
     <source src="Influence Evidence/Reef Guardian - Green Guardians.mp4" type="video/mp4">
-    Your browser does not support the video tag.
   </video>
   <div class="video-title">(Animation) Evidence of influence from Green Guardians over Reef Guardians</div>
 </div>
+
 
 
 <p class=MsoNormal style='mso-margin-top-alt:auto;margin-left:.25in;background:
@@ -2000,7 +2016,9 @@ pseudonyms?</p>
 <p class=MsoListParagraphCxSpLast style='margin-left:.75in;mso-add-space:auto'><o:p>&nbsp;</o:p></p>
 
 
-<p>Here are some of the Pseudonyms we were able to uncover:</p>
+<h4>Answer: 3 a)</h4>
+
+<p>Here are some of the pseudonyms we were able to uncover:</p>
 <ul>
   <li><strong>Elise</strong> is using the pseudonyms <strong>Mrs. Money</strong> and <strong>The Accountant</strong></li>
   <li><strong>Liam Thorne</strong> is using the pseudonym <strong>The Middleman</strong></li>
@@ -2013,35 +2031,63 @@ pseudonyms?</p>
   <li><strong>Serenity</strong> is using the pseudonym <strong>Remora</strong></li>
   <li><strong>Nadia Conti</strong> is using the pseudonym <strong>Boss</strong></li>
 </ul>
+<h4>Answer: 3 b)</h4>
+<p>
+  Our visualizations enable the user to explore the Knowledge Graph using the Node-Link Diagram, Communication View, Bar Plot, Sankey, and Event View. 
+  By focusing on a single entity and using these views together, it becomes possible to detect pseudonyms. Especially by analyzing communication content, which is the most reliable indicator. 
+</p>
 
-Our visualizations enable the user to look through the Knowledge Graph using the Node-Link Diagram, Communication View, 
-Bar Plot, Sankey and Event View. By Focusing on one Entity and using the Views together it is possible to find Pseudonyms by at the end
-looking at the Communication View. Since only the Communication content is 100% correct, the user has to decided whether it is a Pseudonym or not.
-Using the Similarity search it is possible to find Pseudonyms which are not directly visible otherwise (some Entities make sure that either A and B communicate
-or C and D with C being A's Pseudonym and D being B's Pseudonym). The Animation also helps in finding Pseudonyms since the user can sometimes see that after A and B communicated, 
-C and D communicated. One easy example being Sam and Kelly with The Intern and The Lookout as Pseudonyms respectively.
+<p>
+  The Similarity Search allows us to find indirect links between identities. For example, in cases where Entity A talks to B, but then Entity C talks to D in a mirrored structure, 
+  C and D may be pseudonyms for A and B. The animation feature supports this by visually showing that one communication pair often follows another. 
+  A simple example includes Sam and Kelly, who use the pseudonyms <em>The Intern</em> and <em>The Lookout</em>, respectively.
+</p>
 
-It is possible to find Pseudonyms through different means. One possibility is our Similarity Search.
+<p>It is possible to discover pseudonyms using various methods:</p>
+
+<p><strong>1. Using Similarity Search:</strong></p>
 <div class="single-image">
-  <img src="Pseudonym/Evidence Middleman -> Liam and Elise -> Accountant and Mrs. Money -> Elise.png" alt="Evidence of influence from Nadia Conti over Liam" />
-  <div class="image-title">Evidence of Liam using the Pseudonym "Middleman" and Elise using the Pseudonyms "The Accountant" and "Mrs. Money"</div>
+  <img src="Pseudonym/Evidence Middleman -> Liam and Elise -> Accountant and Mrs. Money -> Elise.png" 
+       alt="Evidence of Liam and Elise pseudonyms" />
+  <div class="image-title">
+    Evidence of Liam using the pseudonym "Middleman" and Elise using the pseudonyms "The Accountant" and "Mrs. Money"
+  </div>
 </div>
-Another possibility is to find Pseudonyms through our Communication View directly by looking at the Messages in the correct time order.
+
+<p><strong>2. Using the Communication View (chronological message analysis):</strong></p>
 <div class="single-image">
-  <img src="Pseudonym/Evidence Serenity -> Remora.png" alt="Evidence of influence from Nadia Conti over Liam" />
-  <div class="image-title">Evidence of Serenity using the Pseudonym Remora</div>
+  <img src="Pseudonym/Evidence Serenity -> Remora.png" 
+       alt="Evidence of Serenity using the pseudonym Remora" />
+  <div class="image-title">Evidence of Serenity using the pseudonym "Remora"</div>
 </div>
+
 <div class="single-image">
-  <img src="Pseudonym/Rodriguez - small fry.png" alt="Evidence of influence from Nadia Conti over Liam" />
-  <div class="image-title">Evidence of Rodriguez using the Pseudonym Small Fry</div>
+  <img src="Pseudonym/Rodriguez - small fry.png" 
+       alt="Evidence of Rodriguez using the pseudonym Small Fry" />
+  <div class="image-title">Evidence of Rodriguez using the pseudonym "Small Fry"</div>
 </div>
+
+<p><strong>3. Animation-Based Analysis:</strong></p>
 <div class="single-video">
   <video autoplay loop muted playsinline controls>
     <source src="Pseudonym/Evidence Pseudonyms.mp4" type="video/mp4">
     Your browser does not support the video tag.
   </video>
-  <div class="video-title">Evidence for Sam - Intern, Intern - Middleman (see content of Messages), Mrs. Money- Accountant, Nadia Conti - Boss, Davis - Mako</div>
+  <div class="video-title">
+    Evidence for Sam - Intern, Intern - Middleman (inferred through content), Mrs. Money - Accountant, Nadia Conti - Boss, Davis - Mako
+  </div>
 </div>
+<h4>Answer: 3 c)</h4>
+<p>
+  After identifying these pseudonyms, the meaning of many communications became clearer. 
+  For example, Kelly and Sam often discuss birdwatching or nature-related subjects, which initially seemed irrelevant. 
+  However, knowing they work for "Boss" (Nadia Conti) and report on movements around Nemo Reef, these conversations align with surveillance and reporting behavior. 
+</p>
+
+<p>
+  Each pseudonym discovered enhances the overall understanding of hidden structures and relationships within the communication network. 
+  It reveals not only covert identities but also how control and information flow operate within the Oceanus environment.
+</p>
 
 <p class=MsoNormal style='mso-margin-top-alt:auto'><span style='font-size:11.0pt;
 font-family:"Source Sans Pro",sans-serif;mso-fareast-font-family:"Times New Roman";
@@ -2085,17 +2131,24 @@ style='font-size:11.0pt;font-family:"Source Sans Pro",sans-serif;mso-fareast-fon
 mso-bidi-font-weight:bold'><o:p>&nbsp;</o:p></span></p>
 
 
-Cleppers suspicions are justified. The following Video and Image show a part of Nadia's Communications where she is taking part in illegal activity.
+<h4>Answer: 4</h4>
+
+<p>
+Clepper's suspicions are justified. The following video and image present direct evidence of Nadia Conti engaging in illegal activity. 
+These materials are drawn from her communications and visually confirm her involvement.
+</p>
+
 <div class="single-video">
   <video autoplay loop muted playsinline controls>
     <source src="Nadia/Evidence Nadia Conti Illegal Activity.mp4" type="video/mp4">
     Your browser does not support the video tag.
   </video>
-  <div class="video-title">Evidence of Nadia Conti taking part in illegal Activities</div>
+  <div class="video-title">Evidence of Nadia Conti taking part in illegal activities</div>
 </div>
+
 <div class="single-image">
-  <img src="Nadia/Nadia illegal 3 Nadia - boss.png" alt="Evidence of influence from Nadia Conti over Liam" />
-  <div class="image-title">Evidence of Suspicious Activity (Nadia Conti)</div>
+  <img src="Nadia/Nadia illegal 3 Nadia - boss.png" alt="Evidence of suspicious activity involving Nadia Conti" />
+  <div class="image-title">Evidence of suspicious activity (Nadia Conti identified as 'Boss')</div>
 </div>
 
 
