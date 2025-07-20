@@ -950,29 +950,36 @@ async def similarity_search_events(
 ):
     print(f"Starting similarity search for events with query: {query} and threshold: {score_threshold}")
     try:
+        # Encode the query for semantic search
         encoded_query = embed_model.encode(
             "Represent this question for retrieving supporting passages: " + query,
             convert_to_tensor=True
         )
 
+        # Perform semantic similarity search
         scores = util.cos_sim(encoded_query, event_embeddings)[0]
         top_indices = (scores > score_threshold).nonzero().flatten().cpu().numpy()
         matched_df = Events.iloc[top_indices].copy()
         matched_ids = matched_df["id"].tolist()
+
         # Count how many of the matched results are communication events
         comm_matches = matched_df[matched_df["sub_type"] == "Communication"]
         num_comm_matches = len(comm_matches)
 
-        # Fallback if fewer than 10
-        if num_comm_matches < 15:
-            print("Getting direct matches")
-            content_matches = Events[
+        # Fallback: if fewer than 10 communication events, add direct text matches from communication_events
+        if num_comm_matches < 10:
+            print(f"Found only {num_comm_matches} communication events in similarity search. Adding direct matches.")
+            additional_needed = 20 - num_comm_matches
+
+            direct_matches = communication_events[
                 communication_events["content"].str.contains(query, case=False, na=False)
             ]
-            additional_needed = 20 - num_comm_matches
-            additional_matches = content_matches[~content_matches["id"].isin(matched_ids)].head(additional_needed)
+            additional_matches = direct_matches[
+                ~direct_matches["id"].isin(matched_ids)
+            ].head(additional_needed)
+
             additional_ids = additional_matches["id"].tolist()
-            matched_ids = list(dict.fromkeys(matched_ids + additional_ids))  # de-duplicate while preserving order
+            matched_ids = list(dict.fromkeys(matched_ids + additional_ids))  # preserve order and remove duplicates
 
         print(f"Returning {len(matched_ids)} matched event IDs")
         return {"success": True, "event_ids": matched_ids}
@@ -980,3 +987,4 @@ async def similarity_search_events(
     except Exception as e:
         print("Error in similarity search for events:", str(e))
         return {"success": False, "error": str(e)}
+
