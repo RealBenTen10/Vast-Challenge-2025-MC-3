@@ -12532,7 +12532,7 @@
             "id": "686",
             "type": "sent",
             "is_inferred": false,
-            "source": "Green Guardians",
+            "source": "Paackland Harbor",
             "target": "Event_Communication_439"
         },
         {
@@ -14289,7 +14289,7 @@
             "id": "1155",
             "type": "sent",
             "is_inferred": false,
-            "source": "Reef Guardian",
+            "source": "Paackland Harbor",
             "target": "Event_Communication_614"
         },
         {
@@ -15009,7 +15009,7 @@
             "id": "1309",
             "type": "sent",
             "is_inferred": false,
-            "source": "EcoVigil",
+            "source": "Paackland Harbor",
             "target": "Event_Communication_731"
         },
         {
@@ -21874,7 +21874,7 @@
             "type": "received",
             "is_inferred": false,
             "source": "Event_Communication_439",
-            "target": "Oceanus City Council"
+            "target": "Green Guardians"
         },
         {
             "id": "2805",
@@ -23802,7 +23802,7 @@
             "type": "received",
             "is_inferred": false,
             "source": "Event_Communication_614",
-            "target": "Oceanus City Council"
+            "target": "Reef Guardian"
         },
         {
             "id": "3254",
@@ -25082,7 +25082,7 @@
             "type": "received",
             "is_inferred": false,
             "source": "Event_Communication_731",
-            "target": "Paackland Harbor"
+            "target": "EcoVigil"
         },
         {
             "id": "3544",
