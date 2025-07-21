@@ -185,9 +185,9 @@ const GraphView: React.FC<Props> = ({
   const RELATIONSHIP_COLOR_MAP: Record<string, string> = {
     Suspicious: "#d62728 ",     // red
     Unfriendly: "#d62728",      // red
-    Reports: "#2ca02c",         // green
-    Colleagues: "#2ca02c",      // green
-    Friends: "#2ca02c",         // green
+    Reports: "#17becf",         // cyan
+    Colleagues: "#17becf",      // cyan
+    Friends: "#17becf",         // cyan
     Jurisdiction: "#7f7f7f",    // gray
     AccessPermission: "#7f7f7f",// gray
     Operates: "#9467bd",        // purple

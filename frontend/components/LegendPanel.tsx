@@ -18,7 +18,7 @@ const relationshipGroups: Record<
   },
   Social: {
     label: "Social",
-    color: "#2ca02c", // purple
+    color: "#17becf", // cyan
     types: ["Colleagues", "Friends", "Reports"],
   },
   Institutional: {
