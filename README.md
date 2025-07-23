@@ -2,6 +2,7 @@
 
 ## VAST Challenge MC3
 
+### Planing 
 We decided to work on the Mini-Challenge 3 of the VAST Challenge 2025.
 For this we have to load the data into our neo4j database
 Next we want to reduce the graph to a more compact version without losing any (important) information
@@ -11,8 +12,18 @@ We will somehow include the time variable to look at the time series part of the
 Nadia Conti has to be explored in more detail - is she maybe a part of the conspiracy?
 At the end we should have a tool to analyse given data using visual analytic approach.
 
-## Assignment 1
-The code is up to date and the PDF for exercise 2 is in the GROUP-1 folder: [Exercise 2](./AVA - Group 1 - Exercise 2.pdf)
+### Prototype
+To use our prototype simply install Docker Desktop and NdeoJS (using npm) and clone this repository into Visual Studio Code.
+Ensure that Docker works on youre computer. If you use Windows, download WSL (Linux for Windows).
+
+After setting everything up you can simply
+
+
+
+## Old Read Me file content:
+
+## Assignment 1 (separate task before VAST Challenge
+The code is up to date and the PDF for exercise 2 is in the GROUP-1 folder: [Exercise 2](https://github.com/RealBenTen10/Vast-Challenge-2025-MC-3/edit/main/./AVA - Group 1 - Exercise 2.pdf)
 
 ## Using the template
 This template contains a React frontend, a fastAPI backend, and a Neo4j database. Everything is dockerized, please do not change the overall setup or structure.
