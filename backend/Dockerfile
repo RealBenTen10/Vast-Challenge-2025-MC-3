@@ -15,6 +15,8 @@ COPY entryscript.sh /usr/src/entryscript.sh
 # Install with pip
 RUN pip install --upgrade pip
 RUN pip install -r /tmp/requirements.txt
+RUN pip install sentence_transformers
+RUN pip install networkx
 
 # Install bash since the base image uses sh by default
 RUN apt-get update && apt-get install -y bash

@@ -3,6 +3,8 @@ from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 from typing import Optional, List, Dict, Any
 from neo4j import GraphDatabase
+import networkx as nx
+from networkx.readwrite import json_graph
 import os
 import time
 import pandas as pd
@@ -55,13 +57,65 @@ async def clear_db():
 # It uses a background task to perform the loading operation.
 @router.get("/load-graph-json", response_class=JSONResponse)
 async def load_graph_json(background_tasks: BackgroundTasks):
-    background_tasks.add_task(load_graph_json)
+    background_tasks.add_task(_load_graph_json)
     return {"success": True, "message": "Graph loading started in background."}
+
+# Tried using networkx to load graph data
+async def _load_data():
+    print("Loading graph data from file...")
+    data_path = "MC3_graph.json"
+    schema_path = "MC3_schema.json"
+
+    with open(data_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    with open(schema_path, "r", encoding="utf-8") as f:
+        schema = json.load(f)["schema"]
+
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    print("Connecting to Neo4j database...")
+    try:
+        
+        G = json_graph.node_link_graph(data, directed=True, multigraph=False)
+        print("Still going...")
+        driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+        with driver.session() as session:
+            session.run("MATCH (n) DETACH DELETE n")  # Optionally clear the database
+            print("Database cleared.")
+            # Add Nodes
+            for node_id, attrs in G.nodes(data=True):
+                attrs["id"] = attrs.get("id", node_id)
+                node_type = attrs.get("type", "Unknown")
+                label = node_type  # Use the node type as the label in Neo4j
+
+                props_str = ", ".join(f"{k}: ${k}" for k in attrs)
+                query = f"MERGE (n:{label} {{id: $id}}) SET n += {{{props_str}}}"
+                session.run(query, **attrs)
+            print("Nodes loaded successfully.")
+            # Add Edges
+            for u, v, edge_attrs in G.edges(data=True):
+                edge_type = edge_attrs.get("type", "RELATED_TO")
+                edge_attrs["source"] = u
+                edge_attrs["target"] = v
+
+                props_str = ", ".join(f"{k}: ${k}" for k in edge_attrs if k not in ("source", "target"))
+                query = f"""
+                MATCH (a {{id: $source}}), (b {{id: $target}})
+                MERGE (a)-[r:{edge_type}]->(b)
+                SET r += {{{props_str}}}
+                """
+                session.run(query, **edge_attrs)
+            print("Edges loaded successfully.")
+        print("Graph loaded successfully.")
+        return {"success": True, "message": "Graph loaded into Neo4j successfully."}
+
+    except Exception as e:
+        print("failed to load graph data:", str(e))
+        return {"success": False, "error": str(e)}
 # This function loads graph data from a JSON file into the Neo4j database.
 # It reads the data and schema from the specified JSON files, clears the database,
 # and then creates nodes and edges based on the data.
 # It is called in the background when the /load-graph-json endpoint is accessed.
-async def load_graph_json():
+async def _load_graph_json():
     print("Loading graph data from JSON...")
     data_path = "MC3_graph.json"
     schema_path = "MC3_schema.json"
@@ -72,7 +126,20 @@ async def load_graph_json():
         schema = json.load(f)["schema"]
 
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    evidence_counts = {}
+    for edge in data.get("edges", []):
+        if edge.get("type") == "evidence_for":
+            target_id = edge.get("target")
+            evidence_counts[target_id] = evidence_counts.get(target_id, 0) + 1
 
+    # Apply counts to the nodes data
+    for node in data.get("nodes", []):
+        if node.get("type") == "Event" and node.get("sub_type") != "Communication":
+            node_id = node.get("id")
+            if node_id in evidence_counts:
+                node["count"] = evidence_counts[node_id]
+            else:
+                node["count"] = 0 # Ensure all non-comm events have a count property
     def create_node(tx, node):
         node_type = node.get("type")
         if node_type not in ["Entity", "Event", "Relationship"]:
@@ -103,6 +170,8 @@ async def load_graph_json():
             MERGE (a)-[r:`{rel_type}`]->(b)
             {set_clause}
         """, source_id=source_id, target_id=target_id, **props)
+    
+    
 
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")  # Clear
@@ -119,56 +188,86 @@ async def load_graph_json():
         # Transform Relationships
         session.write_transaction(create_relationship_edges)
         print("Relationships transformed successfully.")
-        # For testing purpose
-        if True:
-            # Transform Communication Events
-            session.write_transaction(create_communication_edges)
-            print("Communication events transformed successfully.")
-            # Prune unnecessary edges
-            session.run("""MATCH (a)-[r]->(b)
-                        WHERE NOT type(r) IN ['COMMUNICATION', 'Colleagues', 'AccessPermission', 'Operates', 'Suspicious', 'Reports', 'Jurisdiction', 'Unfriendly', 'Friends']
-                        WITH a, b, collect(r) AS non_essential, size([(a)-[x]->(b) WHERE type(x) IN ['COMMUNICATION', 'Colleagues', 'AccessPermission', 'Operates', 'Suspicious', 'Reports', 'Jurisdiction', 'Unfriendly', 'Friends'] | x]) AS essential_count
-                        WHERE essential_count > 0
-                        UNWIND non_essential AS r
-                        DELETE r
-                        """)
     print("Graph loaded successfully.")
     return {"success": True, "message": "All nodes and edges loaded."}
-
 
 
 def create_relationship_edges(tx):
     # Get all Relationship nodes
     relationships = tx.run("MATCH (r:Relationship) RETURN r").data()
 
+    # Track edge counts between each entity pair to assign a unique "number"
+    edge_counter = {}
+
     for record in relationships:
         r = record['r']
         r_id = r['id']
         sub_type = r.get('sub_type', 'RELATIONSHIP')
-        props = dict(r)
+        base_props = dict(r)
 
-        # Find all connected Entities
+        # Get all connected Entities
         entities = tx.run("""
             MATCH (e:Entity)-[]-(r:Relationship {id: $r_id})
             RETURN e.id AS entity_id
         """, r_id=r_id).data()
-
         entity_ids = [e['entity_id'] for e in entities]
 
-        # Create edges between all pairs of connected Entities
+        # Aggregate evidence_for info from Communication events
+        evidence = tx.run("""
+            MATCH (comm:Event {sub_type: 'Communication'})-[:evidence_for]->(r:Relationship {id: $r_id})
+            RETURN collect(comm.content) AS contents, 
+                   count(comm) AS count, 
+                   collect(comm.id) AS comm_ids
+        """, r_id=r_id).single()
+
+        if evidence:
+            base_props["evidence_count"] = evidence["count"]
+            base_props["evidence_contents"] = evidence["contents"]
+            base_props["CommIDs"] = evidence["comm_ids"]
+        else:
+            base_props["evidence_count"] = 0
+            base_props["evidence_contents"] = []
+            base_props["CommIDs"] = []
+
+        # Find source and target based on edge direction
+        source_entities = tx.run("""
+            MATCH (e:Entity)-[]->(r:Relationship {id: $r_id})
+            RETURN collect(DISTINCT e.id) AS sources
+        """, r_id=r_id).single()["sources"]
+
+        target_entities = tx.run("""
+            MATCH (r:Relationship {id: $r_id})-[]->(e:Entity)
+            RETURN collect(DISTINCT e.id) AS targets
+        """, r_id=r_id).single()["targets"]
+
+        base_props["source"] = source_entities
+        base_props["target"] = target_entities
+        base_props["directed"] = len(source_entities) == 1 and len(target_entities) == 1
+
+        # Create edges between all unique pairs of entities
         for i in range(len(entity_ids)):
             for j in range(i + 1, len(entity_ids)):
                 source = entity_ids[i]
                 target = entity_ids[j]
+                key = tuple(sorted((source, target)))
+
+                # Clone base_props so numbering is not shared across other pairs
+                props = base_props.copy()
+                edge_counter[key] = edge_counter.get(key, 0) + 1
+                props["number"] = edge_counter[key]
 
                 tx.run(f"""
                     MATCH (a:Entity {{id: $source}}), (b:Entity {{id: $target}})
                     MERGE (a)-[rel:`{sub_type}`]->(b)
                     SET rel += $props
                 """, source=source, target=target, props=props)
-
-        # Delete the Relationship node
+        
+        
+        # Delete the original Relationship node
         tx.run("MATCH (r:Relationship {id: $r_id}) DETACH DELETE r", r_id=r_id)
+
+
+
 
 
 def create_communication_edges(tx):
@@ -243,8 +342,8 @@ def create_communication_edges(tx):
 # Read DB graph
 # This endpoint reads the graph data from the Neo4j database.
 # It retrieves nodes and edges, categorizes them into different types, and returns them in a JSON response.
-@router.get("/read-db-graph", response_class=JSONResponse)
-async def read_db_graph():
+@router.get("/read-db-graph-2", response_class=JSONResponse)
+async def read_db_graph_2():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     print("Reading graph data from Neo4j...")
     with driver.session() as session:
@@ -275,87 +374,620 @@ async def read_db_graph():
     print("Graph data read successfully.")
     return {"success": True, "nodes": nodes, "links": links}
 
-# Groups
-@router.get("/group-by", response_class=JSONResponse)
-async def group_by(group_id: str, entity_ids: str):
-    entity_id_list = [eid.strip() for eid in entity_ids.split(",")]
-    updated_links = []
 
+
+
+@router.get("/read-db-graph", response_class=JSONResponse)
+async def read_db_graph():
+    print("Reading graph data from Neo4j (aggregated communications)...")
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
-    with driver.session() as session:
-        # Retrieve nodes tbs
-        nodes_query = "MATCH (n:Entity) WHERE n.id IN $ids RETURN n"
-        result_nodes = session.run(nodes_query, ids=entity_id_list)
-        original_nodes = [record["n"] for record in result_nodes]
-
-        if not original_nodes:
-            return {
-                "success": False,
-                "message": "No matching entities found.",
-                "nodes": [],
-                "links": []
-            }
-
-        group_node = {
-            "id": group_id,
-            "label": group_id,
-            "type": "Entity",
-            "sub_type": "Grouped Entity",
-            "name": group_id,
-            "Entities": f"{', '.join(entity_id_list)}"         
-        }
-
-        # Get all Edges
-        edges_query = """
-            MATCH (a)-[r]->(b)
-            RETURN a.id AS source, b.id AS target, type(r) AS type
-        """
-        result_edges = session.run(edges_query)
-        updated_links = []
-        for record in result_edges:
-            src, tgt, rtype = record["source"], record["target"], record["type"]
+    nodes = []
+    edges = []
+    comm_agg_nodes = []
+    comm_agg_edges = []
+    comm_node_id_map = {}  # (src, tgt) -> agg node id
+    try:
+        with driver.session() as session:
             
-            # Ignore intern Edges
-            if src in entity_id_list and tgt in entity_id_list:
-                continue
-            
-            # Replace old edges
-            new_source = group_id if src in entity_id_list else src
-            new_target = group_id if tgt in entity_id_list else tgt
+            result = session.run("MATCH (n) WHERE NOT (n:Event AND n.sub_type = 'Communication') RETURN n")
+            for record in result:
+                n = record["n"]
+                node_data = dict(n.items())
+                node_data["id"] = n.get("id")
+                nodes.append(node_data)
+                
 
-            # Prevent duplicates
-            if {"source": new_source, "target": new_target, "type": rtype} not in updated_links:
-                updated_links.append({
-                    "source": new_source,
-                    "target": new_target,
-                    "type": rtype
+            comm_result = session.run("""
+                MATCH (sender:Entity)-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity)
+                RETURN sender.id AS source, receiver.id AS target, collect(comm.content) AS contents, collect(comm.id) AS event_ids, count(*) AS count, collect(comm.timestamp) AS timestamps
+            """)
+            for rec in comm_result:
+                agg_id = f"Communication between {rec['source']} and {rec['target']}"
+                comm_agg_nodes.append({
+                    "id": agg_id,
+                    "type": "Event",
+                    "source": rec["source"],
+                    "target": rec["target"],
+                    "count": rec["count"],
+                    "contents": rec["contents"],
+                    "event_ids": rec["event_ids"],
+                    "timestamps": rec["timestamps"],
+                    "sub_type": "Communication"
+                })
+                comm_node_id_map[(rec["source"], rec["target"])] = agg_id
+                comm_agg_edges.append({
+                    "source": rec["source"],
+                    "target": agg_id,
+                    "type": "Event",
+                    "sub_type": "Communication",
+                    "is_edge": "Y"
+                })
+                comm_agg_edges.append({
+                    "source": agg_id,
+                    "target": rec["target"],
+                    "type": "Event",
+                    "sub_type": "Communication",
+                    "is_edge": "Y"
                 })
 
+            result = session.run("""
+                MATCH (a)-[r]->(b)
+                WHERE NOT (type(r) = 'COMMUNICATION' AND a:Entity AND b:Entity)
+                RETURN a.id AS source, b.id AS target, r, r.id AS rel_id, r.type AS rel_type
+            """)
 
-        # Get all non-grouped Entity Nodes
-        remaining_nodes_query = """
-            MATCH (n:Entity)
-            WHERE NOT n.id IN $ids
-            RETURN n.id AS id, n.label AS label, 'Entity' AS type, n.sub_type AS sub_type, properties(n) AS props
-        """
-        result_remaining = session.run(remaining_nodes_query, ids=entity_id_list).data()
-        remaining_nodes = []
-        for n in result_remaining:
-            props = dict(n["props"])
-            props.update({
-                "id": n["id"],
-                "label": n["label"],
-                "type": "Entity",
-                "sub_type": n["sub_type"]
-            })
-            remaining_nodes.append(props)
-        # Saves grouped nodes in a dict
-        grouped_entity_map[group_id] = entity_id_list
+            for record in result:
+                r = record["r"]
+                edge_data = dict(r.items())  # includes all properties
+                edge_data["source"] = record["source"]
+                edge_data["target"] = record["target"]
+                edge_data["id"] = record["rel_id"]  
+                rel_type = record["rel_type"]
+                edge_data["type"] = rel_type if rel_type else "Event edges" 
+                edges.append(edge_data)
 
-    return {
-        "success": True,
-        "message": f"Grouped {entity_id_list} into '{group_id}'",
-        "grouped_entities": grouped_entity_map[group_id],
-        "nodes": remaining_nodes + [group_node],
-        "links": updated_links
-    }
+            print("Got aggregated Graphdata")
+            
+            
+            all_nodes = nodes.copy() + comm_agg_nodes.copy()
+            all_edges = edges.copy() + comm_agg_edges.copy()
+
+            # Origin read
+            nodes = []
+            edges = []
+            results = session.run("MATCH (n) RETURN n")
+            for record in results:
+                n = record["n"]
+                node_data = dict(n.items())
+                node_data["id"] = n.get("id")
+                nodes.append(node_data)
+
+            results = session.run("MATCH (a)-[r]->(b) RETURN a.id AS source, b.id AS target, r")
+            for record in results:
+                r = record["r"]
+                edge_data = dict(r.items())
+                edge_data["source"] = record["source"]
+                edge_data["target"] = record["target"]
+                #edge_data["type"] = r.type if hasattr(r, "type") else r.get("type", "Test")
+                edges.append(edge_data)
+
+    except Exception as e:
+        print(f"Error reading graph data: {str(e)}")
+        return {"success": False, "error": str(e)}
+    finally:
+        driver.close()
+    print("Fetched all data")
+    return {"success": True, "nodes": nodes, "links": edges, "comm_nodes": all_nodes, "comm_links": all_edges}
+
+@router.get("/evidence-for-event", response_class=JSONResponse)
+async def evidence_for_event(event_id: str = Query(..., description="ID of the selected event")):
+    """
+    Given a selected event (e.g., 'Event_Monitoring_0'), return detailed information for each
+    communication event that points to it via [:evidence_for] edges, as well as full metadata
+    for the target event and its connected entity source/target nodes.
+    """
+    print("Getting evidence for event:", event_id)
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    results = []
+    info = {}
+
+    try:
+        with driver.session() as session:
+            # get evidence communication events
+            evidence_query = """
+                MATCH (sender:Entity)-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity),
+                      (comm)-[:evidence_for]->(e:Event {id: $event_id})
+                RETURN comm, sender.id AS source, receiver.id AS target
+                ORDER BY comm.timestamp
+            """
+            evidence_records = session.run(evidence_query, event_id=event_id)
+
+            print("Processing communication evidence...")
+            for record in evidence_records:
+                comm = record["comm"]
+                results.append({
+                    "event_id": comm.id,
+                    "timestamp": comm.get("timestamp", ""),
+                    "source": record.get("source", "–"),
+                    "target": record.get("target", "–"),
+                    "content": comm.get("content", ""),
+                    "sub_type": comm.get("sub_type", "")
+                })
+
+            # get selected event data and its source and target
+            info_query = """
+                MATCH (e:Event {id: $event_id})
+                OPTIONAL MATCH (source:Entity)-[:RELATED_TO]->(e)
+                OPTIONAL MATCH (e)-[:RELATED_TO]->(target:Entity)
+                RETURN e, collect(DISTINCT source) AS sources, collect(DISTINCT target) AS targets
+            """
+            info_record = session.run(info_query, event_id=event_id).single()
+            if info_record:
+                event_node = info_record["e"]
+                source_entities = info_record["sources"]
+                target_entities = info_record["targets"]
+
+                info["event"] = dict(event_node.items())
+                info["sources"] = [dict(entity.items()) for entity in source_entities if entity]
+                info["targets"] = [dict(entity.items()) for entity in target_entities if entity]
+            print("Got evidence and info")
+
+    except Exception as e:
+        print(f"Error in evidence_for_event: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+    finally:
+        driver.close()
+    print("Returned evidence")
+    return {"success": True, "data": results, "info": info}
+
+
+
+@router.get("/get-events-by-date", response_class=JSONResponse)
+async def get_events_by_date(date: str):
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+
+    cypher = """
+    MATCH (e:Event)
+    WHERE date(e.timestamp) = date($date)
+    OPTIONAL MATCH (e)-[r]-(n)
+    RETURN e, r, n
+    """
+    result_nodes = []
+    result_links = []
+
+    with driver.session() as session:
+        res = session.run(cypher, date=date)
+        for record in res:
+            e = record["e"]
+            n = record.get("n")
+            r = record.get("r")
+            result_nodes.append(dict(e))
+            if n:
+                result_nodes.append(dict(n))
+            if r:
+                result_links.append({
+                    "source": r.start_node["id"],
+                    "target": r.end_node["id"],
+                    "type": r.type,
+                    **dict(r)
+                })
+    return {"success": True, "nodes": result_nodes, "links": result_links}
+
+@router.get("/filter-by-date", response_class=JSONResponse)
+async def filter_by_date(date: str = Query(..., description="YYYY-MM-DD format")):
+    """
+    Filter graph based on Event timestamp (date). Returns matching Events and their 1-hop neighbors.
+    """
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    nodes = []
+    edges = []
+
+    try:
+        with driver.session() as session:
+            query = """
+            MATCH (e:Event)
+            WHERE substring(e.timestamp, 0, 10) = $date
+            OPTIONAL MATCH (e)-[r]-(m)
+            RETURN DISTINCT e, r, m
+            """
+            result = session.run(query, date=date)
+
+            node_map = {}
+            edge_list = []
+
+            for record in result:
+                e_node = record["e"]
+                m_node = record.get("m")
+                r = record.get("r")
+
+                # Add Event node
+                if e_node and e_node.id not in node_map:
+                    node_map[e_node.id] = e_node
+                # Add neighbor node
+                if m_node and m_node.id not in node_map:
+                    node_map[m_node.id] = m_node
+                # Add relationship
+                if r:
+                    edge_list.append({
+                        "source": r.start_node.id,
+                        "target": r.end_node.id,
+                        "type": r.type,
+                        **r._properties
+                    })
+
+            nodes = [dict(n._properties, id=n.id) for n in node_map.values()]
+            edges = edge_list
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        driver.close()
+
+    return {"success": True, "nodes": nodes, "links": edges}
+
+@router.get("/sankey-communication-flows", response_class=JSONResponse)
+async def sankey_communication_flows(
+    sender: Optional[str] = Query(None, description="Sender Entity ID"),
+    receiver: Optional[str] = Query(None, description="Receiver Entity ID"),
+    start_date: Optional[str] = Query(None, description="Start of timestamp filter (e.g., '2040-10-01 09:00:00')"),
+    end_date: Optional[str] = Query(None, description="End of timestamp filter (e.g., '2040-10-01 11:00:00')")
+):
+    """
+    Returns Sankey data showing how many communications were sent from one entity to another,
+    optionally filtered by sender, receiver, and timestamp range.
+    """
+    start_date = start_date.replace("T", " ") if start_date else None
+    end_date = end_date.replace("T", " ") if end_date else None
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    try:
+        with driver.session() as session:
+            cypher_parts = [
+                "MATCH (sender:Entity)-[:sent]->(comm:Event {sub_type: 'Communication'})-[:received]->(receiver:Entity)"
+            ]
+
+            where_clauses = []
+
+            if sender:
+                where_clauses.append("sender.id = $sender")
+            if receiver:
+                where_clauses.append("receiver.id = $receiver")
+            if start_date:
+                where_clauses.append("comm.timestamp >= $start_date")
+            if end_date:
+                where_clauses.append("comm.timestamp <= $end_date")
+            where_clauses.append("sender.id <> receiver.id")  
+
+            if where_clauses:
+                cypher_parts.append("WHERE " + " AND ".join(where_clauses))
+
+            cypher_parts.append("""
+                RETURN sender.id AS source, receiver.id AS target, count(*) AS count
+            """)
+
+            query = "\n".join(cypher_parts)
+            result = session.run(query, sender=sender, receiver=receiver, start_date=start_date, end_date=end_date)
+
+            sankey_data = [
+                {
+                    "source": record["source"],
+                    "target": record["target"],
+                    "value": record["count"]
+                }
+                for record in result
+            ]
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        driver.close()
+
+    if not sankey_data:
+        return {"success": False, "message": "No communication flows found for the given parameters."}
+
+    return {"success": True, "links": sankey_data}
+
+
+@router.get("/filter-by-content", response_class=JSONResponse)
+async def filter_by_content(query: str = Query(..., description="Search string for content field")):
+    """
+    Filter graph for communication events by content substring match. Returns matching communication events and their 1-hop neighbors.
+    """
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    nodes = []
+    edges = []
+
+    print(f"Filtering communication events by content: {query}")
+
+    try:
+        with driver.session() as session:
+            neo_query = """
+            MATCH (e:Event {sub_type: 'Communication'})
+            WHERE toLower(e.content) CONTAINS toLower($query)
+            OPTIONAL MATCH (e)-[r]-(n)
+            RETURN DISTINCT e, r, n
+            """
+            result = session.run(neo_query, query=query)
+
+            node_map = {}
+            edge_list = []
+
+            for record in result:
+                e_node = record["e"]
+                n_node = record.get("n")
+                r = record.get("r")
+
+                if e_node and e_node.id not in node_map:
+                    node_map[e_node.id] = e_node
+                if n_node and n_node.id not in node_map:
+                    node_map[n_node.id] = n_node
+                if r:
+                    edge_list.append({
+                        "source": r.start_node.id,
+                        "target": r.end_node.id,
+                        "type": r.type,
+                        **r._properties
+                    })
+
+            nodes = [dict(n._properties, id=n.id) for n in node_map.values()]
+            edges = edge_list
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        driver.close()
+
+    return {"success": True, "nodes": nodes, "links": edges}
+
+@router.get("/massive-sequence-view", response_class=JSONResponse)
+async def massive_sequence_view(
+    event_ids: List[str] = Query(..., description="List of communication event node IDs")
+):
+    """
+    Given a list of communication Event node IDs, return their sender and receiver entity IDs.
+    """
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    results = []
+    # Since the ordering of the events is not correct anymore we have to re-order
+    # Since we can't re-order using the Cypher, we just use the inherent ordering of the CommIDs
+    
+
+    try:
+        with driver.session() as session:
+            query = """
+                UNWIND $event_ids AS eid
+                MATCH (sender:Entity)-[:sent]->(comm:Event {id: eid, sub_type: 'Communication'})-[:received]->(receiver:Entity)
+                RETURN comm, sender.id AS source, receiver.id AS target
+                ORDER BY comm.timestamp
+            """
+            records = session.run(query, event_ids=event_ids)
+
+            for record in records:
+                comm = record["comm"]
+                results.append({
+                    "event_id": comm.id,
+                    "timestamp": comm.get("timestamp", ""),
+                    "source": record.get("source", "–"),
+                    "target": record.get("target", "–"),
+                    "content": comm.get("content", ""),
+                    "sub_type": comm.get("sub_type", "")
+                })
+
+    except Exception as e:
+        print(f"Error fetching massive sequence view: {str(e)}")    
+        return {"success": False, "error": str(e)}
+    finally:
+        driver.close()
+    return {"success": True, "data": results}
+
+@router.post("/event-entities", response_class=JSONResponse)
+async def event_entities(event_ids: List[str]):
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    result_map = {}
+
+    try:
+        print("Fetching event entities for IDs")
+        with driver.session() as session:
+            query = """
+            UNWIND $event_ids AS eid
+            MATCH (e:Event {id: eid})
+            OPTIONAL MATCH (source:Entity)-[]->(e)
+            OPTIONAL MATCH (e)-[]->(target:Entity)
+            RETURN eid AS event_id,
+                   COLLECT(DISTINCT source.id) AS sources,
+                   COLLECT(DISTINCT target.id) AS targets
+            """
+            records = session.run(query, event_ids=event_ids)
+            for record in records:
+                event_id = record["event_id"]
+                sources = record["sources"] or []
+                targets = record["targets"] or []
+
+                result_map[event_id] = {
+                    "sources": sorted(sources),
+                    "targets": sorted(targets)
+                }
+
+    except Exception as e:
+        print("Error in /event-entities:", str(e))
+        return {"success": False, "error": str(e)}
+    finally:
+        driver.close()
+
+    return {"success": True, "data": result_map}
+
+
+
+###
+# Here the Similarity Search starts
+# First we need to embed the messages
+
+import json
+import pandas as pd
+import torch
+from sentence_transformers import SentenceTransformer, util
+
+# Load the embedding model
+embed_model = SentenceTransformer("BAAI/bge-small-en-v1.5", device="cpu")
+
+# Load the graph data from the JSON file to dataframe
+with open("MC3_graph.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
+nodes_df = pd.DataFrame(data['nodes'])
+
+# Filter for communication events
+communication_events = nodes_df[nodes_df['sub_type'] == 'Communication'].copy()
+communication_events['content'] = communication_events['content'].fillna("")
+
+# Encode the communication events to get their embeddings
+print("Encoding communication event content...")
+message_texts = [
+    "Represent this sentence for searching relevant passages: " + msg
+    for msg in communication_events["content"]
+]
+message_embs = embed_model.encode(message_texts, convert_to_tensor=True)
+print("Embeddings loaded.")
+
+
+# Similarity matrix - could be used for adjacency matrix
+def calculate_similarity_between_all_messages():
+    similarity_matrix = util.cos_sim(message_embs, message_embs)
+    similarity_matrix = similarity_matrix.numpy().tolist()
+
+@router.get("/similarity-search", response_class=JSONResponse)
+async def similarity_search(
+    query: str = Query(..., description="Text query for semantic message similarity"),
+    top_k: int = Query(50, description="Number of top similar messages to return"),
+    score_threshold: float = Query(0.7, description="Minimum similarity score to consider a match"),
+    order_by_time: bool = Query(False)
+):
+    if not query.strip():
+        return {"success": False, "error": "Empty query"}
+
+    try:
+        encoded_query = embed_model.encode(
+            "Represent those Keywords for searching relevant passages: " + query,
+            convert_to_tensor=True
+        )
+        scores = util.cos_sim(encoded_query, message_embs)[0]
+        top_indices = torch.topk(scores, k=top_k).indices.cpu().numpy()
+
+        filtered_indices = [i for i in top_indices if scores[i].item() >= score_threshold]
+
+        # Fallback content match if fewer than 10
+        if len(filtered_indices) < top_k:
+            content_matches = communication_events[
+                communication_events["content"].str.contains(query, case=False, na=False)
+            ]
+            additional_needed = top_k - len(filtered_indices)
+            additional_matches = content_matches[~content_matches.index.isin(filtered_indices)].head(additional_needed)
+            filtered_df = pd.concat([
+                communication_events.iloc[filtered_indices],
+                additional_matches
+            ]).drop_duplicates(subset=["id"])
+        else:
+            filtered_df = communication_events.iloc[filtered_indices]
+
+        if filtered_df.empty:
+            return {"success": True, "data": []}
+
+        event_ids = filtered_df["id"].tolist()
+
+        # Query Neo4j for communication metadata
+        driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+        result = []
+        try:
+            with driver.session() as session:
+                cypher_query = """
+                UNWIND $ids AS eid
+                MATCH (source:Entity)-[:sent]->(comm:Event {id: eid})-[:received]->(target:Entity)
+                RETURN comm.id AS event_id, comm.timestamp AS timestamp, comm.content AS content,
+                       source.id AS source, target.id AS target
+                ORDER BY comm.timestamp
+                """
+                records = session.run(cypher_query, ids=event_ids)
+                if order_by_time:
+                    for row in records:
+                        result.append({
+                            "event_id": row["event_id"],
+                            "timestamp": row["timestamp"],
+                            "source": row["source"],
+                            "target": row["target"],
+                            "content": row["content"],
+                            "sub_type": "Communication"
+                        })
+                else:
+                    result_map = {r["event_id"]: r for r in records}
+                    for _, row in filtered_df.iterrows():
+                        record = result_map.get(row["id"], {})
+                        result.append({
+                            "event_id": row["id"],
+                            "timestamp": record.get("timestamp", ""),
+                            "source": record.get("source", ""),
+                            "target": record.get("target", ""),
+                            "content": record.get("content", row["content"]),
+                            "sub_type": row.get("sub_type", "Communication")
+                        })
+        finally:
+            driver.close()
+
+        return {"success": True, "data": result}
+
+    except Exception as e:
+        print("Error in similarity search:", str(e))
+        return {"success": False, "error": str(e)}
+
+
+###  
+# Load all events for similarity search using contentFilter
+Events = nodes_df[nodes_df['type'] == 'Event'].copy()
+Events["full_text"] = Events[["content", "findings", "results", "destination", "outcome", "reference"]].fillna("").agg(" ".join, axis=1)
+# Embed the full text of events for similarity search
+event_texts = ["Represent this passage for retrieval: " + text for text in Events["full_text"]]
+event_embeddings = embed_model.encode(event_texts, convert_to_tensor=True)
+
+@router.get("/similarity-search-events", response_class=JSONResponse)
+async def similarity_search_events(
+    query: str = Query(...),
+    score_threshold: float = Query(0.5, description="Minimum similarity score to consider a match")
+):
+    print(f"Starting similarity search for events with query: {query} and threshold: {score_threshold}")
+    try:
+        # Encode the query for semantic search
+        encoded_query = embed_model.encode(
+            "Represent this question for retrieving supporting passages: " + query,
+            convert_to_tensor=True
+        )
+
+        # Perform semantic similarity search
+        scores = util.cos_sim(encoded_query, event_embeddings)[0]
+        top_indices = (scores > score_threshold).nonzero().flatten().cpu().numpy()
+        matched_df = Events.iloc[top_indices].copy()
+        matched_ids = matched_df["id"].tolist()
+
+        # Count how many of the matched results are communication events
+        comm_matches = matched_df[matched_df["sub_type"] == "Communication"]
+        num_comm_matches = len(comm_matches)
+
+        # Fallback: if fewer than 10 communication events, add direct text matches from communication_events
+        if num_comm_matches < 10:
+            print(f"Found only {num_comm_matches} communication events in similarity search. Adding direct matches.")
+            additional_needed = 20 - num_comm_matches
+
+            direct_matches = communication_events[
+                communication_events["content"].str.contains(query, case=False, na=False)
+            ]
+            additional_matches = direct_matches[
+                ~direct_matches["id"].isin(matched_ids)
+            ].head(additional_needed)
+
+            additional_ids = additional_matches["id"].tolist()
+            matched_ids = list(dict.fromkeys(matched_ids + additional_ids))  # preserve order and remove duplicates
+
+        print(f"Returning {len(matched_ids)} matched event IDs")
+        return {"success": True, "event_ids": matched_ids}
+
+    except Exception as e:
+        print("Error in similarity search for events:", str(e))
+        return {"success": False, "error": str(e)}
+

@@ -9,7 +9,11 @@ WORKDIR /app
 COPY package*.json ./
 
 RUN npm install
+RUN npm i react-split
+RUN npm install --save react-split
 RUN npm install d3
+RUN npm install d3-sankey
+RUN npm install d3-chord
 
 COPY . .
 
