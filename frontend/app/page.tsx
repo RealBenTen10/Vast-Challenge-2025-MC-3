@@ -19,6 +19,7 @@ import GraphView from "@/components/GraphView";
 import TimeBarChart from "@/components/TimeBarChart";
 
 export default function Home() {
+  const [statusMsg, setStatusMsg] = useState<string>("");
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [commGraphData, setCommGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [useAggregated, setUseAggregated] = useState<boolean>(false);
