@@ -350,7 +350,32 @@ export default function CommunicationView({
         <div className="mt-2 flex flex-wrap gap-1 text-sm ml-4">
           {filterModeMessages === "all" && (
             <span>
-              Showing all communications
+              Showing all communications from current Graph
+              {filterContent && <span> with <Badge color="purple">{filterContent}</Badge></span>}
+              {(timestampFilterStart || timestampFilterEnd) && (
+                <span>
+                  {timestampFilterStart && timestampFilterEnd && (
+                    <> in timeframe <Badge color="gray">
+                      {new Date(timestampFilterStart).toLocaleString()} – {new Date(timestampFilterEnd).toLocaleString()}
+                    </Badge></>
+                  )}
+                  {timestampFilterStart && !timestampFilterEnd && (
+                    <> from <Badge color="gray">{new Date(timestampFilterStart).toLocaleString()}</Badge></>
+                  )}
+                  {!timestampFilterStart && timestampFilterEnd && (
+                    <> until <Badge color="gray">{new Date(timestampFilterEnd).toLocaleString()}</Badge></>
+                  )}
+                </span>
+              )}
+            </span>
+          )}
+
+          {filterModeMessages === "either" && (
+            <span>
+              Showing communications
+              {filterSender && <span> involving <Badge color="blue">{filterSender}</Badge></span>}
+              {(filterSender && filterReceiver) && <span> and Communications</span>}
+              {filterReceiver && <span> involving <Badge color="green">{filterReceiver}</Badge></span>}
               {filterContent && <span> with <Badge color="purple">{filterContent}</Badge></span>}
               {(timestampFilterStart || timestampFilterEnd) && (
                 <span>
