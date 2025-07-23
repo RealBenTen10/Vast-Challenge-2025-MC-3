@@ -19,6 +19,9 @@ NEO4J_PASSWORD = os.environ.get('DB_PASSWORD')
 
 router = APIRouter()
 
+# Global variables
+grouped_entity_map: dict[str, list[str]] = {}
+
 # Root endpoint
 # This is the root endpoint for the FastAPI application.
 # It returns a simple HTML page with the title "AVA Template Python API".
