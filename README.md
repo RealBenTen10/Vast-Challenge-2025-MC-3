@@ -14,10 +14,25 @@ At the end we should have a tool to analyse given data using visual analytic app
 
 ### Prototype
 To use our prototype simply install Docker Desktop and NdeoJS (using npm) and clone this repository into Visual Studio Code.
-Ensure that Docker works on youre computer. If you use Windows, download WSL (Linux for Windows).
+Ensure that Docker works on youre computer. If you use Windows, download WSL (Linux for Windows) as well.
 
-After setting everything up you can simply
+After setting everything up you can build the Docker images using "docker login" (make sure you use the same login credentials as in Docker Desktop) followed by "docker compose up --build" (or "docker compose build").
+You should be able to see (in your terminal) that docker is building the images. This takes between 10 and 20 minutes - depending on your hardware. Next you should see that the backend and database are booting up. Wait for about 2-3 minutes then both the backend and database should be ready. Next open your Browser and type in the following url: http://localhost:3000/
 
+This starts the frontend image which can also be observed in the terminal ("/comiling..."). When everything is ready the tool should load in your browser. It consists of a filter panel, node-link diagram, a communication view, bar plot, sankey diagram (this is not visible at the beginning) and a event view. 
+
+The first time you start the apllication the database is probable empty. So your node-link diagram should be empty as well. Simply click the "Load JSON Graph" button on the upper right corner to load the data into the database. After it finished loading the graph should start its force simulation. Wait for the node-link diagram to finish its force simulation, only then can you start using the tool to its full potential.
+
+If it doesn't load simply refresg the page (ctrl + r).
+
+Have fun exploring the data :)
+
+### How to use the tool
+On how to use the tool you can watch our explanatory video here: https://cloud.uni-konstanz.de/index.php/s/tNQjgRFoAnYMnWm
+
+
+### Troubleshooting
+If you notice that the last step of building the docker images takes forever, you can also try to stop the building process (using ctrl + c) and then type "docker compose up" in your terminal without the build flag. If it still has to build the images, you can also try restarting your computer. 
 
 
 ## Old Read Me file content:
